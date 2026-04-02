@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const supabase = createClient(
   "https://bofhihxpqmqimkanwkyw.supabase.co",
@@ -24,6 +24,178 @@ const APPOINTMENT_STATUS = {
   "Concluído": "#6b7280"
 };
 
+// ── PDF Generator ─────────────────────────────────────────────────────────────
+function generatePDF(vehicles, services, dateFrom, dateTo) {
+  const filteredVehicles = vehicles.filter(v => {
+    if (!v.entryDate) return false;
+    return v.entryDate >= dateFrom && v.entryDate <= dateTo;
+  });
+
+  const filteredServices = services.filter(s => {
+    if (!s.createdAt) return false;
+    const d = s.createdAt.slice(0, 10);
+    return d >= dateFrom && d <= dateTo;
+  });
+
+  const totalParts = filteredServices.reduce((s, sv) => s + (Number(sv.partsValue) || 0), 0);
+  const totalLabor = filteredServices.reduce((s, sv) => s + (Number(sv.laborValue) || 0), 0);
+  const totalGeral = totalParts + totalLabor;
+
+  const html = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<title>Relatório Oficina</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #1e293b; background: #fff; padding: 40px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; padding-bottom: 20px; border-bottom: 3px solid #f97316; }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon { width: 44px; height: 44px; background: #f97316; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+  .logo-text h1 { font-size: 22px; font-weight: 800; color: #0f172a; }
+  .logo-text p { font-size: 11px; color: #64748b; margin-top: 2px; }
+  .report-info { text-align: right; }
+  .report-info h2 { font-size: 16px; color: #0f172a; margin-bottom: 4px; }
+  .report-info p { font-size: 12px; color: #64748b; }
+  .section { margin-bottom: 28px; }
+  .section-title { font-size: 14px; font-weight: 700; color: #0f172a; padding: 8px 12px; background: #f1f5f9; border-left: 4px solid #f97316; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #f8fafc; padding: 8px 10px; text-align: left; font-size: 11px; color: #475569; text-transform: uppercase; letter-spacing: .04em; border-bottom: 2px solid #e2e8f0; }
+  td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; font-size: 12px; color: #334155; }
+  tr:last-child td { border-bottom: none; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 600; }
+  .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .summary-card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; }
+  .summary-card .label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+  .summary-card .value { font-size: 20px; font-weight: 700; }
+  .total-row td { font-weight: 700; background: #f8fafc; }
+  .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #94a3b8; }
+  .empty { text-align: center; color: #94a3b8; padding: 20px; font-style: italic; }
+  @media print { body { padding: 20px; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <div class="logo-icon">🔩</div>
+    <div class="logo-text">
+      <h1>AutoGestão</h1>
+      <p>Sistema de Gestão de Oficina</p>
+    </div>
+  </div>
+  <div class="report-info">
+    <h2>Relatório do Período</h2>
+    <p>${fmtDate(dateFrom)} até ${fmtDate(dateTo)}</p>
+    <p style="margin-top:4px;color:#94a3b8;">Gerado em ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</p>
+  </div>
+</div>
+
+<!-- Resumo Financeiro -->
+<div class="section">
+  <div class="section-title">💰 Resumo Financeiro</div>
+  <div class="summary-grid">
+    <div class="summary-card">
+      <div class="label">Receita em Peças</div>
+      <div class="value" style="color:#3b82f6">${fmt(totalParts)}</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Receita em Mão de Obra</div>
+      <div class="value" style="color:#10b981">${fmt(totalLabor)}</div>
+    </div>
+    <div class="summary-card" style="border-color:#f97316">
+      <div class="label">Receita Total</div>
+      <div class="value" style="color:#f97316">${fmt(totalGeral)}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Veículos -->
+<div class="section">
+  <div class="section-title">🚗 Veículos que Entraram no Período (${filteredVehicles.length})</div>
+  ${filteredVehicles.length === 0 ? '<p class="empty">Nenhum veículo no período selecionado</p>' : `
+  <table>
+    <thead>
+      <tr>
+        <th>Placa</th>
+        <th>Modelo / Ano</th>
+        <th>Cliente</th>
+        <th>Serviço</th>
+        <th>Entrada</th>
+        <th>Saída Prev.</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${filteredVehicles.map(v => `
+      <tr>
+        <td><strong>${v.plate || "—"}</strong></td>
+        <td>${v.model || "—"}${v.year ? ` · ${v.year}` : ""}</td>
+        <td>${v.owner || "—"}${v.phone ? `<br><span style="color:#94a3b8;font-size:11px">${v.phone}</span>` : ""}</td>
+        <td>${v.serviceType || "—"}</td>
+        <td>${fmtDate(v.entryDate)}</td>
+        <td>${fmtDate(v.exitDate)}</td>
+        <td><span class="badge" style="background:${(STATUS_COLORS[v.status] || "#6b7280") + "22"};color:${STATUS_COLORS[v.status] || "#6b7280"}">${v.status || "—"}</span></td>
+      </tr>`).join("")}
+    </tbody>
+  </table>`}
+</div>
+
+<!-- Serviços -->
+<div class="section">
+  <div class="section-title">🔧 Serviços Realizados no Período (${filteredServices.length})</div>
+  ${filteredServices.length === 0 ? '<p class="empty">Nenhum serviço no período selecionado</p>' : `
+  <table>
+    <thead>
+      <tr>
+        <th>Data</th>
+        <th>Veículo</th>
+        <th>Descrição</th>
+        <th>Mecânico</th>
+        <th>Peças</th>
+        <th>Mão de Obra</th>
+        <th>Total</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${filteredServices.map(s => `
+      <tr>
+        <td>${fmtDate(s.createdAt?.slice(0, 10))}</td>
+        <td><strong>${s.vehiclePlate || "—"}</strong><br><span style="color:#94a3b8;font-size:11px">${s.vehicleModel || ""}</span></td>
+        <td>${s.description || "—"}</td>
+        <td>${s.mechanic || "—"}</td>
+        <td style="color:#3b82f6">${fmt(Number(s.partsValue) || 0)}</td>
+        <td style="color:#10b981">${fmt(Number(s.laborValue) || 0)}</td>
+        <td style="color:#f97316;font-weight:600">${fmt((Number(s.partsValue) || 0) + (Number(s.laborValue) || 0))}</td>
+        <td><span class="badge" style="background:${(STATUS_COLORS[s.status] || "#6b7280") + "22"};color:${STATUS_COLORS[s.status] || "#6b7280"}">${s.status || "—"}</span></td>
+      </tr>`).join("")}
+      <tr class="total-row">
+        <td colspan="4">TOTAL</td>
+        <td style="color:#3b82f6">${fmt(totalParts)}</td>
+        <td style="color:#10b981">${fmt(totalLabor)}</td>
+        <td style="color:#f97316">${fmt(totalGeral)}</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>`}
+</div>
+
+<div class="footer">
+  AutoGestão — Sistema de Gestão de Oficina · Relatório gerado automaticamente
+</div>
+
+<script>window.onload = () => window.print();</script>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, "_blank");
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
 export default function App() {
   const [tab, setTab] = useState("dashboard");
   const [vehicles, setVehicles] = useState([]);
@@ -31,6 +203,7 @@ export default function App() {
   const [appointments, setAppointments] = useState([]);
   const [quotes, setQuotes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showReport, setShowReport] = useState(false);
 
   useEffect(() => {
     async function fetchAll() {
@@ -50,7 +223,6 @@ export default function App() {
     fetchAll();
   }, []);
 
-  // mappers snake_case -> camelCase
   const mapV = (r) => ({ id: r.id, plate: r.plate, model: r.model, year: r.year, color: r.color, owner: r.owner, phone: r.phone, serviceType: r.service_type, status: r.status, entryDate: r.entry_date, exitDate: r.exit_date, notes: r.notes, createdAt: r.created_at });
   const mapS = (r) => ({ id: r.id, vehicleId: r.vehicle_id, vehiclePlate: r.vehicle_plate, vehicleModel: r.vehicle_model, description: r.description, partsValue: r.parts_value, laborValue: r.labor_value, partsList: r.parts_list, mechanic: r.mechanic, status: r.status, createdAt: r.created_at });
   const mapA = (r) => ({ id: r.id, clientName: r.client_name, clientPhone: r.client_phone, date: r.date, time: r.time, plate: r.plate, serviceType: r.service_type, mechanic: r.mechanic, status: r.status, notes: r.notes, createdAt: r.created_at });
@@ -81,6 +253,8 @@ export default function App() {
         .btn-ghost:hover{border-color:#f97316;color:#f97316;}
         .btn-danger{background:transparent;color:#ef4444;border:1px solid #3f1212;border-radius:8px;padding:7px 14px;font-family:inherit;font-size:12px;}
         .btn-danger:hover{background:#3f1212;}
+        .btn-pdf{background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:9px 18px;font-family:inherit;font-weight:500;font-size:13px;transition:opacity .15s;display:flex;align-items:center;gap:6px;}
+        .btn-pdf:hover{opacity:.85;}
         .input{background:#0d0f14;border:1px solid #1e2736;border-radius:8px;padding:9px 13px;color:#e2e8f0;font-family:inherit;font-size:13px;width:100%;transition:border-color .15s;}
         .input:focus{border-color:#f97316;}
         .label{display:block;font-size:11px;color:#64748b;margin-bottom:5px;letter-spacing:.05em;text-transform:uppercase;}
@@ -104,6 +278,9 @@ export default function App() {
           <div style={{ fontSize: 11, color: "#475569", marginTop: 2 }}>Sistema de Gestão de Oficina</div>
         </div>
         {loading && <div style={{ marginLeft: "auto", fontSize: 11, color: "#f97316" }}>● sincronizando...</div>}
+        <button className="btn-pdf" style={{ marginLeft: loading ? 8 : "auto" }} onClick={() => setShowReport(true)}>
+          📄 Gerar Relatório PDF
+        </button>
       </header>
 
       <nav style={{ display: "flex", gap: 4, padding: "12px 24px", borderBottom: "1px solid #1e2736", overflowX: "auto" }}>
@@ -136,6 +313,92 @@ export default function App() {
           </>
         )}
       </main>
+
+      {showReport && (
+        <ReportModal
+          vehicles={vehicles}
+          services={services}
+          onClose={() => setShowReport(false)}
+          onGenerate={(from, to) => { generatePDF(vehicles, services, from, to); setShowReport(false); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Report Modal ──────────────────────────────────────────────────────────────
+function ReportModal({ vehicles, services, onClose, onGenerate }) {
+  const firstDay = new Date();
+  firstDay.setDate(1);
+  const [dateFrom, setDateFrom] = useState(firstDay.toISOString().slice(0, 10));
+  const [dateTo, setDateTo] = useState(today());
+
+  const filteredV = vehicles.filter(v => v.entryDate >= dateFrom && v.entryDate <= dateTo);
+  const filteredS = services.filter(s => s.createdAt?.slice(0, 10) >= dateFrom && s.createdAt?.slice(0, 10) <= dateTo);
+  const totalParts = filteredS.reduce((s, sv) => s + (Number(sv.partsValue) || 0), 0);
+  const totalLabor = filteredS.reduce((s, sv) => s + (Number(sv.laborValue) || 0), 0);
+
+  const presets = [
+    { label: "Este mês", from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10), to: today() },
+    { label: "Mês passado", from: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString().slice(0, 10), to: new Date(new Date().getFullYear(), new Date().getMonth(), 0).toISOString().slice(0, 10) },
+    { label: "Últimos 7 dias", from: new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10), to: today() },
+    { label: "Últimos 30 dias", from: new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10), to: today() },
+  ];
+
+  return (
+    <div className="modal-bg" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <h3>📄 Gerar Relatório PDF</h3>
+
+        <div style={{ marginBottom: 16 }}>
+          <label className="label">Atalhos de período</label>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {presets.map(p => (
+              <button key={p.label} className="btn-ghost" style={{ fontSize: 11, padding: "5px 12px" }}
+                onClick={() => { setDateFrom(p.from); setDateTo(p.to); }}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid-2">
+          <div className="form-group">
+            <label className="label">Data inicial</label>
+            <input className="input" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label className="label">Data final</label>
+            <input className="input" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+          </div>
+        </div>
+
+        {/* Preview */}
+        <div className="card" style={{ marginTop: 8, marginBottom: 20 }}>
+          <div style={{ fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: ".05em", marginBottom: 12 }}>Prévia do período</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 22, fontWeight: 700, color: "#f97316", fontFamily: "'Syne',sans-serif" }}>{filteredV.length}</div>
+              <div style={{ fontSize: 11, color: "#475569" }}>Veículos</div>
+            </div>
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 22, fontWeight: 700, color: "#3b82f6", fontFamily: "'Syne',sans-serif" }}>{filteredS.length}</div>
+              <div style={{ fontSize: 11, color: "#475569" }}>Serviços</div>
+            </div>
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "#10b981", fontFamily: "'Syne',sans-serif" }}>{fmt(totalParts + totalLabor)}</div>
+              <div style={{ fontSize: 11, color: "#475569" }}>Receita Total</div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          <button className="btn-ghost" onClick={onClose}>Cancelar</button>
+          <button className="btn-pdf" onClick={() => onGenerate(dateFrom, dateTo)}>
+            📄 Gerar e Baixar PDF
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -166,7 +429,6 @@ function Dashboard({ vehicles, services, appointments, quotes, setTab }) {
         <h1 style={{ fontFamily: "'Syne',sans-serif", fontSize: 26, fontWeight: 800, color: "#f1f5f9" }}>Dashboard</h1>
         <p style={{ color: "#475569", fontSize: 13, marginTop: 4 }}>{new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p>
       </div>
-
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14 }}>
         {kpis.map((k, i) => (
           <div key={i} className="card" style={{ borderLeft: `3px solid ${k.accent}` }}>
@@ -176,7 +438,6 @@ function Dashboard({ vehicles, services, appointments, quotes, setTab }) {
           </div>
         ))}
       </div>
-
       <div className="grid-2">
         <div className="card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
@@ -196,7 +457,6 @@ function Dashboard({ vehicles, services, appointments, quotes, setTab }) {
             </div>
           ))}
         </div>
-
         <div className="card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <h3 style={{ fontFamily: "'Syne',sans-serif", color: "#f1f5f9", fontSize: 15 }}>Veículos em Serviço</h3>
@@ -286,7 +546,6 @@ function Vehicles({ vehicles, setVehicles, services, mapV }) {
             );
           })}
       </div>
-
       {modal && (
         <div className="modal-bg" onClick={close}>
           <div className="modal" onClick={e => e.stopPropagation()}>
@@ -375,7 +634,6 @@ function Services({ services, setServices, vehicles, mapS }) {
             </div>
           ))}
       </div>
-
       {services.length > 0 && (
         <div className="card" style={{ display: "flex", gap: 32, justifyContent: "flex-end" }}>
           <Stat label="Total Peças" value={fmt(services.reduce((s, sv) => s + (Number(sv.partsValue) || 0), 0))} color="#3b82f6" />
@@ -383,7 +641,6 @@ function Services({ services, setServices, vehicles, mapS }) {
           <Stat label="Total Geral" value={fmt(services.reduce((s, sv) => s + (Number(sv.partsValue) || 0) + (Number(sv.laborValue) || 0), 0))} color="#f97316" />
         </div>
       )}
-
       {modal && (
         <div className="modal-bg" onClick={close}>
           <div className="modal" onClick={e => e.stopPropagation()}>
@@ -475,7 +732,6 @@ function Appointments({ appointments, setAppointments, mapA }) {
             </div>
           ))}
       </div>
-
       {modal && (
         <div className="modal-bg" onClick={close}>
           <div className="modal" onClick={e => e.stopPropagation()}>
@@ -571,7 +827,6 @@ function Quotes({ quotes, setQuotes, mapQ }) {
             </div>
           ))}
       </div>
-
       {modal && (
         <div className="modal-bg" onClick={close}>
           <div className="modal" onClick={e => e.stopPropagation()}>
