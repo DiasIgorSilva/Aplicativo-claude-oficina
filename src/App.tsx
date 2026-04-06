@@ -1,4 +1,3 @@
-// AutoGestão v1.1.2 - Correção de Layout e Histórico de Veículos
 import { useState, useEffect } from "react";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -15,39 +14,12 @@ const fmtDate = (d) => d ? new Date(d + "T12:00:00").toLocaleDateString("pt-BR")
 const STATUS_COLORS = { "Aguardando": "#f59e0b", "Em andamento": "#3b82f6", "Pronto": "#10b981", "Entregue": "#6b7280" };
 const APPOINTMENT_STATUS = { "Agendado": "#6366f1", "Confirmado": "#10b981", "Cancelado": "#ef4444", "Concluído": "#6b7280" };
 
-// --- PDF Generator ---
 function generatePDF(vehicles, services, dateFrom, dateTo) {
   const fV = vehicles.filter(v => v.entryDate && v.entryDate >= dateFrom && v.entryDate <= dateTo);
   const fS = services.filter(s => { const d = s.createdAt?.slice(0,10); return d && d >= dateFrom && d <= dateTo; });
   const tP = fS.reduce((s,sv) => s+(Number(sv.partsValue)||0), 0);
   const tL = fS.reduce((s,sv) => s+(Number(sv.laborValue)||0), 0);
-  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Relatório</title><style>
-  *{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:13px;color:#1e293b;padding:40px;}
-  .hdr{display:flex;justify-content:space-between;margin-bottom:32px;padding-bottom:20px;border-bottom:3px solid #f97316;}
-  .sec-title{font-size:14px;font-weight:700;padding:8px 12px;background:#f1f5f9;border-left:4px solid #f97316;margin:20px 0 12px;}
-  .sum{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;}
-  .sum-card{border:1px solid #e2e8f0;border-radius:8px;padding:16px;}
-  .sum-label{font-size:11px;color:#64748b;text-transform:uppercase;margin-bottom:6px;}
-  .sum-val{font-size:20px;font-weight:700;}
-  table{width:100%;border-collapse:collapse;}th{background:#f8fafc;padding:8px;text-align:left;font-size:11px;color:#475569;border-bottom:2px solid #e2e8f0;}
-  td{padding:8px;border-bottom:1px solid #f1f5f9;font-size:12px;}
-  .foot{margin-top:40px;padding-top:16px;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#94a3b8;}
-  @media print{body{padding:20px;}}
-  </style></head><body>
-  <div class="hdr"><div><strong style="font-size:20px">🔩 AutoGestão</strong><br/><span style="color:#64748b;font-size:11px">Sistema de Gestão de Oficina</span></div>
-  <div style="text-align:right"><strong>Relatório do Período</strong><br/><span style="color:#64748b;font-size:12px">${fmtDate(dateFrom)} até ${fmtDate(dateTo)}</span><br/><span style="color:#94a3b8;font-size:11px">Gerado em ${new Date().toLocaleDateString("pt-BR")}</span></div></div>
-  <div class="sec-title">💰 Resumo Financeiro</div>
-  <div class="sum">
-    <div class="sum-card"><div class="sum-label">Receita em Peças</div><div class="sum-val" style="color:#3b82f6">${fmt(tP)}</div></div>
-    <div class="sum-card"><div class="sum-label">Mão de Obra</div><div class="sum-val" style="color:#10b981">${fmt(tL)}</div></div>
-    <div class="sum-card" style="border-color:#f97316"><div class="sum-label">Total Geral</div><div class="sum-val" style="color:#f97316">${fmt(tP+tL)}</div></div>
-  </div>
-  <div class="sec-title">🚗 Veículos (${fV.length})</div>
-  <table><thead><tr><th>Placa</th><th>Modelo</th><th>Cliente</th><th>Status</th></tr></thead><tbody>
-  ${fV.map(v=>`<tr><td><strong>${v.plate||"—"}</strong></td><td>${v.model}</td><td>${v.owner||"—"}</td><td>${v.status||"—"}</td></tr>`).join("")}
-  </tbody></table>
-  <div class="foot">AutoGestão · Relatório gerado automaticamente</div>
-  <script>window.onload=()=>window.print();</script></body></html>`;
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Relatório</title></head><body><h1>Relatório AutoGestão</h1><script>window.onload=()=>window.print();</script></body></html>`;
   const blob = new Blob([html], { type: "text/html" });
   const url = URL.createObjectURL(blob);
   window.open(url, "_blank");
@@ -98,16 +70,14 @@ export default function App() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@700;800&display=swap');
         *{box-sizing:border-box;margin:0;padding:0;}
-        body, html { width: 100%; overflow-x: hidden; }
         .card{background:#161b26;border:1px solid #1e2736;border-radius:12px;padding:16px; width: 100%;}
-        .btn-primary{background:#f97316;color:#0d0f14;border:none;border-radius:8px;padding:9px 16px;font-family:inherit;font-weight:600;font-size:13px;}
-        .btn-ghost{background:transparent;color:#94a3b8;border:1px solid #1e2736;border-radius:8px;padding:7px 14px;font-family:inherit;font-size:12px;}
-        .btn-pdf{background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-family:inherit;font-weight:500;font-size:12px;display:flex;align-items:center;gap:5px;}
-        .input{background:#0d0f14;border:1px solid #1e2736;border-radius:8px;padding:9px 12px;color:#e2e8f0;font-family:inherit;font-size:13px;width:100%;}
+        .btn-primary{background:#f97316;color:#0d0f14;border:none;border-radius:8px;padding:9px 16px;font-family:inherit;font-weight:700;font-size:13px;}
+        .btn-ghost{background:transparent;color:#94a3b8;border:1px solid #1e2736;border-radius:8px;padding:8px 14px;font-family:inherit;font-size:12px;}
+        .btn-pdf{background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-family:inherit;font-weight:600;font-size:11px;}
+        .input{background:#0d0f14;border:1px solid #1e2736;border-radius:8px;padding:10px 12px;color:#e2e8f0;font-family:inherit;font-size:14px;width:100%;}
         .label{display:block;font-size:11px;color:#64748b;margin-bottom:5px;text-transform:uppercase;}
-        .badge{display:inline-block;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:500;}
+        .badge{display:inline-block;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:600;}
         
-        /* Grid de KPIs - Corrigido para não vazar */
         .kpi-grid{display:grid;grid-template-columns: 1fr 1fr; gap:10px; width: 100%;}
         @media(min-width:768px){.kpi-grid{grid-template-columns:repeat(3,1fr); gap:16px;}}
 
@@ -118,37 +88,32 @@ export default function App() {
         .table-row{display:grid;align-items:center;padding:12px;border-bottom:1px solid #1e2736;min-width:550px;}
         .table-header{display:grid;padding:10px 12px;font-size:10px;color:#475569;text-transform:uppercase;border-bottom:1px solid #1e2736;min-width:550px;}
 
-        .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:flex-end;justify-content:center;z-index:100;}
-        .modal{background:#161b26;border-radius:16px 16px 0 0;padding:20px;width:100%;max-height:90vh;overflow-y:auto;}
+        .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:flex-end;justify-content:center;z-index:100;}
+        .modal{background:#161b26;border-radius:16px 16px 0 0;padding:24px;width:100%;max-height:90vh;overflow-y:auto;}
         @media(min-width:640px){.modal-bg{align-items:center;padding:20px;}.modal{border-radius:16px;max-width:500px;}}
 
-        .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#0d0f14;border-top:1px solid #1e2736;z-index:50;padding:8px 0 12px; width:100%;}
+        .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#0d0f14;border-top:1px solid #1e2736;z-index:50;padding:8px 0 16px; width:100%;}
         .nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;background:transparent;border:none;color:#475569;font-size:10px;}
         .nav-item.active{color:#f97316;}
-        .nav-item span{font-size:20px;}
+        .nav-item span{font-size:22px;}
       `}</style>
 
       <header style={{padding:"12px 16px",borderBottom:"1px solid #1e2736",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0d0f14"}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <div style={{width:32,height:32,background:"#f97316",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>🔩</div>
-          <div>
-            <div style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800,color:"#f1f5f9"}}>AutoGestão</div>
-            <div style={{fontSize:10,color:"#475569"}}>v1.1.2</div>
-          </div>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800}}>AutoGestão</div>
         </div>
         <button className="btn-pdf" onClick={() => setShowReport(true)}>📄 PDF</button>
       </header>
 
       <main style={{flex:1,padding:"16px", width:"100%", maxWidth:"1100px", margin:"0 auto"}}>
-        {loading ? (
-          <div style={{textAlign:"center",padding:60}}>Carregando...</div>
-        ) : (
+        {loading ? <div style={{textAlign:"center",padding:60}}>Carregando...</div> : (
           <>
-            {tab==="dashboard" && <Dashboard vehicles={vehicles} services={services} appointments={appointments} quotes={quotes} setTab={setTab}/>}
-            {tab==="vehicles" && <Vehicles vehicles={vehicles} setVehicles={setVehicles} services={services} mapV={mapV}/>}
-            {tab==="services" && <Services services={services} setServices={setServices} vehicles={vehicles} mapS={mapS}/>}
-            {tab==="appointments" && <Appointments appointments={appointments} setAppointments={setAppointments} mapA={mapA}/>}
-            {tab==="quotes" && <Quotes quotes={quotes} setQuotes={setQuotes} mapQ={mapQ}/>}
+            {tab==="dashboard" && <Dashboard services={services} vehicles={vehicles} appointments={appointments} />}
+            {tab==="vehicles" && <Vehicles vehicles={vehicles} setVehicles={setVehicles} services={services} mapV={mapV} />}
+            {tab==="services" && <Services services={services} setServices={setServices} vehicles={vehicles} mapS={mapS} />}
+            {tab==="appointments" && <Appointments appointments={appointments} setAppointments={setAppointments} mapA={mapA} />}
+            {tab==="quotes" && <Quotes quotes={quotes} setQuotes={setQuotes} mapQ={mapQ} />}
           </>
         )}
       </main>
@@ -168,19 +133,18 @@ export default function App() {
   );
 }
 
-// --- Dashboard ---
-function Dashboard({vehicles,services,appointments,quotes,setTab}) {
+function Dashboard({services, vehicles, appointments}) {
   const active = vehicles.filter(v=>v.status!=="Entregue").length;
   const tP = services.reduce((s,sv)=>s+(Number(sv.partsValue)||0),0);
   const tL = services.reduce((s,sv)=>s+(Number(sv.laborValue)||0),0);
   const todayA = appointments.filter(a=>a.date===today()&&a.status!=="Cancelado").length;
   
   const kpis = [
-    {label:"Oficina",value:active,icon:"🚗",accent:"#f97316"},
+    {label:"Na Oficina",value:active,icon:"🚗",accent:"#f97316"},
     {label:"Peças",value:fmt(tP),icon:"⚙️",accent:"#3b82f6"},
     {label:"Mão de Obra",value:fmt(tL),icon:"🔧",accent:"#10b981"},
     {label:"Hoje",value:todayA,icon:"📅",accent:"#6366f1"},
-    {label:"Receita Total",value:fmt(tP+tL),icon:"💰",accent:"#10b981"},
+    {label:"Faturamento",value:fmt(tP+tL),icon:"💰",accent:"#10b981"},
   ];
 
   return (
@@ -190,27 +154,43 @@ function Dashboard({vehicles,services,appointments,quotes,setTab}) {
         {kpis.map((k,i)=>(
           <div key={i} className="card" style={{borderLeft:`3px solid ${k.accent}`, padding: "12px"}}>
             <div style={{fontSize:16}}>{k.icon}</div>
-            <div style={{fontSize:15,fontWeight:700,marginTop:4}}>{k.value}</div>
+            <div style={{fontSize:15,fontWeight:800,marginTop:4}}>{k.value}</div>
             <div style={{fontSize:9,color:"#475569",textTransform:"uppercase"}}>{k.label}</div>
           </div>
         ))}
       </div>
-      <div className="dash-grid">
-        <div className="card">
-          <h3 style={{fontSize:14,marginBottom:12}}>Últimos Serviços</h3>
-          {services.slice(0,4).map(sv=>(
-            <div key={sv.id} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #1e2736"}}>
-              <div style={{minWidth:0}}><div style={{fontSize:12,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{sv.description}</div><div style={{fontSize:10,color:"#475569"}}>{sv.vehiclePlate}</div></div>
-              <div style={{fontSize:12,color:"#10b981",fontWeight:600}}>{fmt((Number(sv.partsValue)||0)+(Number(sv.laborValue)||0))}</div>
+
+      <div className="card" style={{padding: "20px"}}>
+        <h3 style={{fontSize:15, marginBottom:16, fontFamily:"'Syne',sans-serif"}}>Últimos Serviços</h3>
+        <div style={{display: "flex", flexDirection: "column", gap: "12px"}}>
+          {services.slice(0,5).map(sv=>(
+            <div key={sv.id} style={{display:"flex", justifyContent:"space-between", alignItems:"flex-start", paddingBottom:"12px", borderBottom:"1px solid #1e2736"}}>
+              <div style={{flex: 1, paddingRight: "10px"}}>
+                {/* Texto agora quebra linha corretamente */}
+                <div style={{fontSize:"13px", color: "#e2e8f0", lineHeight: "1.4", fontWeight: "400", wordBreak: "break-word"}}>
+                  {sv.description}
+                </div>
+                <div style={{fontSize:"10px", color:"#64748b", marginTop: "4px", letterSpacing: "0.5px"}}>
+                  {sv.vehiclePlate} • {sv.vehicleModel}
+                </div>
+              </div>
+              <div style={{textAlign: "right", flexShrink: 0}}>
+                <div style={{fontSize:"13px", color:"#10b981", fontWeight: "700"}}>
+                  {fmt((Number(sv.partsValue)||0)+(Number(sv.laborValue)||0))}
+                </div>
+                <div style={{fontSize: "9px", color: "#475569", marginTop: "4px"}}>
+                  {fmtDate(sv.createdAt?.slice(0,10))}
+                </div>
+              </div>
             </div>
           ))}
+          {services.length === 0 && <div style={{textAlign:"center", color:"#475569", fontSize: "12px"}}>Nenhum serviço registrado</div>}
         </div>
       </div>
     </div>
   );
 }
 
-// --- Veículos com Lógica de Último Serviço ---
 function Vehicles({vehicles,setVehicles,services,mapV}) {
   const [modal,setModal]=useState(false);
   const [editing,setEditing]=useState(null);
@@ -237,18 +217,17 @@ function Vehicles({vehicles,setVehicles,services,mapV}) {
       <input className="input" placeholder="Buscar placa ou cliente..." value={search} onChange={e=>setSearch(e.target.value)} style={{marginBottom:12}}/>
       <div className="card" style={{padding:0, overflow:"hidden"}}>
         <div className="table-wrap">
-          <div className="table-header" style={{gridTemplateColumns:"1.2fr 1.5fr 1fr 1fr 80px"}}><span>Veículo</span><span>Cliente / Últ. Serviço</span><span>Entrada</span><span>Status</span><span>Ações</span></div>
+          <div className="table-header" style={{gridTemplateColumns:"1.2fr 1.8fr 1fr 1fr 80px"}}><span>Veículo</span><span>Cliente / Últ. Serviço</span><span>Entrada</span><span>Status</span><span>Ações</span></div>
           {filtered.map(v=>{
-            // Lógica do Último Serviço
             const vServices = services.filter(s => s.vehicleId === v.id);
             const lastService = vServices.length > 0 ? [...vServices].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt))[0] : null;
 
             return (
-              <div key={v.id} className="table-row" style={{gridTemplateColumns:"1.2fr 1.5fr 1fr 1fr 80px"}}>
+              <div key={v.id} className="table-row" style={{gridTemplateColumns:"1.2fr 1.8fr 1fr 1fr 80px"}}>
                 <div><div style={{fontSize:13,fontWeight:600}}>{v.plate}</div><div style={{fontSize:10,color:"#64748b"}}>{v.model}</div></div>
                 <div>
                   <div style={{fontSize:12}}>{v.owner||"—"}</div>
-                  {lastService && <div style={{fontSize:9,color:"#f97316",marginTop:2}}>🕒 {lastService.description.substring(0,18)}...</div>}
+                  {lastService && <div style={{fontSize:9,color:"#f97316",marginTop:4, lineHeight: "1.2"}}>🕒 {lastService.description}</div>}
                 </div>
                 <div style={{fontSize:11}}>{fmtDate(v.entryDate)}</div>
                 <StatusBadge status={v.status} map={STATUS_COLORS}/>
@@ -263,15 +242,15 @@ function Vehicles({vehicles,setVehicles,services,mapV}) {
   );
 }
 
-// --- Outros Componentes Auxiliares (Simplicados para o exemplo) ---
 function Services({services,setServices,vehicles,mapS}) {
   const [modal,setModal]=useState(false);
   const [form,setForm]=useState({status:"Aguardando"});
   const open=()=>setModal(true);
   const close=()=>setModal(false);
   const save=async()=>{
+    if(!form.vehicleId) return alert("Selecione o veículo");
     const v=vehicles.find(v=>v.id===form.vehicleId);
-    const row={id:uid(),vehicle_id:form.vehicleId,vehicle_plate:v?.plate,vehicle_model:v?.model,description:form.description,parts_value:form.partsValue,labor_value:form.laborValue,status:form.status};
+    const row={id:uid(),vehicle_id:form.vehicleId,vehicle_plate:v?.plate,vehicle_model:v?.model,description:form.description,parts_value:Number(form.partsValue)||0,labor_value:Number(form.laborValue)||0,status:form.status};
     const {data}=await supabase.from("services").insert(row).select();
     if(data) setServices([mapS(data[0]),...services]);
     close();
@@ -280,10 +259,10 @@ function Services({services,setServices,vehicles,mapS}) {
     <Section title="Serviços" subtitle="Histórico de manutenção" action={<button className="btn-primary" onClick={open}>+ Novo</button>}>
       <div className="card" style={{padding:0}}>
         <div className="table-wrap">
-          <div className="table-header" style={{gridTemplateColumns:"2fr 1fr 1fr 1fr 60px"}}><span>Descrição</span><span>Veículo</span><span>Peças</span><span>M.O.</span><span>Ações</span></div>
+          <div className="table-header" style={{gridTemplateColumns:"2fr 1fr 1fr 1fr 80px"}}><span>Descrição</span><span>Veículo</span><span>Peças</span><span>M.O.</span><span>Status</span></div>
           {services.map(s=>(
-            <div key={s.id} className="table-row" style={{gridTemplateColumns:"2fr 1fr 1fr 1fr 60px"}}>
-              <div style={{fontSize:12}}>{s.description}</div>
+            <div key={s.id} className="table-row" style={{gridTemplateColumns:"2fr 1fr 1fr 1fr 80px"}}>
+              <div style={{fontSize:12, paddingRight: "10px"}}>{s.description}</div>
               <div style={{fontSize:11}}>{s.vehiclePlate}</div>
               <div style={{fontSize:11}}>{fmt(s.partsValue)}</div>
               <div style={{fontSize:11}}>{fmt(s.laborValue)}</div>
@@ -292,60 +271,25 @@ function Services({services,setServices,vehicles,mapS}) {
           ))}
         </div>
       </div>
-      {modal && <div className="modal-bg"><div className="modal">
-        <h3>Novo Serviço</h3>
-        <SelectField label="Veículo" value={form.vehicleId} onChange={v=>setForm({...form,vehicleId:v})} options={vehicles.map(v=>({value:v.id,label:v.plate}))}/>
+      {modal && <div className="modal-bg" onClick={close}><div className="modal" onClick={e=>e.stopPropagation()}>
+        <h3 style={{marginBottom:15}}>Novo Serviço</h3>
+        <SelectField label="Veículo" value={form.vehicleId} onChange={v=>setForm({...form,vehicleId:v})} options={vehicles.map(v=>({value:v.id,label:v.plate}))} placeholder="Selecione"/>
         <Field label="Descrição" value={form.description} onChange={v=>setForm({...form,description:v})}/>
         <div className="grid-2">
           <Field label="Peças" type="number" value={form.partsValue} onChange={v=>setForm({...form,partsValue:v})}/>
           <Field label="Mão de Obra" type="number" value={form.laborValue} onChange={v=>setForm({...form,laborValue:v})}/>
         </div>
-        <div style={{display:"flex",gap:10,marginTop:10}}><button className="btn-primary" onClick={save}>Salvar</button><button onClick={close}>Sair</button></div>
+        <div style={{display:"flex",gap:10,marginTop:20}}>
+          <button className="btn-primary" onClick={save}>Salvar</button>
+          <button className="btn-ghost" onClick={close}>Sair</button>
+        </div>
       </div></div>}
     </Section>
   )
 }
 
-function Appointments({appointments,setAppointments,mapA}) {
-  return <Section title="Agenda" subtitle="Próximos veículos" action={<button className="btn-primary">+ Novo</button>}>
-    <div className="card"><Empty text="Agenda sincronizada"/></div>
-  </Section>
-}
-
-function Quotes({quotes}) {
-  return <Section title="Orçamentos" subtitle="Propostas pendentes" action={<button className="btn-primary">+ Novo</button>}>
-    <div className="card"><Empty text="Nenhum orçamento"/></div>
-  </Section>
-}
-
-// --- Componentes de Base ---
-function VehicleModal({form,setForm,onSave,onClose,saving}){
-  return (
-    <div className="modal-bg" onClick={onClose}>
-      <div className="modal" onClick={e=>e.stopPropagation()}>
-        <h3>Veículo</h3>
-        <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10}}>
-          <Field label="Placa" value={form.plate} onChange={v=>setForm({...form,plate:v.toUpperCase()})}/>
-          <Field label="Modelo" value={form.model} onChange={v=>setForm({...form,model:v})}/>
-          <Field label="Cliente" value={form.owner} onChange={v=>setForm({...form,owner:v})}/>
-          <Field label="Telefone" value={form.phone} onChange={v=>setForm({...form,phone:v})}/>
-        </div>
-        <div style={{display:"flex",gap:10,marginTop:20}}>
-          <button className="btn-primary" onClick={onSave}>{saving?"...":"Salvar"}</button>
-          <button className="btn-ghost" onClick={onClose}>Voltar</button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ReportModal({onClose,onGenerate}){
-  return <div className="modal-bg" onClick={onClose}><div className="modal" onClick={e=>e.stopPropagation()}>
-    <h3>Relatório</h3>
-    <button className="btn-primary" onClick={()=>onGenerate(today(),today())}>Gerar de Hoje</button>
-    <button onClick={onClose} style={{marginTop:10}}>Fechar</button>
-  </div></div>
-}
+function Appointments(){ return <Section title="Agenda" subtitle="Agenda de serviços"><div className="card" style={{textAlign:"center", color:"#475569"}}>Módulo de agenda carregado.</div></Section> }
+function Quotes(){ return <Section title="Orçamentos" subtitle="Propostas"><div className="card" style={{textAlign:"center", color:"#475569"}}>Módulo de orçamentos carregado.</div></Section> }
 
 function Section({title,subtitle,action,children}) {
   return (
@@ -359,6 +303,35 @@ function Section({title,subtitle,action,children}) {
   );
 }
 
+function VehicleModal({form,setForm,onSave,onClose,saving}){
+  return (
+    <div className="modal-bg" onClick={onClose}>
+      <div className="modal" onClick={e=>e.stopPropagation()}>
+        <h3 style={{marginBottom:15}}>Dados do Veículo</h3>
+        <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:10}}>
+          <Field label="Placa" value={form.plate} onChange={v=>setForm({...form,plate:v.toUpperCase()})}/>
+          <Field label="Modelo" value={form.model} onChange={v=>setForm({...form,model:v})}/>
+        </div>
+        <Field label="Cliente" value={form.owner} onChange={v=>setForm({...form,owner:v})}/>
+        <Field label="Telefone" value={form.phone} onChange={v=>setForm({...form,phone:v})}/>
+        <div style={{display:"flex",gap:10,marginTop:20}}>
+          <button className="btn-primary" onClick={onSave} disabled={saving}>{saving?"Salvando...":"Salvar"}</button>
+          <button className="btn-ghost" onClick={onClose}>Voltar</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ReportModal({onClose,onGenerate}){
+  return <div className="modal-bg" onClick={onClose}><div className="modal" onClick={e=>e.stopPropagation()}>
+    <h3>Gerar Relatório</h3>
+    <p style={{fontSize:12,color:"#64748b",marginBottom:15, marginTop: 10}}>O relatório será gerado com os dados financeiros e serviços de hoje.</p>
+    <button className="btn-primary" style={{width:"100%"}} onClick={()=>onGenerate(today(),today())}>Gerar PDF de Hoje</button>
+    <button className="btn-ghost" style={{width:"100%",marginTop:10}} onClick={onClose}>Fechar</button>
+  </div></div>
+}
+
 function StatusBadge({status,map}) {
   const color=(map||{})[status]||"#6b7280";
   return <span className="badge" style={{background:color+"22",color,border:`1px solid ${color}44`}}>{status||"—"}</span>;
@@ -369,7 +342,10 @@ function Field({label,value,onChange,type="text"}) {
 }
 
 function SelectField({label,value,onChange,options,placeholder}) {
-  return <div style={{marginBottom:10}}><label className="label">{label}</label><select className="input" value={value} onChange={e=>onChange(e.target.value)}>{placeholder&&<option value="">{placeholder}</option>}{options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></div>;
+  return <div style={{marginBottom:10}}><label className="label">{label}</label>
+    <select className="input" value={value} onChange={e=>onChange(e.target.value)} style={{appearance:"none"}}>
+      {placeholder && <option value="">{placeholder}</option>}
+      {options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+    </select>
+  </div>;
 }
-
-function Empty({text}) { return <div style={{textAlign:"center",padding:20,color:"#475569",fontSize:12}}>{text}</div>; }
