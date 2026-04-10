@@ -56,7 +56,7 @@ export default function App() {
   }, []);
 
   const mapV = r => ({ id: r.id, plate: r.plate, brand: r.brand, model: r.model, year: r.year, color: r.color, owner: r.owner, phone: r.phone, notes: r.notes, createdAt: r.created_at });
-  const mapS = r => ({ id: r.id, vehicleId: r.vehicle_id, vehiclePlate: r.vehicle_plate, vehicleBrand: r.vehicle_brand, vehicleModel: r.vehicle_model, description: r.description, partsValue: r.parts_value, laborValue: r.labor_value, status: r.status, createdAt: r.created_at });
+  const mapS = r => ({ id: r.id, vehicleId: r.vehicle_id, vehiclePlate: r.vehicle_plate, vehicleBrand: r.vehicle_brand, vehicleModel: r.vehicle_model, description: r.description, partsValue: r.parts_value, laborValue: r.labor_value, status: r.status, entryDate: r.entry_date, exitDate: r.exit_date, createdAt: r.created_at });
   const mapA = r => ({ id: r.id, clientName: r.client_name, date: r.date, status: r.status });
 
   const tabs = [
@@ -106,7 +106,7 @@ export default function App() {
             {tab==="dashboard" && <Dashboard services={services} vehicles={vehicles} />}
             {tab==="services" && <Services services={services} setServices={setServices} vehicles={vehicles} mapS={mapS} />}
             {tab==="vehicles" && <Vehicles vehicles={vehicles} setVehicles={setVehicles} mapV={mapV} />}
-            {tab==="appointments" && <div className="card" style={{textAlign:"center", color:"#475569"}}>Módulo de Agenda ativo.</div>}
+            {tab==="appointments" && <div className="card" style={{textAlign:"center", color:"#475569"}}>Módulo de Agenda carregado.</div>}
           </>
         )}
       </main>
@@ -149,12 +149,12 @@ function Dashboard({services, vehicles}) {
         ))}
       </div>
       <div className="card">
-        <h3 style={{fontSize:14,marginBottom:12,fontFamily:"'Syne',sans-serif"}}>Fluxo de Hoje</h3>
+        <h3 style={{fontSize:14,marginBottom:12,fontFamily:"'Syne',sans-serif"}}>Fluxo Recente</h3>
         {activeServices.slice(0,5).map(sv=>(
           <div key={sv.id} style={{display:"flex",justifyContent:"space-between",padding:"10px 0",borderBottom:"1px solid #1e2736", alignItems:"center"}}>
             <div style={{flex:1, paddingRight:10}}>
               <div style={{fontSize:12, color:"#e2e8f0", wordBreak:"break-word"}}>{sv.description}</div>
-              <div style={{fontSize:10,color:"#475569"}}>{sv.vehiclePlate} • <StatusBadge status={sv.status} map={STATUS_COLORS}/></div>
+              <div style={{fontSize:10,color:"#475569"}}>{sv.vehiclePlate} • Entrada: {fmtDate(sv.entryDate)} • <StatusBadge status={sv.status} map={STATUS_COLORS}/></div>
             </div>
             <div style={{fontSize:12,color:"#f97316",fontWeight:700}}>{fmt((Number(sv.partsValue)||0)+(Number(sv.laborValue)||0))}</div>
           </div>
@@ -234,7 +234,11 @@ function Services({services,setServices,vehicles,mapS}) {
   const [form,setForm]=useState({});
   const [saving,setSaving]=useState(false);
 
-  const open=(s=null)=>{setEditing(s);setForm(s||{status:"Aguardando", partsValue:0, laborValue:0});setModal(true);};
+  const open=(s=null)=>{
+    setEditing(s);
+    setForm(s || { status: "Aguardando", partsValue: 0, laborValue: 0, entryDate: today() });
+    setModal(true);
+  };
   const close=()=>{setModal(false);setEditing(null);setForm({});};
 
   const save=async()=>{
@@ -250,7 +254,9 @@ function Services({services,setServices,vehicles,mapS}) {
       description: form.description,
       parts_value: Number(form.partsValue)||0,
       labor_value: Number(form.laborValue)||0,
-      status: form.status
+      status: form.status,
+      entry_date: form.entryDate,
+      exit_date: form.status === "Entregue" ? (form.exitDate || today()) : null
     };
     const {data, error}=await supabase.from("services").upsert(row).select();
     if(!error && data) {
@@ -290,6 +296,15 @@ function Services({services,setServices,vehicles,mapS}) {
           <Field label="Peças" type="number" value={form.partsValue} onChange={v=>setForm({...form,partsValue:v})}/>
           <Field label="Mão de Obra" type="number" value={form.laborValue} onChange={v=>setForm({...form,laborValue:v})}/>
         </div>
+        
+        {/* Novas Datas */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <Field label="Data de Entrada" type="date" value={form.entryDate || today()} onChange={v=>setForm({...form,entryDate:v})}/>
+          {form.status === "Entregue" && (
+            <Field label="Data de Entrega" type="date" value={form.exitDate || today()} onChange={v=>setForm({...form,exitDate:v})}/>
+          )}
+        </div>
+
         <SelectField label="Status" value={form.status} onChange={v=>setForm({...form,status:v})} options={Object.keys(STATUS_COLORS)}/>
         <div style={{display:"flex",gap:10,marginTop:20}}><button className="btn-primary" style={{flex:1}} onClick={save} disabled={saving}>Salvar</button><button className="btn-ghost" style={{flex:1}} onClick={close}>Cancelar</button></div>
       </div></div>}
