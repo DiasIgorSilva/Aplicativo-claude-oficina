@@ -15,17 +15,63 @@ const STATUS_COLORS = { "Aguardando": "#f59e0b", "Em andamento": "#3b82f6", "Pro
 
 // ── Gerador de PDF ──
 function generatePDF(vehicles, services, dateFrom, dateTo) {
-  const fS = services.filter(s => { const d = s.createdAt?.slice(0,10); return d && d >= dateFrom && d <= dateTo; });
+  const fS = services.filter(s => { 
+    const d = s.entryDate || s.createdAt?.slice(0,10); 
+    return d && d >= dateFrom && d <= dateTo; 
+  });
   const tP = fS.reduce((s,sv) => s+(Number(sv.partsValue)||0), 0);
   const tL = fS.reduce((s,sv) => s+(Number(sv.laborValue)||0), 0);
-  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Relatório</title><style>
-  *{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:12px;color:#1e293b;padding:30px;}
-  .hdr{display:flex;justify-content:space-between;margin-bottom:20px;border-bottom:2px solid #f97316;padding-bottom:10px;}
-  table{width:100%;border-collapse:collapse;margin-top:20px;}th{background:#f8fafc;padding:8px;text-align:left;border-bottom:2px solid #e2e8f0;}
-  td{padding:8px;border-bottom:1px solid #f1f5f9;}</style></head><body>
-  <div class="hdr"><strong>AutoGestão - Relatório Financeiro</strong><span>Período: ${fmtDate(dateFrom)} a ${fmtDate(dateTo)}</span></div>
-  <p>Total Peças: ${fmt(tP)} | Total M.O: ${fmt(tL)} | <strong>Geral: ${fmt(tP+tL)}</strong></p>
-  <script>window.onload=()=>window.print();</script></body></html>`;
+  
+  const html = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Relatório Oficina</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:Arial,sans-serif;font-size:12px;color:#1e293b;padding:40px;}
+    .hdr{display:flex;justify-content:space-between;margin-bottom:30px;border-bottom:3px solid #f97316;padding-bottom:15px;}
+    .resumo{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:30px;}
+    .card-res{border:1px solid #e2e8f0;padding:15px;border-radius:8px;}
+    table{width:100%;border-collapse:collapse;}
+    th{background:#f8fafc;padding:10px;text-align:left;border-bottom:2px solid #e2e8f0;font-size:10px;text-transform:uppercase;}
+    td{padding:10px;border-bottom:1px solid #f1f5f9;}
+    .total-row{font-weight:700;background:#f8fafc;}
+  </style>
+</head>
+<body>
+  <div class="hdr">
+    <div><strong style="font-size:22px;color:#0f172a;">AutoGestão</strong><br/>Sistema de Gestão de Oficina</div>
+    <div style="text-align:right"><strong>Relatório de Período</strong><br/>${fmtDate(dateFrom)} até ${fmtDate(dateTo)}</div>
+  </div>
+  
+  <div class="resumo">
+    <div class="card-res">Peças: <br/><strong style="font-size:18px;color:#3b82f6">${fmt(tP)}</strong></div>
+    <div class="card-res">Mão de Obra: <br/><strong style="font-size:18px;color:#10b981">${fmt(tL)}</strong></div>
+    <div class="card-res" style="border-color:#f97316">Total Geral: <br/><strong style="font-size:18px;color:#f97316">${fmt(tP+tL)}</strong></div>
+  </div>
+
+  <table>
+    <thead><tr><th>Data</th><th>Veículo</th><th>Descrição</th><th>M.O.</th><th>Peças</th><th>Total</th></tr></thead>
+    <tbody>
+      ${fS.map(s => `
+        <tr>
+          <td>${fmtDate(s.entryDate)}</td>
+          <td><strong>${s.vehiclePlate}</strong><br/>${s.vehicleBrand} ${s.vehicleModel}</td>
+          <td>${s.description}</td>
+          <td>${fmt(s.laborValue)}</td>
+          <td>${fmt(s.partsValue)}</td>
+          <td><strong>${fmt((Number(s.laborValue)||0)+(Number(s.partsValue)||0))}</strong></td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>
+
+  <script>window.onload=()=>window.print();</script>
+</body>
+</html>`;
+
   const blob = new Blob([html], { type: "text/html" });
   const url = URL.createObjectURL(blob);
   window.open(url, "_blank");
@@ -106,7 +152,7 @@ export default function App() {
             {tab==="dashboard" && <Dashboard services={services} vehicles={vehicles} />}
             {tab==="services" && <Services services={services} setServices={setServices} vehicles={vehicles} mapS={mapS} />}
             {tab==="vehicles" && <Vehicles vehicles={vehicles} setVehicles={setVehicles} mapV={mapV} />}
-            {tab==="appointments" && <div className="card" style={{textAlign:"center", color:"#475569"}}>Módulo de Agenda carregado.</div>}
+            {tab==="appointments" && <div className="card" style={{textAlign:"center", color:#475569}}>Módulo Agenda carregado.</div>}
           </>
         )}
       </main>
@@ -121,7 +167,7 @@ export default function App() {
         </div>
       </nav>
 
-      {showReport && <ReportModal onClose={() => setShowReport(false)} onGenerate={(f,t) => {generatePDF(vehicles,services,f,t);setShowReport(false);}}/>}
+      {showReport && <ReportModal services={services} onClose={() => setShowReport(false)} onGenerate={(f,t) => {generatePDF(vehicles,services,f,t);setShowReport(false);}}/>}
     </div>
   );
 }
@@ -170,10 +216,8 @@ function Vehicles({vehicles,setVehicles,mapV}) {
   const [search,setSearch]=useState("");
   const [form,setForm]=useState({});
   const [saving,setSaving]=useState(false);
-
   const open=(v=null)=>{setEditing(v);setForm(v||{});setModal(true);};
   const close=()=>{setModal(false);setEditing(null);setForm({});};
-
   const save=async()=>{
     if(!form.plate || !form.brand || !form.model) return alert("Placa, Marca e Modelo são obrigatórios.");
     setSaving(true);
@@ -182,26 +226,20 @@ function Vehicles({vehicles,setVehicles,mapV}) {
     if(!error && data){const m=mapV(data[0]); if(editing)setVehicles(vehicles.map(v=>v.id===editing.id?m:v)); else setVehicles([m,...vehicles]);}
     setSaving(false);close();
   };
-
   const remove=async(id)=>{if(!confirm("Remover da base?"))return;await supabase.from("vehicles").delete().eq("id",id);setVehicles(vehicles.filter(v=>v.id!==id));};
   const filtered=vehicles.filter(v=>!search||v.plate?.toLowerCase().includes(search.toLowerCase())||v.owner?.toLowerCase().includes(search.toLowerCase()));
-  const cols = "1.5fr 1.5fr 1fr 100px";
-
   return (
     <Section title="Base de Veículos" action={<button className="btn-primary" onClick={()=>open()}>+ Novo Cadastro</button>}>
       <input className="input" placeholder="Buscar placa ou cliente..." value={search} onChange={e=>setSearch(e.target.value)} style={{marginBottom:12}}/>
       <div className="card" style={{padding:0, overflow:"hidden"}}>
         <div className="table-wrap">
-          <div className="table-header" style={{gridTemplateColumns:cols}}><span>Veículo / Placa</span><span>Cliente</span><span>Telefone</span><span>Ações</span></div>
+          <div className="table-header" style={{gridTemplateColumns:"1.5fr 1.5fr 1fr 100px"}}><span>Veículo / Placa</span><span>Cliente</span><span>Telefone</span><span>Ações</span></div>
           {filtered.map(v=>(
-            <div key={v.id} className="table-row" style={{gridTemplateColumns:cols}}>
-              <div><div style={{fontSize:13,fontWeight:700, color:"#f1f5f9"}}>{v.brand} {v.model} {v.year?`(${v.year})`:""}</div><div style={{fontSize:10,color:"#f97316"}}>{v.plate}</div></div>
+            <div key={v.id} className="table-row" style={{gridTemplateColumns:"1.5fr 1.5fr 1fr 100px"}}>
+              <div><div style={{fontSize:13,fontWeight:700, color:"#f1f5f9"}}>{v.brand} {v.model}</div><div style={{fontSize:10,color:"#f97316"}}>{v.plate}</div></div>
               <div style={{fontSize:12}}>{v.owner||"—"}</div>
               <div style={{fontSize:12}}>{v.phone||"—"}</div>
-              <div style={{display:"flex",gap:8}}>
-                <button onClick={()=>open(v)} className="btn-ghost" style={{padding:"6px"}}>✏️</button>
-                <button onClick={()=>remove(v.id)} className="btn-danger" style={{padding:"6px"}}>✕</button>
-              </div>
+              <div style={{display:"flex",gap:8}}><button onClick={()=>open(v)} className="btn-ghost" style={{padding:"6px"}}>✏️</button><button onClick={()=>remove(v.id)} className="btn-danger" style={{padding:"6px"}}>✕</button></div>
             </div>
           ))}
         </div>
@@ -212,17 +250,10 @@ function Vehicles({vehicles,setVehicles,mapV}) {
           <Field label="Placa" value={form.plate} onChange={v=>setForm({...form,plate:v.toUpperCase()})}/>
           <Field label="Marca" value={form.brand} onChange={v=>setForm({...form,brand:v})} placeholder="Ex: VW, Toyota..."/>
         </div>
-        <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:10}}>
-          <Field label="Modelo" value={form.model} onChange={v=>setForm({...form,model:v})}/>
-          <Field label="Ano" value={form.year} onChange={v=>setForm({...form,year:v})}/>
-        </div>
-        <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:10}}>
-          <Field label="Cliente" value={form.owner} onChange={v=>setForm({...form,owner:v})}/>
-          <Field label="Telefone" value={form.phone} onChange={v=>setForm({...form,phone:v})}/>
-        </div>
-        <Field label="Cor" value={form.color} onChange={v=>setForm({...form,color:v})}/>
-        <Field label="Observações do Carro" value={form.notes} onChange={v=>setForm({...form,notes:v})}/>
-        <div style={{display:"flex",gap:10,marginTop:20}}><button className="btn-primary" style={{flex:1}} onClick={save} disabled={saving}>Salvar Cadastro</button><button className="btn-ghost" style={{flex:1}} onClick={close}>Cancelar</button></div>
+        <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:10}}><Field label="Modelo" value={form.model} onChange={v=>setForm({...form,model:v})}/><Field label="Ano" value={form.year} onChange={v=>setForm({...form,year:v})}/></div>
+        <Field label="Cliente" value={form.owner} onChange={v=>setForm({...form,owner:v})}/><Field label="Telefone" value={form.phone} onChange={v=>setForm({...form,phone:v})}/>
+        <Field label="Cor" value={form.color} onChange={v=>setForm({...form,color:v})}/><Field label="Observações" value={form.notes} onChange={v=>setForm({...form,notes:v})}/>
+        <div style={{display:"flex",gap:10,marginTop:20}}><button className="btn-primary" style={{flex:1}} onClick={save} disabled={saving}>Salvar</button><button className="btn-ghost" style={{flex:1}} onClick={close}>Cancelar</button></div>
       </div></div>}
     </Section>
   );
@@ -233,31 +264,13 @@ function Services({services,setServices,vehicles,mapS}) {
   const [editing,setEditing]=useState(null);
   const [form,setForm]=useState({});
   const [saving,setSaving]=useState(false);
-
-  const open=(s=null)=>{
-    setEditing(s);
-    setForm(s || { status: "Aguardando", partsValue: 0, laborValue: 0, entryDate: today() });
-    setModal(true);
-  };
+  const open=(s=null)=>{setEditing(s);setForm(s || { status: "Aguardando", partsValue: 0, laborValue: 0, entryDate: today() });setModal(true);};
   const close=()=>{setModal(false);setEditing(null);setForm({});};
-
   const save=async()=>{
     if(!form.vehicleId || !form.description) return alert("Selecione um carro e descreva o serviço.");
     setSaving(true);
     const v=vehicles.find(v=>v.id===form.vehicleId);
-    const row={
-      id:editing?.id || uid(),
-      vehicle_id: form.vehicleId,
-      vehicle_plate: v?.plate,
-      vehicle_brand: v?.brand,
-      vehicle_model: v?.model,
-      description: form.description,
-      parts_value: Number(form.partsValue)||0,
-      labor_value: Number(form.laborValue)||0,
-      status: form.status,
-      entry_date: form.entryDate,
-      exit_date: form.status === "Entregue" ? (form.exitDate || today()) : null
-    };
+    const row={id:editing?.id || uid(),vehicle_id:form.vehicleId,vehicle_plate:v?.plate,vehicle_brand:v?.brand,vehicle_model:v?.model,description:form.description,parts_value:Number(form.partsValue)||0,labor_value:Number(form.laborValue)||0,status:form.status,entry_date:form.entryDate,exit_date:form.status === "Entregue" ? (form.exitDate || today()) : null};
     const {data, error}=await supabase.from("services").upsert(row).select();
     if(!error && data) {
       const m=mapS(data[0]);
@@ -267,17 +280,14 @@ function Services({services,setServices,vehicles,mapS}) {
     }
     setSaving(false);
   };
-
   const remove=async(id)=>{if(!confirm("Excluir serviço?"))return;await supabase.from("services").delete().eq("id",id);setServices(services.filter(s=>s.id!==id));};
-  const cols = "1.8fr 1.2fr 0.8fr 0.8fr 1fr 90px";
-
   return (
-    <Section title="Fluxo Oficina" action={<button className="btn-primary" onClick={()=>open()}>+ Entrada de Carro</button>}>
+    <Section title="Fluxo Oficina" action={<button className="btn-primary" onClick={()=>open()}>+ Entrada</button>}>
       <div className="card" style={{padding:0, overflow:"hidden"}}>
         <div className="table-wrap">
-          <div className="table-header" style={{gridTemplateColumns:cols}}><span>Serviço</span><span>Veículo</span><span>Peças</span><span>M.O.</span><span>Status</span><span>Ações</span></div>
+          <div className="table-header" style={{gridTemplateColumns:"1.8fr 1.2fr 0.8fr 0.8fr 1fr 90px"}}><span>Serviço</span><span>Veículo</span><span>Peças</span><span>M.O.</span><span>Status</span><span></span></div>
           {services.map(s=>(
-            <div key={s.id} className="table-row" style={{gridTemplateColumns:cols}}>
+            <div key={s.id} className="table-row" style={{gridTemplateColumns:"1.8fr 1.2fr 0.8fr 0.8fr 1fr 90px"}}>
               <div style={{fontSize:12, wordBreak:"break-word", paddingRight:10}}>{s.description}</div>
               <div style={{fontSize:11}}><div style={{fontWeight:700, color:"#f1f5f9"}}>{s.vehiclePlate}</div><div style={{fontSize:9, color:"#64748b"}}>{s.vehicleBrand} {s.vehicleModel}</div></div>
               <div style={{fontSize:11, color:"#3b82f6"}}>{fmt(s.partsValue)}</div>
@@ -289,57 +299,75 @@ function Services({services,setServices,vehicles,mapS}) {
         </div>
       </div>
       {modal && <div className="modal-bg" onClick={close}><div className="modal" onClick={e=>e.stopPropagation()}>
-        <h3>Fluxo de Serviço</h3>
-        <SelectField label="Carro da Base" value={form.vehicleId} onChange={v=>setForm({...form,vehicleId:v})} options={vehicles.map(v=>({value:v.id,label:`${v.plate} - ${v.brand} ${v.model}`}))} placeholder="Selecione o veículo cadastrado"/>
+        <h3>Serviço</h3>
+        <SelectField label="Carro" value={form.vehicleId} onChange={v=>setForm({...form,vehicleId:v})} options={vehicles.map(v=>({value:v.id,label:`${v.plate} - ${v.brand} ${v.model}`}))} placeholder="Selecione"/>
         <Field label="Descrição" value={form.description} onChange={v=>setForm({...form,description:v})}/>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          <Field label="Peças" type="number" value={form.partsValue} onChange={v=>setForm({...form,partsValue:v})}/>
-          <Field label="Mão de Obra" type="number" value={form.laborValue} onChange={v=>setForm({...form,laborValue:v})}/>
-        </div>
-        
-        {/* Novas Datas */}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-          <Field label="Data de Entrada" type="date" value={form.entryDate || today()} onChange={v=>setForm({...form,entryDate:v})}/>
-          {form.status === "Entregue" && (
-            <Field label="Data de Entrega" type="date" value={form.exitDate || today()} onChange={v=>setForm({...form,exitDate:v})}/>
-          )}
-        </div>
-
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Field label="Peças" type="number" value={form.partsValue} onChange={v=>setForm({...form,partsValue:v})}/><Field label="Mão de Obra" type="number" value={form.laborValue} onChange={v=>setForm({...form,laborValue:v})}/></div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><Field label="Entrada" type="date" value={form.entryDate || today()} onChange={v=>setForm({...form,entryDate:v})}/>{form.status === "Entregue" && <Field label="Entrega" type="date" value={form.exitDate || today()} onChange={v=>setForm({...form,exitDate:v})}/>}</div>
         <SelectField label="Status" value={form.status} onChange={v=>setForm({...form,status:v})} options={Object.keys(STATUS_COLORS)}/>
-        <div style={{display:"flex",gap:10,marginTop:20}}><button className="btn-primary" style={{flex:1}} onClick={save} disabled={saving}>Salvar</button><button className="btn-ghost" style={{flex:1}} onClick={close}>Cancelar</button></div>
+        <div style={{display:"flex",gap:10,marginTop:20}}><button className="btn-primary" style={{flex:1}} onClick={save} disabled={saving}>Salvar</button><button className="btn-ghost" style={{flex:1}} onClick={close}>Voltar</button></div>
       </div></div>}
     </Section>
   )
 }
 
-function Section({title,action,children}) {
+// ── COMPONENTE CORRIGIDO: ReportModal ──
+function ReportModal({services, onClose, onGenerate}) {
+  const [dateFrom, setDateFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10));
+  const [dateTo, setDateTo] = useState(today());
+
+  const fS = services.filter(s => { 
+    const d = s.entryDate || s.createdAt?.slice(0,10); 
+    return d && d >= dateFrom && d <= dateTo; 
+  });
+  const tP = fS.reduce((s,sv) => s+(Number(sv.partsValue)||0), 0);
+  const tL = fS.reduce((s,sv) => s+(Number(sv.laborValue)||0), 0);
+
+  const presets = [
+    { label: "Este mês", from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10), to: today() },
+    { label: "Mês passado", from: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString().slice(0, 10), to: new Date(new Date().getFullYear(), new Date().getMonth(), 0).toISOString().slice(0, 10) },
+    { label: "7 dias", from: new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10), to: today() },
+    { label: "30 dias", from: new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10), to: today() },
+  ];
+
   return (
-    <div style={{display:"flex",flexDirection:"column",gap:12}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><h1 style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800}}>{title}</h1>{action}</div>{children}</div>
+    <div className="modal-bg" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <h3 style={{fontFamily:"'Syne', sans-serif", marginBottom:15}}>📄 Relatório por Período</h3>
+        
+        <div style={{marginBottom:15}}>
+          <label className="label">Atalhos</label>
+          <div style={{display:"flex", gap:8, flexWrap:"wrap"}}>
+            {presets.map(p => (
+              <button key={p.label} className="btn-ghost" style={{fontSize:10, padding:"5px 10px"}} onClick={() => { setDateFrom(p.from); setDateTo(p.to); }}>{p.label}</button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:15}}>
+          <div><label className="label">Início</label><input className="input" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} /></div>
+          <div><label className="label">Fim</label><input className="input" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} /></div>
+        </div>
+
+        <div className="card" style={{marginBottom:20, background:"#0d0f14"}}>
+          <div style={{fontSize:10, color:"#64748b", textTransform:"uppercase", marginBottom:8}}>Prévia do Período</div>
+          <div style={{display:"flex", justifyContent:"space-between", alignItems:"center"}}>
+            <div><div style={{fontSize:18, fontWeight:800, color:"#f97316"}}>{fS.length}</div><div style={{fontSize:10, color:#475569}}>Serviços</div></div>
+            <div style={{textAlign:"right"}}><div style={{fontSize:18, fontWeight:800, color:"#10b981"}}>{fmt(tP+tL)}</div><div style={{fontSize:10, color:#475569}}>Receita Est.</div></div>
+          </div>
+        </div>
+
+        <div style={{display:"flex", gap:10}}>
+          <button className="btn-primary" style={{flex:1}} onClick={() => onGenerate(dateFrom, dateTo)}>Gerar PDF</button>
+          <button className="btn-ghost" style={{flex:1}} onClick={onClose}>Fechar</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
-function StatusBadge({status,map}) {
-  const color=(map||{})[status]||"#6b7280";
-  return <span className="badge" style={{background:color+"22",color,border:`1px solid ${color}44`}}>{status||"—"}</span>;
-}
-
-function Field({label,value,onChange,type="text", placeholder}) {
-  return <div style={{marginBottom:10}}><label className="label">{label}</label><input className="input" type={type} value={value||""} onChange={e=>onChange(e.target.value)} placeholder={placeholder}/></div>;
-}
-
-function SelectField({label,value,onChange,options,placeholder}) {
-  return <div style={{marginBottom:10}}><label className="label">{label}</label>
-    <select className="input" value={value} onChange={e=>onChange(e.target.value)} style={{appearance:"none"}}>
-      {placeholder && <option value="">{placeholder}</option>}
-      {options.map(o=> typeof o === 'string' ? <option key={o} value={o}>{o}</option> : <option key={o.value} value={o.value}>{o.label}</option>)}
-    </select>
-  </div>;
-}
-
-function ReportModal({onClose,onGenerate}){
-  return <div className="modal-bg" onClick={onClose}><div className="modal" onClick={e=>e.stopPropagation()}>
-    <h3>Relatório</h3>
-    <button className="btn-primary" style={{width:"100%", marginTop:15}} onClick={()=>onGenerate(today(),today())}>Gerar PDF de Hoje</button>
-    <button className="btn-ghost" style={{width:"100%",marginTop:10}} onClick={onClose}>Fechar</button>
-  </div></div>
-}
+// ── Helpers ──
+function Section({title,action,children}) { return (<div style={{display:"flex",flexDirection:"column",gap:12}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><h1 style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800}}>{title}</h1>{action}</div>{children}</div>); }
+function StatusBadge({status,map}) { const color=(map||{})[status]||"#6b7280"; return <span className="badge" style={{background:color+"22",color,border:`1px solid ${color}44`}}>{status||"—"}</span>; }
+function Field({label,value,onChange,type="text", placeholder}) { return <div style={{marginBottom:10}}><label className="label">{label}</label><input className="input" type={type} value={value||""} onChange={e=>onChange(e.target.value)} placeholder={placeholder}/></div>; }
+function SelectField({label,value,onChange,options,placeholder}) { return <div style={{marginBottom:10}}><label className="label">{label}</label><select className="input" value={value} onChange={e=>onChange(e.target.value)} style={{appearance:"none"}}>{placeholder && <option value="">{placeholder}</option>}{options.map(o=> typeof o === 'string' ? <option key={o} value={o}>{o}</option> : <option key={o.value} value={o.value}>{o.label}</option>)}</select></div>; }
