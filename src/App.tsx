@@ -37,7 +37,6 @@ function generatePDF(vehicles, services, dateFrom, dateTo) {
     table{width:100%;border-collapse:collapse;}
     th{background:#f8fafc;padding:10px;text-align:left;border-bottom:2px solid #e2e8f0;font-size:10px;text-transform:uppercase;}
     td{padding:10px;border-bottom:1px solid #f1f5f9;}
-    .total-row{font-weight:700;background:#f8fafc;}
   </style>
 </head>
 <body>
@@ -47,13 +46,13 @@ function generatePDF(vehicles, services, dateFrom, dateTo) {
   </div>
   
   <div class="resumo">
-    <div class="card-res">Peças: <br/><strong style="font-size:18px;color:#3b82f6">${fmt(tP)}</strong></div>
+    <div class="card-res">Receita Peças: <br/><strong style="font-size:18px;color:#3b82f6">${fmt(tP)}</strong></div>
     <div class="card-res">Mão de Obra: <br/><strong style="font-size:18px;color:#10b981">${fmt(tL)}</strong></div>
     <div class="card-res" style="border-color:#f97316">Total Geral: <br/><strong style="font-size:18px;color:#f97316">${fmt(tP+tL)}</strong></div>
   </div>
 
   <table>
-    <thead><tr><th>Data</th><th>Veículo</th><th>Descrição</th><th>M.O.</th><th>Peças</th><th>Total</th></tr></thead>
+    <thead><tr><th>Data Entrada</th><th>Veículo</th><th>Descrição do Serviço</th><th>M.O.</th><th>Peças</th><th>Total</th></tr></thead>
     <tbody>
       ${fS.map(s => `
         <tr>
@@ -67,7 +66,6 @@ function generatePDF(vehicles, services, dateFrom, dateTo) {
       `).join('')}
     </tbody>
   </table>
-
   <script>window.onload=()=>window.print();</script>
 </body>
 </html>`;
@@ -152,7 +150,7 @@ export default function App() {
             {tab==="dashboard" && <Dashboard services={services} vehicles={vehicles} />}
             {tab==="services" && <Services services={services} setServices={setServices} vehicles={vehicles} mapS={mapS} />}
             {tab==="vehicles" && <Vehicles vehicles={vehicles} setVehicles={setVehicles} mapV={mapV} />}
-            {tab==="appointments" && <div className="card" style={{textAlign:"center", color:#475569}}>Módulo Agenda carregado.</div>}
+            {tab==="appointments" && <div className="card" style={{textAlign:"center", color:"#475569"}}>Módulo de Agenda ativo.</div>}
           </>
         )}
       </main>
@@ -228,14 +226,15 @@ function Vehicles({vehicles,setVehicles,mapV}) {
   };
   const remove=async(id)=>{if(!confirm("Remover da base?"))return;await supabase.from("vehicles").delete().eq("id",id);setVehicles(vehicles.filter(v=>v.id!==id));};
   const filtered=vehicles.filter(v=>!search||v.plate?.toLowerCase().includes(search.toLowerCase())||v.owner?.toLowerCase().includes(search.toLowerCase()));
+  const cols = "1.5fr 1.5fr 1fr 100px";
   return (
     <Section title="Base de Veículos" action={<button className="btn-primary" onClick={()=>open()}>+ Novo Cadastro</button>}>
       <input className="input" placeholder="Buscar placa ou cliente..." value={search} onChange={e=>setSearch(e.target.value)} style={{marginBottom:12}}/>
       <div className="card" style={{padding:0, overflow:"hidden"}}>
         <div className="table-wrap">
-          <div className="table-header" style={{gridTemplateColumns:"1.5fr 1.5fr 1fr 100px"}}><span>Veículo / Placa</span><span>Cliente</span><span>Telefone</span><span>Ações</span></div>
+          <div className="table-header" style={{gridTemplateColumns:cols}}><span>Veículo / Placa</span><span>Cliente</span><span>Telefone</span><span>Ações</span></div>
           {filtered.map(v=>(
-            <div key={v.id} className="table-row" style={{gridTemplateColumns:"1.5fr 1.5fr 1fr 100px"}}>
+            <div key={v.id} className="table-row" style={{gridTemplateColumns:cols}}>
               <div><div style={{fontSize:13,fontWeight:700, color:"#f1f5f9"}}>{v.brand} {v.model}</div><div style={{fontSize:10,color:"#f97316"}}>{v.plate}</div></div>
               <div style={{fontSize:12}}>{v.owner||"—"}</div>
               <div style={{fontSize:12}}>{v.phone||"—"}</div>
@@ -281,13 +280,14 @@ function Services({services,setServices,vehicles,mapS}) {
     setSaving(false);
   };
   const remove=async(id)=>{if(!confirm("Excluir serviço?"))return;await supabase.from("services").delete().eq("id",id);setServices(services.filter(s=>s.id!==id));};
+  const cols = "1.8fr 1.2fr 0.8fr 0.8fr 1fr 90px";
   return (
     <Section title="Fluxo Oficina" action={<button className="btn-primary" onClick={()=>open()}>+ Entrada</button>}>
       <div className="card" style={{padding:0, overflow:"hidden"}}>
         <div className="table-wrap">
-          <div className="table-header" style={{gridTemplateColumns:"1.8fr 1.2fr 0.8fr 0.8fr 1fr 90px"}}><span>Serviço</span><span>Veículo</span><span>Peças</span><span>M.O.</span><span>Status</span><span></span></div>
+          <div className="table-header" style={{gridTemplateColumns:cols}}><span>Serviço</span><span>Veículo</span><span>Peças</span><span>M.O.</span><span>Status</span><span></span></div>
           {services.map(s=>(
-            <div key={s.id} className="table-row" style={{gridTemplateColumns:"1.8fr 1.2fr 0.8fr 0.8fr 1fr 90px"}}>
+            <div key={s.id} className="table-row" style={{gridTemplateColumns:cols}}>
               <div style={{fontSize:12, wordBreak:"break-word", paddingRight:10}}>{s.description}</div>
               <div style={{fontSize:11}}><div style={{fontWeight:700, color:"#f1f5f9"}}>{s.vehiclePlate}</div><div style={{fontSize:9, color:"#64748b"}}>{s.vehicleBrand} {s.vehicleModel}</div></div>
               <div style={{fontSize:11, color:"#3b82f6"}}>{fmt(s.partsValue)}</div>
@@ -311,56 +311,29 @@ function Services({services,setServices,vehicles,mapS}) {
   )
 }
 
-// ── COMPONENTE CORRIGIDO: ReportModal ──
 function ReportModal({services, onClose, onGenerate}) {
   const [dateFrom, setDateFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10));
   const [dateTo, setDateTo] = useState(today());
-
   const fS = services.filter(s => { 
     const d = s.entryDate || s.createdAt?.slice(0,10); 
     return d && d >= dateFrom && d <= dateTo; 
   });
   const tP = fS.reduce((s,sv) => s+(Number(sv.partsValue)||0), 0);
   const tL = fS.reduce((s,sv) => s+(Number(sv.laborValue)||0), 0);
-
   const presets = [
-    { label: "Este mês", from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10), to: today() },
+    { label: "Mês atual", from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10), to: today() },
     { label: "Mês passado", from: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString().slice(0, 10), to: new Date(new Date().getFullYear(), new Date().getMonth(), 0).toISOString().slice(0, 10) },
     { label: "7 dias", from: new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10), to: today() },
     { label: "30 dias", from: new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10), to: today() },
   ];
-
   return (
     <div className="modal-bg" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <h3 style={{fontFamily:"'Syne', sans-serif", marginBottom:15}}>📄 Relatório por Período</h3>
-        
-        <div style={{marginBottom:15}}>
-          <label className="label">Atalhos</label>
-          <div style={{display:"flex", gap:8, flexWrap:"wrap"}}>
-            {presets.map(p => (
-              <button key={p.label} className="btn-ghost" style={{fontSize:10, padding:"5px 10px"}} onClick={() => { setDateFrom(p.from); setDateTo(p.to); }}>{p.label}</button>
-            ))}
-          </div>
-        </div>
-
-        <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:15}}>
-          <div><label className="label">Início</label><input className="input" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} /></div>
-          <div><label className="label">Fim</label><input className="input" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} /></div>
-        </div>
-
-        <div className="card" style={{marginBottom:20, background:"#0d0f14"}}>
-          <div style={{fontSize:10, color:"#64748b", textTransform:"uppercase", marginBottom:8}}>Prévia do Período</div>
-          <div style={{display:"flex", justifyContent:"space-between", alignItems:"center"}}>
-            <div><div style={{fontSize:18, fontWeight:800, color:"#f97316"}}>{fS.length}</div><div style={{fontSize:10, color:#475569}}>Serviços</div></div>
-            <div style={{textAlign:"right"}}><div style={{fontSize:18, fontWeight:800, color:"#10b981"}}>{fmt(tP+tL)}</div><div style={{fontSize:10, color:#475569}}>Receita Est.</div></div>
-          </div>
-        </div>
-
-        <div style={{display:"flex", gap:10}}>
-          <button className="btn-primary" style={{flex:1}} onClick={() => onGenerate(dateFrom, dateTo)}>Gerar PDF</button>
-          <button className="btn-ghost" style={{flex:1}} onClick={onClose}>Fechar</button>
-        </div>
+        <div style={{marginBottom:15}}><label className="label">Atalhos</label><div style={{display:"flex", gap:8, flexWrap:"wrap"}}>{presets.map(p => (<button key={p.label} className="btn-ghost" style={{fontSize:10, padding:"5px 10px"}} onClick={() => { setDateFrom(p.from); setDateTo(p.to); }}>{p.label}</button>))}</div></div>
+        <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:15}}><div><label className="label">Início</label><input className="input" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} /></div><div><label className="label">Fim</label><input className="input" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} /></div></div>
+        <div className="card" style={{marginBottom:20, background:"#0d0f14"}}><div style={{fontSize:10, color:"#64748b", textTransform:"uppercase", marginBottom:8}}>Prévia</div><div style={{display:"flex", justifyContent:"space-between", alignItems:"center"}}><div><div style={{fontSize:18, fontWeight:800, color:"#f97316"}}>{fS.length}</div><div style={{fontSize:10, color:"#475569"}}>Serviços</div></div><div style={{textAlign:"right"}}><div style={{fontSize:18, fontWeight:800, color:"#10b981"}}>{fmt(tP+tL)}</div><div style={{fontSize:10, color:"#475569"}}>Total</div></div></div></div>
+        <div style={{display:"flex", gap:10}}><button className="btn-primary" style={{flex:1}} onClick={() => onGenerate(dateFrom, dateTo)}>Gerar PDF</button><button className="btn-ghost" style={{flex:1}} onClick={onClose}>Fechar</button></div>
       </div>
     </div>
   );
