@@ -25,20 +25,17 @@ const CAR_BRANDS = [
   "Suzuki", "Toyota", "Troller", "Volkswagen", "Volvo", "ZX Auto",
 ].sort();
 
-// ── Componente de Autocomplete de Marcas ───────────────────────────────────
 function BrandSelector({ value, onChange }) {
   const [query, setQuery] = useState(value || "");
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const filtered = CAR_BRANDS.filter(b => b.toLowerCase().includes(query.toLowerCase()));
-
   useEffect(() => { setQuery(value || ""); }, [value]);
   useEffect(() => {
     function handleClick(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
-
   return (
     <div ref={ref} style={{ position: "relative", marginBottom: 10 }}>
       <label className="label">Marca *</label>
@@ -55,13 +52,11 @@ function BrandSelector({ value, onChange }) {
   );
 }
 
-// ── Gerador de PDF ─────────────────────────────────────────────────────────
 function generatePDF(vehicles, services, dateFrom, dateTo) {
   const fS = services.filter(s => s.status === "Entregue" && s.exitDate && s.exitDate >= dateFrom && s.exitDate <= dateTo);
   const tP = fS.reduce((s, sv) => s + (Number(sv.partsValue) || 0), 0);
   const tL = fS.reduce((s, sv) => s + (Number(sv.laborValue) || 0), 0);
-
-  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Relatório Financeiro</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:12px;color:#1e293b;padding:40px;}.hdr{display:flex;justify-content:space-between;margin-bottom:30px;border-bottom:3px solid #f97316;padding-bottom:15px;}.resumo{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:30px;}.card-res{border:1px solid #e2e8f0;padding:15px;border-radius:8px;}table{width:100%;border-collapse:collapse;}th{background:#f8fafc;padding:10px;text-align:left;border-bottom:2px solid #e2e8f0;font-size:10px;text-transform:uppercase;}td{padding:10px;border-bottom:1px solid #f1f5f9;}</style></head><body><div class="hdr"><div><strong style="font-size:22px;">AutoGestão</strong><br/>Relatório de Serviços</div><div style="text-align:right">Período: ${fmtDate(dateFrom)} a ${fmtDate(dateTo)}</div></div><div class="resumo"><div class="card-res">Peças:<br/><strong>${fmt(tP)}</strong></div><div class="card-res">Mão de Obra:<br/><strong>${fmt(tL)}</strong></div><div class="card-res" style="border-color:#f97316">Total:<br/><strong>${fmt(tP+tL)}</strong></div></div><table><thead><tr><th>Entrega</th><th>Veículo</th><th>KM</th><th>Descrição</th><th>M.O.</th><th>Total</th></tr></thead><tbody>${fS.map(s => `<tr><td>${fmtDate(s.exitDate)}</td><td><strong>${s.vehiclePlate}</strong><br/>${s.vehicleBrand}</td><td>${fmtKm(s.mileage)}</td><td>${s.description}</td><td>${fmt(s.laborValue)}</td><td><strong>${fmt((Number(s.laborValue)||0)+(Number(s.partsValue)||0))}</strong></td></tr>`).join('')}</tbody></table><script>window.onload=()=>window.print();</script></body></html>`;
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Relatório Financeiro</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:12px;color:#1e293b;padding:40px;}.hdr{display:flex;justify-content:space-between;margin-bottom:30px;border-bottom:3px solid #f97316;padding-bottom:15px;}.resumo{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:30px;}.card-res{border:1px solid #e2e8f0;padding:15px;border-radius:8px;}table{width:100%;border-collapse:collapse;}th{background:#f8fafc;padding:10px;text-align:left;border-bottom:2px solid #e2e8f0;font-size:10px;text-transform:uppercase;}td{padding:10px;border-bottom:1px solid #f1f5f9;}</style></head><body><div class="hdr"><div><strong style="font-size:22px;">AutoGestão</strong><br/>Relatório Financeiro</div><div style="text-align:right">Período: ${fmtDate(dateFrom)} a ${fmtDate(dateTo)}</div></div><div class="resumo"><div class="card-res">Peças:<br/><strong>${fmt(tP)}</strong></div><div class="card-res">Mão de Obra:<br/><strong>${fmt(tL)}</strong></div><div class="card-res" style="border-color:#f97316">Total:<br/><strong>${fmt(tP+tL)}</strong></div></div><table><thead><tr><th>Entrega</th><th>Veículo</th><th>KM</th><th>Descrição</th><th>Total</th></tr></thead><tbody>${fS.map(s => `<tr><td>${fmtDate(s.exitDate)}</td><td><strong>${s.vehiclePlate}</strong><br/>${s.vehicleBrand} ${s.vehicleModel}</td><td>${fmtKm(s.mileage)}</td><td>${s.description}</td><td><strong>${fmt((Number(s.laborValue)||0)+(Number(s.partsValue)||0))}</strong></td></tr>`).join('')}</tbody></table><script>window.onload=()=>window.print();</script></body></html>`;
   const blob = new Blob([html], { type: "text/html" });
   window.open(URL.createObjectURL(blob), "_blank");
 }
@@ -90,11 +85,7 @@ export default function App() {
   const mapV = r => ({ id: r.id, plate: r.plate, brand: r.brand, model: r.model, year: r.year, color: r.color, owner: r.owner, phone: r.phone, notes: r.notes, mileage: r.mileage, createdAt: r.created_at });
   const mapS = r => ({ id: r.id, vehicleId: r.vehicle_id, vehiclePlate: r.vehicle_plate, vehicleBrand: r.vehicle_brand, vehicleModel: r.vehicle_model, description: r.description, partsValue: r.parts_value, laborValue: r.labor_value, status: r.status, entryDate: r.entry_date, exitDate: r.exit_date, mileage: r.mileage, createdAt: r.created_at });
 
-  const tabs = [
-    { id: "dashboard", label: "Início", icon: "⬡" },
-    { id: "services", label: "Oficina", icon: "🔧" },
-    { id: "vehicles", label: "Base Carros", icon: "🚗" },
-  ];
+  const tabs = [{ id: "dashboard", label: "Início", icon: "⬡" }, { id: "services", label: "Oficina", icon: "🔧" }, { id: "vehicles", label: "Base Carros", icon: "🚗" }];
 
   return (
     <div style={{ minHeight: "100vh", background: "#0d0f14", color: "#e2e8f0", fontFamily: "'DM Mono', monospace", display: "flex", flexDirection: "column", paddingBottom: 80, width: "100vw", maxWidth: "100%", overflowX: "hidden" }}>
@@ -106,16 +97,15 @@ export default function App() {
         .btn-ghost{background:transparent;color:#94a3b8;border:1px solid #1e2736;border-radius:8px;padding:8px 12px;cursor:pointer;}
         .btn-history{background:rgba(59,130,246,0.1);color:#3b82f6;border:1px solid #3b82f6;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer;margin-bottom:6px;display:inline-block;}
         .input{background:#0d0f14;border:1px solid #1e2736;border-radius:8px;padding:10px 12px;color:#e2e8f0;width:100%;font-family:inherit;font-size:13px;}
-        .label{display:block;font-size:11px;color:#64748b;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em;}
+        .label{display:block;font-size:11px;color:#64748b;margin-bottom:5px;text-transform:uppercase;}
         .badge{display:inline-block;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:600;}
-        .kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;}
+        .kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
         @media(min-width:768px){.kpi-grid{grid-template-columns:repeat(4,1fr);}}
         .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#0d0f14;border-top:1px solid #1e2736;z-index:50;padding:10px 0 20px;}
         .nav-item{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;background:none;border:none;color:#475569;font-size:10px;cursor:pointer;}
         .nav-item.active{color:#f97316;}
         .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;}
         .modal{background:#161b26;border:1px solid #1e2736;border-radius:16px;padding:24px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;}
-        .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
         .table-header{display:grid;padding:10px 14px;font-size:10px;color:#475569;text-transform:uppercase;border-bottom:1px solid #1e2736;}
       `}</style>
 
@@ -157,14 +147,13 @@ function Dashboard({ services, vehicles }) {
   const delivered = services.filter(s => s.status === "Entregue");
   const tP = delivered.reduce((acc, s) => acc + (Number(s.partsValue) || 0), 0);
   const tL = delivered.reduce((acc, s) => acc + (Number(s.laborValue) || 0), 0);
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div className="kpi-grid">
         {[
           { label: "Na Oficina", value: active.length, icon: "🔧", accent: "#f97316" },
-          { label: "Peças (Total)", value: fmt(tP), icon: "⚙️", accent: "#6366f1" },
-          { label: "M.O. (Total)", value: fmt(tL), icon: "🔧", accent: "#10b981" },
+          { label: "Peças (Faturado)", value: fmt(tP), icon: "⚙️", accent: "#6366f1" },
+          { label: "M.O. (Faturado)", value: fmt(tL), icon: "🔧", accent: "#10b981" },
           { label: "Receita Real", value: fmt(tP + tL), icon: "💰", accent: "#10b981" },
         ].map((k, i) => (
           <div key={i} className="card" style={{ borderLeft: `3px solid ${k.accent}`, padding: 12 }}>
@@ -175,12 +164,12 @@ function Dashboard({ services, vehicles }) {
         ))}
       </div>
       <div className="card">
-        <h3 style={{ fontSize: 14, marginBottom: 12, color: "#f1f5f9" }}>Acompanhamento de Fluxo</h3>
+        <h3 style={{ fontSize: 14, marginBottom: 12, color: "#f1f5f9" }}>Em Serviço Atualmente</h3>
         {active.slice(0, 5).map(sv => (
           <div key={sv.id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #1e2736" }}>
             <div style={{ flex: 1, paddingRight: 10 }}>
               <div style={{ fontSize: 12, color: "#e2e8f0" }}>{sv.description}</div>
-              <div style={{ fontSize: 10, color: "#475569" }}>{sv.vehiclePlate} • KM: {fmtKm(sv.mileage)} • Entrada: {fmtDate(sv.entryDate)}</div>
+              <div style={{ fontSize: 10, color: "#475569" }}>{sv.vehiclePlate} • {fmtKm(sv.mileage)} • Entrada: {fmtDate(sv.entryDate)}</div>
             </div>
             <StatusBadge status={sv.status} map={STATUS_COLORS} />
           </div>
@@ -202,7 +191,7 @@ function Vehicles({ vehicles, setVehicles, services, mapV }) {
   const close = () => { setModal(false); setEditing(null); setForm({}); };
 
   const save = async () => {
-    if (!form.plate || !form.brand || !form.model) return alert("Preencha placa, marca e modelo.");
+    if (!form.plate || !form.brand || !form.model) return alert("Dados obrigatórios faltando.");
     const row = { id: editing?.id || uid(), plate: form.plate, brand: form.brand, model: form.model, year: form.year, color: form.color, owner: form.owner, phone: form.phone, notes: form.notes, mileage: Number(form.mileage) || 0 };
     const { data } = await supabase.from("vehicles").upsert(row).select();
     if (data) {
@@ -213,22 +202,23 @@ function Vehicles({ vehicles, setVehicles, services, mapV }) {
     close();
   };
 
+  const cols = "1.8fr 1.5fr 1fr 90px";
   const filtered = vehicles.filter(v => !search || v.plate?.toLowerCase().includes(search.toLowerCase()) || v.owner?.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <Section title="Base Master" action={<button className="btn-primary" onClick={() => open()}>+ Novo Carro</button>}>
-      <input className="input" placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)} style={{ marginBottom: 10 }} />
+    <Section title="Base de Veículos" action={<button className="btn-primary" onClick={() => open()}>+ Novo</button>}>
+      <input className="input" placeholder="Filtrar placa ou cliente..." value={search} onChange={e => setSearch(e.target.value)} style={{ marginBottom: 10 }} />
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         <div className="table-wrap">
-          <div className="table-header" style={{ gridTemplateColumns: "1.8fr 1.5fr 1fr 90px", display: "grid" }}>
+          <div className="table-header" style={{ gridTemplateColumns: cols, display: "grid" }}>
             <span>Veículo</span><span>Cliente</span><span>Telefone</span><span></span>
           </div>
           {filtered.map(v => (
-            <div key={v.id} style={{ display: "grid", gridTemplateColumns: "1.8fr 1.5fr 1fr 90px", alignItems: "center", padding: 14, borderBottom: "1px solid #1e2736", minWidth: 560 }}>
+            <div key={v.id} style={{ display: "grid", gridTemplateColumns: cols, alignItems: "center", padding: 14, borderBottom: "1px solid #1e2736", minWidth: 560 }}>
               <div>
                 <button onClick={() => { setSelectedV(v); setHistoryModal(true); }} className="btn-history">📜 Histórico</button>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{v.brand} {v.model}</div>
-                <div style={{ fontSize: 10, color: "#f97316" }}>{v.plate} · {fmtKm(v.mileage)}</div>
+                <div style={{ fontSize: 10, color: "#f97316" }}>{v.plate} · {v.year || "Ano —"} · {fmtKm(v.mileage)}</div>
               </div>
               <div style={{ fontSize: 12 }}>{v.owner || "—"}</div>
               <div style={{ fontSize: 12 }}>{v.phone || "—"}</div>
@@ -241,19 +231,19 @@ function Vehicles({ vehicles, setVehicles, services, mapV }) {
       {modal && (
         <div className="modal-bg" onClick={close}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>Cadastro Master</h3>
+            <h3>{editing ? "Editar Veículo" : "Cadastro de Veículo"}</h3>
             <Field label="Placa *" value={form.plate} onChange={v => setForm({ ...form, plate: v.toUpperCase() })} />
             <BrandSelector value={form.brand || ""} onChange={v => setForm({ ...form, brand: v })} />
             <Field label="Modelo *" value={form.model} onChange={v => setForm({ ...form, model: v })} />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <Field label="Quilometragem" type="number" value={form.mileage} onChange={v => setForm({ ...form, mileage: v })} />
-              <Field label="Cor" value={form.color} onChange={v => setForm({ ...form, color: v })} />
+              <Field label="Ano" value={form.year} onChange={v => setForm({ ...form, year: v })} />
+              <Field label="KM Inicial" type="number" value={form.mileage} onChange={v => setForm({ ...form, mileage: v })} />
             </div>
-            <Field label="Cliente" value={form.owner} onChange={v => setForm({ ...form, owner: v })} />
+            <Field label="Dono / Cliente" value={form.owner} onChange={v => setForm({ ...form, owner: v })} />
             <Field label="Telefone" value={form.phone} onChange={v => setForm({ ...form, phone: v })} />
             <div style={{ display: "flex", gap: 10, marginTop: 15 }}>
               <button className="btn-primary" style={{ flex: 1 }} onClick={save}>Salvar</button>
-              <button className="btn-ghost" style={{ flex: 1 }} onClick={close}>Voltar</button>
+              <button className="btn-ghost" style={{ flex: 1 }} onClick={close}>Cancelar</button>
             </div>
           </div>
         </div>
@@ -262,16 +252,15 @@ function Vehicles({ vehicles, setVehicles, services, mapV }) {
       {historyModal && (
         <div className="modal-bg" onClick={() => setHistoryModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>📜 Prontuário: {selectedV?.plate}</h3>
+            <h3>Histórico: {selectedV?.plate}</h3>
             <div style={{ maxHeight: 320, overflowY: "auto", marginTop: 15 }}>
-              {services.filter(s => s.vehicleId === selectedV?.id).length === 0 ? <p style={{ fontSize: 12, color: "#475569" }}>Sem histórico.</p> :
-                services.filter(s => s.vehicleId === selectedV?.id).map(s => (
-                  <div key={s.id} style={{ padding: 12, background: "#0d0f14", borderRadius: 8, marginBottom: 10, borderLeft: "3px solid #10b981" }}>
-                    <div style={{ fontSize: 12, fontWeight: 700 }}>{s.description}</div>
-                    <div style={{ fontSize: 10, color: "#64748b", marginTop: 4 }}>KM: {fmtKm(s.mileage)} | Entrega: {fmtDate(s.exitDate)}</div>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: "#f97316", marginTop: 5 }}>M.O: {fmt(s.laborValue)} | Total: {fmt((Number(s.partsValue) || 0) + (Number(s.laborValue) || 0))}</div>
-                  </div>
-                ))}
+              {services.filter(s => s.vehicleId === selectedV?.id).map(s => (
+                <div key={s.id} style={{ padding: 12, background: "#0d0f14", borderRadius: 8, marginBottom: 10, borderLeft: "3px solid #10b981" }}>
+                  <div style={{ fontSize: 12, fontWeight: 700 }}>{s.description}</div>
+                  <div style={{ fontSize: 10, color: "#64748b", marginTop: 4 }}>KM: {fmtKm(s.mileage)} | Finalizado em: {fmtDate(s.exitDate)}</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#f97316", marginTop: 5 }}>Total: {fmt((Number(s.partsValue) || 0) + (Number(s.laborValue) || 0))}</div>
+                </div>
+              ))}
             </div>
             <button className="btn-ghost" style={{ width: "100%", marginTop: 15 }} onClick={() => setHistoryModal(false)}>Fechar</button>
           </div>
@@ -302,16 +291,18 @@ function Services({ services, setServices, vehicles, mapS }) {
     close();
   };
 
+  const cols = "2fr 1.5fr 0.8fr 1fr 60px";
+
   return (
     <Section title="Fluxo Oficina" action={<button className="btn-primary" onClick={() => open()}>+ Entrada</button>}>
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         <div className="table-wrap">
-          <div className="table-header" style={{ gridTemplateColumns: "2fr 1.5fr 0.8fr 1fr 60px", display: "grid" }}>
+          <div className="table-header" style={{ gridTemplateColumns: cols, display: "grid" }}>
             <span>Serviço</span><span>Veículo</span><span>M.O.</span><span>Status</span><span></span>
           </div>
           {services.map(s => (
-            <div key={s.id} style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 0.8fr 1fr 60px", alignItems: "center", padding: 14, borderBottom: "1px solid #1e2736", minWidth: 580 }}>
-              <div style={{ fontSize: 12, wordBreak: "break-word", paddingRight: 10 }}>
+            <div key={s.id} style={{ display: "grid", gridTemplateColumns: cols, alignItems: "center", padding: 14, borderBottom: "1px solid #1e2736", minWidth: 580 }}>
+              <div style={{ fontSize: 12 }}>
                 <div style={{ color: "#e2e8f0" }}>{s.description}</div>
                 <div style={{ fontSize: 10, color: "#475569", marginTop: 2 }}>KM: {fmtKm(s.mileage)} · Entrada: {fmtDate(s.entryDate)}</div>
               </div>
@@ -332,13 +323,13 @@ function Services({ services, setServices, vehicles, mapS }) {
           <div className="modal" onClick={e => e.stopPropagation()}>
             <h3>Fluxo de Serviço</h3>
             <div style={{ marginBottom: 10 }}>
-              <label className="label">Carro *</label>
+              <label className="label">Veículo da Base *</label>
               <select className="input" value={form.vehicleId || ""} onChange={e => setForm({ ...form, vehicleId: e.target.value })} style={{ appearance: "none" }}>
-                <option value="">Selecione o carro...</option>
+                <option value="">Selecione...</option>
                 {vehicles.map(v => <option key={v.id} value={v.id}>{v.plate} — {v.brand} {v.model}</option>)}
               </select>
             </div>
-            <Field label="Descrição *" value={form.description} onChange={v => setForm({ ...form, description: v })} />
+            <Field label="O que será feito? *" value={form.description} onChange={v => setForm({ ...form, description: v })} />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <Field label="KM Atual" type="number" value={form.mileage} onChange={v => setForm({ ...form, mileage: v })} />
               <Field label="Mão de Obra (R$)" type="number" value={form.laborValue} onChange={v => setForm({ ...form, laborValue: v })} />
@@ -367,7 +358,7 @@ function ReportModal({ services, onClose, onGenerate }) {
   const fS = services.filter(s => s.status === "Entregue" && s.exitDate && s.exitDate >= dateFrom && s.exitDate <= dateTo);
   const total = fS.reduce((s, sv) => s + (Number(sv.partsValue) || 0) + (Number(sv.laborValue) || 0), 0);
   return (
-    <div className="modal-bg" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><h3>📄 Relatório (Por Entrega)</h3><div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 15 }}><div><label className="label">De</label><input className="input" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} /></div><div><label className="label">Até</label><input className="input" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} /></div></div><div className="card" style={{ background: "#0d0f14", marginBottom: 20 }}><div style={{ display: "flex", justifyContent: "space-between" }}><div><div style={{ fontSize: 18, fontWeight: 800, color: "#f97316" }}>{fS.length}</div><div style={{ fontSize: 9, color: "#475569" }}>Serviços</div></div><div style={{ textAlign: "right" }}><div style={{ fontSize: 18, fontWeight: 800, color: "#10b981" }}>{fmt(total)}</div><div style={{ fontSize: 9, color: "#475569" }}>Faturamento</div></div></div></div><button className="btn-primary" style={{ width: "100%" }} onClick={() => onGenerate(dateFrom, dateTo)}>Gerar PDF</button></div></div>
+    <div className="modal-bg" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><h3>📄 Relatório de Caixa</h3><div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 15 }}><div><label className="label">Início</label><input className="input" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} /></div><div><label className="label">Fim</label><input className="input" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} /></div></div><div className="card" style={{ background: "#0d0f14", marginBottom: 20 }}><div style={{ display: "flex", justifyContent: "space-between" }}><div><div style={{ fontSize: 18, fontWeight: 800, color: "#f97316" }}>{fS.length}</div><div style={{ fontSize: 9, color: "#475569" }}>Serviços</div></div><div style={{ textAlign: "right" }}><div style={{ fontSize: 18, fontWeight: 800, color: "#10b981" }}>{fmt(total)}</div><div style={{ fontSize: 9, color: "#475569" }}>Total Faturado</div></div></div></div><button className="btn-primary" style={{ width: "100%" }} onClick={() => onGenerate(dateFrom, dateTo)}>Gerar PDF</button></div></div>
   );
 }
 
