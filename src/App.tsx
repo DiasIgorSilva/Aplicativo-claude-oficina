@@ -27,6 +27,7 @@ const CAR_BRANDS = [
 
 const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
+// ── Seletor de Marcas ──────────────────────────────────────────────────────
 function BrandSelector({ value, onChange }: any) {
   const [query, setQuery] = useState(value || "");
   const [open, setOpen] = useState(false);
@@ -44,7 +45,7 @@ function BrandSelector({ value, onChange }: any) {
       <input className="input" placeholder="Digite a marca..." value={query} onFocus={() => setOpen(true)}
         onChange={e => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }} autoComplete="off" />
       {open && filtered.length > 0 && (
-        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 200, background: "#1a2030", border: "1px solid #2d3748", borderRadius: 8, maxHeight: 200, overflowY: "auto", marginTop: 4, boxShadow: "0 8px 24px rgba(0,0,0,.5)" }}>
+        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 200, background: "#1a2030", border: "1px solid #2d3748", borderRadius: 8, maxHeight: 180, overflowY: "auto", marginTop: 4, boxShadow: "0 8px 24px rgba(0,0,0,.5)" }}>
           {filtered.map(b => (
             <div key={b} onClick={() => { onChange(b); setQuery(b); setOpen(false); }} style={{ padding: "10px 14px", fontSize: 13, cursor: "pointer", color: value === b ? "#f97316" : "#e2e8f0", borderBottom: "1px solid #1e2736" }}>{b}</div>
           ))}
@@ -54,6 +55,57 @@ function BrandSelector({ value, onChange }: any) {
   );
 }
 
+// ── Seletor de Veículos (NOVO) ─────────────────────────────────────────────
+function VehicleSelector({ vehicles, value, onChange }: any) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const ref = useRef<any>(null);
+
+  const selectedVehicle = vehicles.find((v: any) => v.id === value);
+  const displayValue = selectedVehicle ? `${selectedVehicle.plate} — ${selectedVehicle.brand} ${selectedVehicle.model}` : query;
+
+  const filtered = vehicles.filter((v: any) => 
+    v.plate.toLowerCase().includes(query.toLowerCase()) || 
+    v.model.toLowerCase().includes(query.toLowerCase()) ||
+    v.brand.toLowerCase().includes(query.toLowerCase())
+  ).slice(0, 10); // Limita a 10 resultados para performance
+
+  useEffect(() => {
+    function handleClick(e: any) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  return (
+    <div ref={ref} style={{ position: "relative", marginBottom: 15 }}>
+      <label className="label">Carro *</label>
+      <input 
+        className="input" 
+        placeholder="Busque pela placa ou modelo..." 
+        value={open ? query : displayValue}
+        onFocus={() => { setOpen(true); setQuery(""); }}
+        onChange={e => setQuery(e.target.value)}
+        autoComplete="off"
+      />
+      {open && (
+        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 250, background: "#1a2030", border: "1px solid #f97316", borderRadius: 8, maxHeight: 220, overflowY: "auto", marginTop: 4, boxShadow: "0 8px 24px rgba(0,0,0,.8)" }}>
+          {filtered.length === 0 ? (
+            <div style={{ padding: "14px", fontSize: 12, color: "#64748b", textAlign: "center" }}>Nenhum veículo encontrado na base</div>
+          ) : (
+            filtered.map((v: any) => (
+              <div key={v.id} onClick={() => { onChange(v.id); setOpen(false); }} style={{ padding: "12px 14px", cursor: "pointer", borderBottom: "1px solid #1e2736", background: value === v.id ? "rgba(249,115,22,.1)" : "transparent" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{v.plate}</div>
+                <div style={{ fontSize: 11, color: "#64748b" }}>{v.brand} {v.model} {v.owner ? `· ${v.owner}` : ""}</div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Código Geral do App ───────────────────────────────────────────────────
 function generatePDF(vehicles: any, services: any, dateFrom: any, dateTo: any) {
   const fS = services.filter((s: any) => s.status === "Entregue" && s.exitDate && s.exitDate >= dateFrom && s.exitDate <= dateTo);
   const tP = fS.reduce((s: any, sv: any) => s + (Number(sv.partsValue) || 0), 0);
@@ -148,27 +200,19 @@ export default function App() {
   );
 }
 
-// ── Dashboard com Filtro Mensal ─────────────────────────────────────────────
 function Dashboard({ services, vehicles }: any) {
   const [selMonth, setSelMonth] = useState(new Date().getMonth());
   const [selYear, setSelYear] = useState(new Date().getFullYear());
-
   const activeServices = services.filter((s: any) => s.status !== "Entregue");
-  
-  // Filtro de faturamento: Apenas Entregues no mês/ano selecionado
   const filteredDelivered = services.filter((s: any) => {
     if (s.status !== "Entregue" || !s.exitDate) return false;
     const d = new Date(s.exitDate + "T12:00:00");
     return d.getMonth() === selMonth && d.getFullYear() === selYear;
   });
-
   const tP = filteredDelivered.reduce((acc: any, s: any) => acc + (Number(s.partsValue) || 0), 0);
   const tL = filteredDelivered.reduce((acc: any, s: any) => acc + (Number(s.laborValue) || 0), 0);
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      
-      {/* SELETOR DE PERÍODO */}
       <div className="card" style={{ display: "flex", gap: 10, alignItems: "center", background: "#1a2030" }}>
         <div style={{ flex: 1 }}>
           <label className="label">Mês de Referência</label>
@@ -183,13 +227,12 @@ function Dashboard({ services, vehicles }: any) {
           </select>
         </div>
       </div>
-
       <div className="kpi-grid">
         {[
-          { label: "Ativos (Geral)", value: activeServices.length, icon: "🔧", accent: "#f97316" },
-          { label: `Peças (${MONTHS[selMonth].slice(0,3)})`, value: fmt(tP), icon: "⚙️", accent: "#6366f1" },
-          { label: `M.O. (${MONTHS[selMonth].slice(0,3)})`, value: fmt(tL), icon: "🔧", accent: "#10b981" },
-          { label: "Receita do Mês", value: fmt(tP + tL), icon: "💰", accent: "#10b981" },
+          { label: "Ativos", value: activeServices.length, icon: "🔧", accent: "#f97316" },
+          { label: `Peças`, value: fmt(tP), icon: "⚙️", accent: "#6366f1" },
+          { label: `Mão de Obra`, value: fmt(tL), icon: "🔧", accent: "#10b981" },
+          { label: "Total Mês", value: fmt(tP + tL), icon: "💰", accent: "#10b981" },
         ].map((k, i) => (
           <div key={i} className="card" style={{ borderLeft: `3px solid ${k.accent}`, padding: 12 }}>
             <div style={{ fontSize: 16 }}>{k.icon}</div>
@@ -197,23 +240,6 @@ function Dashboard({ services, vehicles }: any) {
             <div style={{ fontSize: 9, color: "#475569", textTransform: "uppercase", marginTop: 2 }}>{k.label}</div>
           </div>
         ))}
-      </div>
-
-      <div className="card">
-        <h3 style={{ fontSize: 14, marginBottom: 12, color: "#f1f5f9" }}>Faturados em {MONTHS[selMonth]}</h3>
-        {filteredDelivered.length === 0 ? (
-          <div style={{ fontSize: 12, color: "#475569", textAlign: "center", padding: 10 }}>Nenhuma entrega registrada neste mês.</div>
-        ) : (
-          filteredDelivered.slice(0, 10).map((sv: any) => (
-            <div key={sv.id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #1e2736" }}>
-              <div style={{ flex: 1, paddingRight: 10 }}>
-                <div style={{ fontSize: 12, color: "#e2e8f0" }}>{sv.description}</div>
-                <div style={{ fontSize: 10, color: "#475569" }}>{sv.vehiclePlate} • Entregue em: {fmtDate(sv.exitDate)}</div>
-              </div>
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#10b981" }}>{fmt((Number(sv.partsValue)||0) + (Number(sv.laborValue)||0))}</div>
-            </div>
-          ))
-        )}
       </div>
     </div>
   );
@@ -277,21 +303,6 @@ function Vehicles({ vehicles, setVehicles, services, mapV }: any) {
             <button className="btn-primary" style={{ width: "100%", marginTop: 15 }} onClick={save}>Salvar</button>
           </div></div>
       )}
-      {historyModal && (
-        <div className="modal-bg" onClick={() => setHistoryModal(false)}><div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>Histórico: {selectedV?.plate}</h3>
-            <div style={{ maxHeight: 320, overflowY: "auto", marginTop: 15 }}>
-              {services.filter((s: any) => s.vehicleId === selectedV?.id).map((s: any) => (
-                <div key={s.id} style={{ padding: 12, background: "#0d0f14", borderRadius: 8, marginBottom: 10, borderLeft: "3px solid #10b981" }}>
-                  <div style={{ fontSize: 12, fontWeight: 700 }}>{s.description}</div>
-                  <div style={{ fontSize: 10, color: "#64748b", marginTop: 4 }}>KM: {fmtKm(s.mileage)} | Finalizado: {fmtDate(s.exitDate)}</div>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: "#f97316", marginTop: 5 }}>Total: {fmt((Number(s.partsValue) || 0) + (Number(s.laborValue) || 0))}</div>
-                </div>
-              ))}
-            </div>
-            <button className="btn-ghost" style={{ width: "100%", marginTop: 15 }} onClick={() => setHistoryModal(false)}>Fechar</button>
-          </div></div>
-      )}
     </Section>
   );
 }
@@ -306,7 +317,7 @@ function Services({ services, setServices, vehicles, mapS }: any) {
   const close = () => { setModal(false); setEditing(null); setForm({}); };
 
   const save = async () => {
-    if (!form.vehicleId || !form.description) return alert("Selecione o carro e preencha a descrição.");
+    if (!form.vehicleId || !form.description) return alert("Selecione o carro e descreva o serviço.");
     const v = vehicles.find((v: any) => v.id === form.vehicleId);
     const row = { id: editing?.id || uid(), vehicle_id: form.vehicleId, vehicle_plate: v?.plate, vehicle_brand: v?.brand, vehicle_model: v?.model, description: form.description, parts_value: Number(form.partsValue) || 0, labor_value: Number(form.laborValue) || 0, status: form.status, entry_date: form.entryDate, exit_date: form.status === "Entregue" ? (form.exitDate || today()) : null, mileage: Number(form.mileage) || 0 };
     const { data } = await supabase.from("services").upsert(row).select();
@@ -362,13 +373,13 @@ function Services({ services, setServices, vehicles, mapS }: any) {
       {modal && (
         <div className="modal-bg" onClick={close}><div className="modal" onClick={e => e.stopPropagation()}>
             <h3>Fluxo de Serviço</h3>
-            <div style={{ marginBottom: 10 }}>
-              <label className="label">Carro *</label>
-              <select className="input" value={form.vehicleId || ""} onChange={e => setForm({ ...form, vehicleId: e.target.value })} style={{ appearance: "none" }}>
-                <option value="">Selecione...</option>
-                {vehicles.map((v: any) => <option key={v.id} value={v.id}>{v.plate} — {v.brand} {v.model}</option>)}
-              </select>
-            </div>
+            {/* NOVO SELETOR INTELIGENTE AQUI */}
+            <VehicleSelector 
+              vehicles={vehicles} 
+              value={form.vehicleId} 
+              onChange={(val: any) => setForm({ ...form, vehicleId: val })} 
+            />
+            
             <Field label="Descrição *" value={form.description} onChange={(v: any) => setForm({ ...form, description: v })} />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <Field label="KM Atual" type="number" value={form.mileage} onChange={(v: any) => setForm({ ...form, mileage: v })} />
@@ -384,7 +395,7 @@ function Services({ services, setServices, vehicles, mapS }: any) {
                 {Object.keys(STATUS_COLORS).map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
-            <button className="btn-primary" style={{ width: "100%", marginTop: 10 }} onClick={save}>Salvar</button>
+            <button className="btn-primary" style={{ width: "100%", marginTop: 10 }} onClick={save}>Salvar Serviço</button>
           </div></div>
       )}
     </Section>
@@ -397,7 +408,7 @@ function ReportModal({ services, onClose, onGenerate }: any) {
   const fS = services.filter((s: any) => s.status === "Entregue" && s.exitDate && s.exitDate >= dateFrom && s.exitDate <= dateTo);
   const total = fS.reduce((s: any, sv: any) => s + (Number(sv.partsValue) || 0) + (Number(sv.laborValue) || 0), 0);
   return (
-    <div className="modal-bg" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><h3>📄 Relatório de Caixa</h3><div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 15 }}><div><label className="label">Início</label><input className="input" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} /></div><div><label className="label">Fim</label><input className="input" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} /></div></div><div className="card" style={{ background: "#0d0f14", marginBottom: 20 }}><div style={{ display: "flex", justifyContent: "space-between" }}><div><div style={{ fontSize: 18, fontWeight: 800, color: "#f97316" }}>{fS.length}</div><div style={{ fontSize: 9, color: "#475569" }}>Entregues</div></div><div style={{ textAlign: "right" }}><div style={{ fontSize: 18, fontWeight: 800, color: "#10b981" }}>{fmt(total)}</div><div style={{ fontSize: 9, color: "#475569" }}>Total Real</div></div></div></div><button className="btn-primary" style={{ width: "100%" }} onClick={() => onGenerate(dateFrom, dateTo)}>Gerar PDF</button></div></div>
+    <div className="modal-bg" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><h3>📄 Relatório</h3><div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 15 }}><div><label className="label">Início</label><input className="input" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} /></div><div><label className="label">Fim</label><input className="input" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} /></div></div><div className="card" style={{ background: "#0d0f14", marginBottom: 20 }}><div style={{ display: "flex", justifyContent: "space-between" }}><div><div style={{ fontSize: 18, fontWeight: 800, color: "#f97316" }}>{fS.length}</div><div style={{ fontSize: 9, color: "#475569" }}>Entregues</div></div><div style={{ textAlign: "right" }}><div style={{ fontSize: 18, fontWeight: 800, color: "#10b981" }}>{fmt(total)}</div><div style={{ fontSize: 9, color: "#475569" }}>Total Real</div></div></div></div><button className="btn-primary" style={{ width: "100%" }} onClick={() => onGenerate(dateFrom, dateTo)}>Gerar PDF</button></div></div>
   );
 }
 
