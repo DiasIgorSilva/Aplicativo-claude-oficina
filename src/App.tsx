@@ -25,6 +25,8 @@ const CAR_BRANDS = [
   "Suzuki", "Toyota", "Troller", "Volkswagen", "Volvo", "ZX Auto",
 ].sort();
 
+const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
 function BrandSelector({ value, onChange }: any) {
   const [query, setQuery] = useState(value || "");
   const [open, setOpen] = useState(false);
@@ -107,7 +109,6 @@ export default function App() {
         .nav-item.active{color:#f97316;}
         .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;}
         .modal{background:#161b26;border:1px solid #1e2736;border-radius:16px;padding:24px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;}
-        /* FIX DE ROLAGEM LATERAL MOBILE */
         .table-wrap{width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 10px;}
         .table-header, .table-row { min-width: 650px; display: grid; align-items: center; }
         .table-header{padding:10px 14px;font-size:10px;color:#475569;text-transform:uppercase;border-bottom:1px solid #1e2736;}
@@ -147,19 +148,48 @@ export default function App() {
   );
 }
 
+// ── Dashboard com Filtro Mensal ─────────────────────────────────────────────
 function Dashboard({ services, vehicles }: any) {
-  const active = services.filter((s: any) => s.status !== "Entregue");
-  const delivered = services.filter((s: any) => s.status === "Entregue");
-  const tP = delivered.reduce((acc: any, s: any) => acc + (Number(s.partsValue) || 0), 0);
-  const tL = delivered.reduce((acc: any, s: any) => acc + (Number(s.laborValue) || 0), 0);
+  const [selMonth, setSelMonth] = useState(new Date().getMonth());
+  const [selYear, setSelYear] = useState(new Date().getFullYear());
+
+  const activeServices = services.filter((s: any) => s.status !== "Entregue");
+  
+  // Filtro de faturamento: Apenas Entregues no mês/ano selecionado
+  const filteredDelivered = services.filter((s: any) => {
+    if (s.status !== "Entregue" || !s.exitDate) return false;
+    const d = new Date(s.exitDate + "T12:00:00");
+    return d.getMonth() === selMonth && d.getFullYear() === selYear;
+  });
+
+  const tP = filteredDelivered.reduce((acc: any, s: any) => acc + (Number(s.partsValue) || 0), 0);
+  const tL = filteredDelivered.reduce((acc: any, s: any) => acc + (Number(s.laborValue) || 0), 0);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      
+      {/* SELETOR DE PERÍODO */}
+      <div className="card" style={{ display: "flex", gap: 10, alignItems: "center", background: "#1a2030" }}>
+        <div style={{ flex: 1 }}>
+          <label className="label">Mês de Referência</label>
+          <select className="input" value={selMonth} onChange={(e) => setSelMonth(Number(e.target.value))}>
+            {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
+          </select>
+        </div>
+        <div style={{ width: 100 }}>
+          <label className="label">Ano</label>
+          <select className="input" value={selYear} onChange={(e) => setSelYear(Number(e.target.value))}>
+            {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </div>
+      </div>
+
       <div className="kpi-grid">
         {[
-          { label: "Na Oficina", value: active.length, icon: "🔧", accent: "#f97316" },
-          { label: "Peças (Faturado)", value: fmt(tP), icon: "⚙️", accent: "#6366f1" },
-          { label: "M.O. (Faturado)", value: fmt(tL), icon: "🔧", accent: "#10b981" },
-          { label: "Receita Real", value: fmt(tP + tL), icon: "💰", accent: "#10b981" },
+          { label: "Ativos (Geral)", value: activeServices.length, icon: "🔧", accent: "#f97316" },
+          { label: `Peças (${MONTHS[selMonth].slice(0,3)})`, value: fmt(tP), icon: "⚙️", accent: "#6366f1" },
+          { label: `M.O. (${MONTHS[selMonth].slice(0,3)})`, value: fmt(tL), icon: "🔧", accent: "#10b981" },
+          { label: "Receita do Mês", value: fmt(tP + tL), icon: "💰", accent: "#10b981" },
         ].map((k, i) => (
           <div key={i} className="card" style={{ borderLeft: `3px solid ${k.accent}`, padding: 12 }}>
             <div style={{ fontSize: 16 }}>{k.icon}</div>
@@ -168,17 +198,22 @@ function Dashboard({ services, vehicles }: any) {
           </div>
         ))}
       </div>
+
       <div className="card">
-        <h3 style={{ fontSize: 14, marginBottom: 12, color: "#f1f5f9" }}>Acompanhamento</h3>
-        {active.slice(0, 5).map((sv: any) => (
-          <div key={sv.id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #1e2736" }}>
-            <div style={{ flex: 1, paddingRight: 10 }}>
-              <div style={{ fontSize: 12, color: "#e2e8f0" }}>{sv.description}</div>
-              <div style={{ fontSize: 10, color: "#475569" }}>{sv.vehiclePlate} • {fmtKm(sv.mileage)} • Entrada: {fmtDate(sv.entryDate)}</div>
+        <h3 style={{ fontSize: 14, marginBottom: 12, color: "#f1f5f9" }}>Faturados em {MONTHS[selMonth]}</h3>
+        {filteredDelivered.length === 0 ? (
+          <div style={{ fontSize: 12, color: "#475569", textAlign: "center", padding: 10 }}>Nenhuma entrega registrada neste mês.</div>
+        ) : (
+          filteredDelivered.slice(0, 10).map((sv: any) => (
+            <div key={sv.id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #1e2736" }}>
+              <div style={{ flex: 1, paddingRight: 10 }}>
+                <div style={{ fontSize: 12, color: "#e2e8f0" }}>{sv.description}</div>
+                <div style={{ fontSize: 10, color: "#475569" }}>{sv.vehiclePlate} • Entregue em: {fmtDate(sv.exitDate)}</div>
+              </div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#10b981" }}>{fmt((Number(sv.partsValue)||0) + (Number(sv.laborValue)||0))}</div>
             </div>
-            <StatusBadge status={sv.status} map={STATUS_COLORS} />
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );
@@ -273,7 +308,7 @@ function Services({ services, setServices, vehicles, mapS }: any) {
   const save = async () => {
     if (!form.vehicleId || !form.description) return alert("Selecione o carro e preencha a descrição.");
     const v = vehicles.find((v: any) => v.id === form.vehicleId);
-    const row = { id: editing?.id || uid(), vehicle_id: form.vehicleId, vehicle_plate: v?.plate, vehicle_brand: v?.brand, vehicle_model: v?.model, description: form.description, parts_value: Number(form.partsValue) || 0, labor_value: Number(form.laborValue) || 0, status: form.status, entry_date: form.entry_date, exit_date: form.status === "Entregue" ? (form.exitDate || today()) : null, mileage: Number(form.mileage) || 0 };
+    const row = { id: editing?.id || uid(), vehicle_id: form.vehicleId, vehicle_plate: v?.plate, vehicle_brand: v?.brand, vehicle_model: v?.model, description: form.description, parts_value: Number(form.partsValue) || 0, labor_value: Number(form.laborValue) || 0, status: form.status, entry_date: form.entryDate, exit_date: form.status === "Entregue" ? (form.exitDate || today()) : null, mileage: Number(form.mileage) || 0 };
     const { data } = await supabase.from("services").upsert(row).select();
     if (data) {
       const m = mapS(data[0]);
@@ -288,7 +323,6 @@ function Services({ services, setServices, vehicles, mapS }: any) {
 
   return (
     <Section title="Fluxo Oficina" action={<button className="btn-primary" onClick={() => open()}>+ Entrada</button>}>
-      {/* MENU DE FILTROS (Restaurado) */}
       <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
         {["", ...Object.keys(STATUS_COLORS)].map(s => (
           <button key={s} onClick={() => setFilterStatus(s)} style={{
@@ -335,7 +369,7 @@ function Services({ services, setServices, vehicles, mapS }: any) {
                 {vehicles.map((v: any) => <option key={v.id} value={v.id}>{v.plate} — {v.brand} {v.model}</option>)}
               </select>
             </div>
-            <Field label="O que será feito? *" value={form.description} onChange={(v: any) => setForm({ ...form, description: v })} />
+            <Field label="Descrição *" value={form.description} onChange={(v: any) => setForm({ ...form, description: v })} />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <Field label="KM Atual" type="number" value={form.mileage} onChange={(v: any) => setForm({ ...form, mileage: v })} />
               <Field label="Mão de Obra (R$)" type="number" value={form.laborValue} onChange={(v: any) => setForm({ ...form, laborValue: v })} />
