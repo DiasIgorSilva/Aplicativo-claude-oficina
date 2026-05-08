@@ -6,6 +6,7 @@ const supabase = createClient(
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJvZmhpaHhwcW1xaW1rYW53a3l3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODQ3OTMsImV4cCI6MjA5MDY2MDc5M30.fOOD-FweGID1x2mlJ3LWImtw7B6m6Pc-8auXLIuCqbw"
 );
 
+// ── Utilitários ───────────────────────────────────────────────────────────
 const uid = () => Math.random().toString(36).slice(2, 10);
 const fmt = (n: any) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n || 0);
 const fmtKm = (n: any) => n ? n.toLocaleString("pt-BR") + " km" : "—";
@@ -13,21 +14,10 @@ const today = () => new Date().toISOString().slice(0, 10);
 const fmtDate = (d: any) => d ? new Date(d + "T12:00:00").toLocaleDateString("pt-BR") : "—";
 
 const STATUS_COLORS: any = { "Aguardando": "#f59e0b", "Em andamento": "#3b82f6", "Pronto": "#10b981", "Entregue": "#6b7280" };
-
-const CAR_BRANDS = [
-  "Acura", "Agrale", "Alfa Romeo", "Asia", "Aston Martin", "Audi", "Bentley", "BMW", "BYD", 
-  "Caoa Chery", "Chery", "Chevrolet", "Chrysler", "Citroën", "Daewoo", "Daihatsu", "Dodge", 
-  "DS Automobiles", "Effa", "Ferrari", "Fiat", "Ford", "Geely", "GWM", "GWM Ora", "Hafei", 
-  "Honda", "Hyundai", "Infiniti", "Iveco", "JAC", "Jaguar", "Jeep", "Jinbei", "Kia", 
-  "Lamborghini", "Land Rover", "Lexus", "Lifan", "Mahindra", "Maserati", "Mazda", 
-  "McLaren", "Mercedes-Benz", "Mini", "Mitsubishi", "Nissan", "Peugeot", "Porsche", 
-  "RAM", "Renault", "Rolls-Royce", "Seat", "Shineray", "Smart", "SSangYong", "Subaru", 
-  "Suzuki", "Toyota", "Troller", "Volkswagen", "Volvo", "ZX Auto",
-].sort();
-
 const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+const CAR_BRANDS = ["Audi", "BMW", "BYD", "Chevrolet", "Citroën", "Ferrari", "Fiat", "Ford", "GWM", "Honda", "Hyundai", "JAC", "Jaguar", "Jeep", "Kia", "Land Rover", "Mercedes-Benz", "Mitsubishi", "Nissan", "Peugeot", "Porsche", "RAM", "Renault", "Toyota", "Volkswagen", "Volvo"].sort();
 
-// ── Componentes de Seleção ────────────────────────────────────────────────
+// ── Componentes de Seleção Inteligente ─────────────────────────────────────
 function BrandSelector({ value, onChange }: any) {
   const [query, setQuery] = useState(value || "");
   const [open, setOpen] = useState(false);
@@ -42,13 +32,10 @@ function BrandSelector({ value, onChange }: any) {
   return (
     <div ref={ref} style={{ position: "relative", marginBottom: 10 }}>
       <label className="label">Marca *</label>
-      <input className="input" placeholder="Digite a marca..." value={query} onFocus={() => setOpen(true)}
-        onChange={e => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }} autoComplete="off" />
+      <input className="input" placeholder="Digite a marca..." value={query} onFocus={() => setOpen(true)} onChange={e => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }} autoComplete="off" />
       {open && filtered.length > 0 && (
-        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 200, background: "#1a2030", border: "1px solid #2d3748", borderRadius: 8, maxHeight: 180, overflowY: "auto", marginTop: 4, boxShadow: "0 8px 24px rgba(0,0,0,.5)" }}>
-          {filtered.map(b => (
-            <div key={b} onClick={() => { onChange(b); setQuery(b); setOpen(false); }} style={{ padding: "10px 14px", fontSize: 13, cursor: "pointer", color: value === b ? "#f97316" : "#e2e8f0", borderBottom: "1px solid #1e2736" }}>{b}</div>
-          ))}
+        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 200, background: "#1a2030", border: "1px solid #2d3748", borderRadius: 8, maxHeight: 150, overflowY: "auto", marginTop: 4, boxShadow: "0 8px 24px rgba(0,0,0,.5)" }}>
+          {filtered.map(b => <div key={b} onClick={() => { onChange(b); setQuery(b); setOpen(false); }} style={{ padding: "10px 14px", fontSize: 13, cursor: "pointer", color: value === b ? "#f97316" : "#e2e8f0", borderBottom: "1px solid #1e2736" }}>{b}</div>)}
         </div>
       )}
     </div>
@@ -61,7 +48,7 @@ function VehicleSelector({ vehicles, value, onChange }: any) {
   const ref = useRef<any>(null);
   const selectedVehicle = vehicles.find((v: any) => v.id === value);
   const displayValue = selectedVehicle ? `${selectedVehicle.plate} — ${selectedVehicle.brand} ${selectedVehicle.model}` : query;
-  const filtered = vehicles.filter((v: any) => v.plate.toLowerCase().includes(query.toLowerCase()) || v.model.toLowerCase().includes(query.toLowerCase()) || v.brand.toLowerCase().includes(query.toLowerCase())).slice(0, 10);
+  const filtered = vehicles.filter((v: any) => v.plate.toLowerCase().includes(query.toLowerCase()) || v.model.toLowerCase().includes(query.toLowerCase())).slice(0, 8);
   useEffect(() => {
     function handleClick(e: any) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
     document.addEventListener("mousedown", handleClick);
@@ -70,17 +57,15 @@ function VehicleSelector({ vehicles, value, onChange }: any) {
   return (
     <div ref={ref} style={{ position: "relative", marginBottom: 15 }}>
       <label className="label">Carro *</label>
-      <input className="input" placeholder="Busque placa ou modelo..." value={open ? query : displayValue} onFocus={() => { setOpen(true); setQuery(""); }} onChange={e => setQuery(e.target.value)} autoComplete="off" />
+      <input className="input" placeholder="Busque pela placa ou modelo..." value={open ? query : displayValue} onFocus={() => { setOpen(true); setQuery(""); }} onChange={e => setQuery(e.target.value)} autoComplete="off" />
       {open && (
         <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 250, background: "#1a2030", border: "1px solid #f97316", borderRadius: 8, maxHeight: 200, overflowY: "auto", marginTop: 4, boxShadow: "0 8px 24px rgba(0,0,0,.8)" }}>
-          {filtered.length === 0 ? <div style={{ padding: "14px", fontSize: 12, color: "#64748b", textAlign: "center" }}>Não encontrado</div> :
-            filtered.map((v: any) => (
-              <div key={v.id} onClick={() => { onChange(v.id); setOpen(false); }} style={{ padding: "12px 14px", cursor: "pointer", borderBottom: "1px solid #1e2736" }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{v.plate}</div>
-                <div style={{ fontSize: 11, color: "#64748b" }}>{v.brand} {v.model}</div>
-              </div>
-            ))
-          }
+          {filtered.map((v: any) => (
+            <div key={v.id} onClick={() => { onChange(v.id); setOpen(false); }} style={{ padding: "12px 14px", cursor: "pointer", borderBottom: "1px solid #1e2736" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{v.plate}</div>
+              <div style={{ fontSize: 11, color: "#64748b" }}>{v.brand} {v.model}</div>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -102,15 +87,12 @@ export default function App() {
         supabase.from("vehicles").select("*").order("created_at", { ascending: false }),
         supabase.from("services").select("*").order("created_at", { ascending: false }),
       ]);
-      if (v.data) setVehicles(v.data.map(mapV));
-      if (s.data) setServices(s.data.map(mapS));
+      if (v.data) setVehicles(v.data.map((r: any) => ({ ...r, mileage: r.mileage || 0 })));
+      if (s.data) setServices(s.data);
       setLoading(false);
     }
     fetchAll();
   }, []);
-
-  const mapV = (r: any) => ({ id: r.id, plate: r.plate, brand: r.brand, model: r.model, year: r.year, color: r.color, owner: r.owner, phone: r.phone, notes: r.notes, mileage: r.mileage, createdAt: r.created_at });
-  const mapS = (r: any) => ({ id: r.id, vehicleId: r.vehicle_id, vehiclePlate: r.vehicle_plate, vehicleBrand: r.vehicle_brand, vehicleModel: r.vehicle_model, description: r.description, partsValue: r.parts_value, laborValue: r.labor_value, status: r.status, entryDate: r.entry_date, exitDate: r.exit_date, mileage: r.mileage, createdAt: r.created_at });
 
   const tabs = [{ id: "dashboard", label: "Início", icon: "⬡" }, { id: "services", label: "Oficina", icon: "🔧" }, { id: "vehicles", label: "Base Carros", icon: "🚗" }];
 
@@ -135,6 +117,8 @@ export default function App() {
         .table-header, .table-row { min-width: 650px; display: grid; align-items: center; }
         .table-header{padding:10px 14px;font-size:10px;color:#475569;text-transform:uppercase;border-bottom:1px solid #1e2736;}
         .table-row{padding:14px; border-bottom:1px solid #1e2736;}
+        .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;}
+        .modal{background:#161b26;border:1px solid #1e2736;border-radius:16px;padding:24px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;}
       `}</style>
 
       <header style={{ padding: "14px 20px", borderBottom: "1px solid #1e2736", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0d0f14" }}>
@@ -148,9 +132,9 @@ export default function App() {
       <main style={{ flex: 1, padding: "16px", width: "100%", maxWidth: 1200, margin: "0 auto" }}>
         {loading ? <div style={{ textAlign: "center", padding: 100 }}>Sincronizando...</div> : (
           <>
-            {tab === "dashboard" && <Dashboard services={services} vehicles={vehicles} />}
-            {tab === "services" && <Services services={services} setServices={setServices} vehicles={vehicles} mapS={mapS} />}
-            {tab === "vehicles" && <Vehicles vehicles={vehicles} setVehicles={setVehicles} services={services} mapV={mapV} />}
+            {tab === "dashboard" && <Dashboard services={services} />}
+            {tab === "services" && <Services services={services} setServices={setServices} vehicles={vehicles} />}
+            {tab === "vehicles" && <Vehicles vehicles={vehicles} setVehicles={setVehicles} services={services} />}
           </>
         )}
       </main>
@@ -165,103 +149,193 @@ export default function App() {
         </div>
       </nav>
 
-      {showReport && <ReportModal services={services} onClose={() => setShowReport(false)} onGenerate={(f, t) => { generatePDF(vehicles, services, f, t); setShowReport(false); }} />}
+      {showReport && <ReportModal services={services} onClose={() => setShowReport(false)} onGenerate={(f:any, t:any) => { generatePDF(vehicles, services, f, t); setShowReport(false); }} />}
     </div>
   );
 }
 
-// ── Dashboard Corrigido ────────────────────────────────────────────────────
-function Dashboard({ services, vehicles }: any) {
+// ── Componentes das Abas ───────────────────────────────────────────────────
+
+function Dashboard({ services }: any) {
   const [selMonth, setSelMonth] = useState(new Date().getMonth());
   const [selYear, setSelYear] = useState(new Date().getFullYear());
 
-  // Serviços que ainda estão na oficina (Diferentes de Entregue)
-  const activeServices = services.filter((s: any) => s.status !== "Entregue");
-  
-  // Serviços entregues no período selecionado
-  const filteredDelivered = services.filter((s: any) => {
-    if (s.status !== "Entregue" || !s.exitDate) return false;
-    const d = new Date(s.exitDate + "T12:00:00");
+  const active = services.filter((s: any) => s.status !== "Entregue");
+  const filtered = services.filter((s: any) => {
+    if (s.status !== "Entregue" || !s.exit_date) return false;
+    const d = new Date(s.exit_date + "T12:00:00");
     return d.getMonth() === selMonth && d.getFullYear() === selYear;
   });
 
-  const tP = filteredDelivered.reduce((acc: any, s: any) => acc + (Number(s.partsValue) || 0), 0);
-  const tL = filteredDelivered.reduce((acc: any, s: any) => acc + (Number(s.laborValue) || 0), 0);
+  const tP = filtered.reduce((acc: any, s: any) => acc + (Number(s.parts_value) || 0), 0);
+  const tL = filtered.reduce((acc: any, s: any) => acc + (Number(s.labor_value) || 0), 0);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      
-      {/* SELETOR DE PERÍODO */}
-      <div className="card" style={{ display: "flex", gap: 10, alignItems: "center", background: "#1a2030" }}>
-        <div style={{ flex: 1 }}>
-          <label className="label">Mês de Referência</label>
-          <select className="input" value={selMonth} onChange={(e) => setSelMonth(Number(e.target.value))}>
+      <div className="card" style={{ display: "flex", gap: 10, background: "#1a2030" }}>
+        <div style={{ flex: 1 }}><label className="label">Mês</label>
+          <select className="input" value={selMonth} onChange={e => setSelMonth(Number(e.target.value))}>
             {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
-          </select>
-        </div>
-        <div style={{ width: 100 }}>
-          <label className="label">Ano</label>
-          <select className="input" value={selYear} onChange={(e) => setSelYear(Number(e.target.value))}>
-            {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
-        </div>
+          </select></div>
+        <div style={{ width: 100 }}><label className="label">Ano</label>
+          <select className="input" value={selYear} onChange={e => setSelYear(Number(e.target.value))}>
+            {[2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+          </select></div>
       </div>
-
-      {/* KPIs DO MÊS SELECIONADO */}
       <div className="kpi-grid">
-        {[
-          { label: "Na Oficina", value: activeServices.length, icon: "🔧", accent: "#f97316" },
-          { label: `Peças`, value: fmt(tP), icon: "⚙️", accent: "#6366f1" },
-          { label: `Mão de Obra`, value: fmt(tL), icon: "🔧", accent: "#10b981" },
-          { label: "Total Mês", value: fmt(tP + tL), icon: "💰", accent: "#10b981" },
-        ].map((k, i) => (
-          <div key={i} className="card" style={{ borderLeft: `3px solid ${k.accent}`, padding: 12 }}>
-            <div style={{ fontSize: 16 }}>{k.icon}</div>
-            <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4, color: "#f1f5f9" }}>{k.value}</div>
-            <div style={{ fontSize: 9, color: "#475569", textTransform: "uppercase", marginTop: 2 }}>{k.label}</div>
+        <div className="card" style={{ borderLeft: "3px solid #f97316" }}><div style={{ fontSize: 9, color: "#64748b" }}>OFICINA</div><div style={{ fontSize: 18, fontWeight: 800 }}>{active.length}</div></div>
+        <div className="card" style={{ borderLeft: "3px solid #6366f1" }}><div style={{ fontSize: 9, color: "#64748b" }}>PEÇAS</div><div style={{ fontSize: 15, fontWeight: 800 }}>{fmt(tP)}</div></div>
+        <div className="card" style={{ borderLeft: "3px solid #10b981" }}><div style={{ fontSize: 9, color: "#64748b" }}>M.O.</div><div style={{ fontSize: 15, fontWeight: 800 }}>{fmt(tL)}</div></div>
+        <div className="card" style={{ borderLeft: "3px solid #10b981" }}><div style={{ fontSize: 9, color: "#64748b" }}>TOTAL</div><div style={{ fontSize: 15, fontWeight: 800 }}>{fmt(tP + tL)}</div></div>
+      </div>
+      <div className="card">
+        <h3 style={{ fontSize: 13, marginBottom: 12, color: "#f97316" }}>🛠️ Carros na Oficina</h3>
+        {active.map((s: any) => (
+          <div key={s.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #1e2736" }}>
+            <div style={{ fontSize: 12 }}><strong>{s.vehicle_plate}</strong><br /><span style={{ color: "#64748b", fontSize: 10 }}>{s.description}</span></div>
+            <StatusBadge status={s.status} map={STATUS_COLORS} />
           </div>
         ))}
       </div>
-
-      {/* LISTA 1: CARROS QUE ESTÃO NA OFICINA AGORA */}
       <div className="card">
-        <h3 style={{ fontSize: 14, marginBottom: 12, color: "#f97316", fontFamily: "'Syne', sans-serif" }}>🛠️ Carros na Oficina (Ativos)</h3>
-        {activeServices.length === 0 ? (
-          <div style={{ fontSize: 12, color: "#475569", textAlign: "center", padding: 10 }}>Pátio vazio no momento.</div>
-        ) : (
-          activeServices.map((sv: any) => (
-            <div key={sv.id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #1e2736", alignItems: "center" }}>
-              <div style={{ flex: 1, paddingRight: 10 }}>
-                <div style={{ fontSize: 12, color: "#e2e8f0", fontWeight: 700 }}>{sv.vehiclePlate} — {sv.vehicleBrand}</div>
-                <div style={{ fontSize: 10, color: "#64748b" }}>{sv.description}</div>
-              </div>
-              <StatusBadge status={sv.status} map={STATUS_COLORS} />
-            </div>
-          ))
-        )}
-      </div>
-
-      {/* LISTA 2: SERVIÇOS FINALIZADOS NO MÊS SELECIONADO */}
-      <div className="card">
-        <h3 style={{ fontSize: 14, marginBottom: 12, color: "#10b981", fontFamily: "'Syne', sans-serif" }}>✅ Entregues em {MONTHS[selMonth]}</h3>
-        {filteredDelivered.length === 0 ? (
-          <div style={{ fontSize: 12, color: "#475569", textAlign: "center", padding: 10 }}>Nenhum serviço finalizado neste mês.</div>
-        ) : (
-          filteredDelivered.map((sv: any) => (
-            <div key={sv.id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #1e2736", alignItems: "center" }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12, color: "#e2e8f0" }}>{sv.vehiclePlate} — {sv.vehicleBrand}</div>
-                <div style={{ fontSize: 10, color: "#64748b" }}>Entregue em: {fmtDate(sv.exitDate)}</div>
-              </div>
-              <div style={{ fontSize: 12, fontWeight: 800, color: "#10b981" }}>{fmt((Number(sv.partsValue)||0) + (Number(sv.laborValue)||0))}</div>
-            </div>
-          ))
-        )}
+        <h3 style={{ fontSize: 13, marginBottom: 12, color: "#10b981" }}>✅ Faturados em {MONTHS[selMonth]}</h3>
+        {filtered.map((s: any) => (
+          <div key={s.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #1e2736" }}>
+            <div style={{ fontSize: 12 }}><strong>{s.vehicle_plate}</strong><br /><span style={{ color: "#64748b", fontSize: 10 }}>{fmtDate(s.exit_date)}</span></div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#10b981" }}>{fmt((Number(s.parts_value) || 0) + (Number(s.labor_value) || 0))}</div>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-// ── Outros Componentes (Vehicles, Services, etc. permanecem iguais) ───────
-// [Omiti o resto do código para brevidade, mas você deve manter as funções 
-// Vehicles, Services e ReportModal do código anterior v1.2.1]
+function Services({ services, setServices, vehicles }: any) {
+  const [modal, setModal] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  const [form, setForm] = useState<any>({});
+  const [filter, setFilter] = useState("");
+
+  const open = (s = null) => { setEditing(s); setForm(s || { status: "Aguardando", entry_date: today() }); setModal(true); };
+  const save = async () => {
+    const v = vehicles.find((v: any) => v.id === form.vehicle_id);
+    const row = { ...form, id: editing?.id || uid(), vehicle_plate: v?.plate, vehicle_brand: v?.brand, exit_date: form.status === "Entregue" ? (form.exit_date || today()) : null };
+    const { data } = await supabase.from("services").upsert(row).select();
+    if (data) {
+      if (editing) setServices(services.map((s: any) => s.id === editing.id ? data[0] : s));
+      else setServices([data[0], ...services]);
+    }
+    setModal(false);
+  };
+
+  const filtered = filter ? services.filter((s: any) => s.status === filter) : services;
+
+  return (
+    <Section title="Fluxo Oficina" action={<button className="btn-primary" onClick={() => open()}>+ Entrada</button>}>
+      <div style={{ display: "flex", gap: 5, overflowX: "auto", paddingBottom: 5 }}>
+        {["", "Aguardando", "Em andamento", "Pronto", "Entregue"].map(s => <button key={s} onClick={() => setFilter(s)} style={{ padding: "5px 12px", borderRadius: 20, fontSize: 10, background: filter === s ? "#f97316" : "#1a2030", color: filter === s ? "#0d0f14" : "#64748b", border: "none" }}>{s || "Todos"}</button>)}
+      </div>
+      <div className="card" style={{ padding: 0 }}><div className="table-wrap">
+        <div className="table-header" style={{ gridTemplateColumns: "2fr 1.2fr 0.8fr 1fr 50px" }}><span>Serviço</span><span>Carro</span><span>M.O.</span><span>Status</span><span></span></div>
+        {filtered.map((s: any) => (
+          <div key={s.id} className="table-row" style={{ gridTemplateColumns: "2fr 1.2fr 0.8fr 1fr 50px" }}>
+            <div style={{ fontSize: 11 }}>{s.description}<br /><span style={{ fontSize: 9, color: "#64748b" }}>KM: {fmtKm(s.mileage)}</span></div>
+            <div style={{ fontSize: 11 }}><strong>{s.vehicle_plate}</strong><br />{s.vehicle_brand}</div>
+            <div style={{ fontSize: 11, color: "#10b981" }}>{fmt(s.labor_value)}</div>
+            <StatusBadge status={s.status} map={STATUS_COLORS} />
+            <button onClick={() => open(s)} className="btn-ghost" style={{ padding: 5 }}>✏️</button>
+          </div>
+        ))}
+      </div></div>
+      {modal && <div className="modal-bg" onClick={() => setModal(false)}><div className="modal" onClick={e => e.stopPropagation()}>
+        <h3>Serviço</h3>
+        <VehicleSelector vehicles={vehicles} value={form.vehicle_id} onChange={(v: any) => setForm({ ...form, vehicle_id: v })} />
+        <Field label="Descrição" value={form.description} onChange={(v: any) => setForm({ ...form, description: v })} />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <Field label="KM Atual" type="number" value={form.mileage} onChange={(v: any) => setForm({ ...form, mileage: v })} />
+          <Field label="Mão de Obra" type="number" value={form.labor_value} onChange={(v: any) => setForm({ ...form, labor_value: v })} />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <Field label="Entrada" type="date" value={form.entry_date} onChange={(v: any) => setForm({ ...form, entry_date: v })} />
+          <SelectField label="Status" value={form.status} onChange={(v: any) => setForm({ ...form, status: v })} options={Object.keys(STATUS_COLORS)} />
+        </div>
+        <button className="btn-primary" style={{ width: "100%", marginTop: 10 }} onClick={save}>Salvar</button>
+      </div></div>}
+    </Section>
+  );
+}
+
+function Vehicles({ vehicles, setVehicles, services }: any) {
+  const [modal, setModal] = useState(false);
+  const [hist, setHist] = useState<any>(null);
+  const [form, setForm] = useState<any>({});
+
+  const open = (v = null) => { setForm(v || {}); setModal(true); };
+  const save = async () => {
+    const row = { ...form, id: form.id || uid() };
+    const { data } = await supabase.from("vehicles").upsert(row).select();
+    if (data) {
+      if (form.id) setVehicles(vehicles.map((v: any) => v.id === form.id ? data[0] : v));
+      else setVehicles([data[0], ...vehicles]);
+    }
+    setModal(false);
+  };
+
+  return (
+    <Section title="Base de Veículos" action={<button className="btn-primary" onClick={() => open()}>+ Novo</button>}>
+      <div className="card" style={{ padding: 0 }}><div className="table-wrap">
+        <div className="table-header" style={{ gridTemplateColumns: "1.8fr 1.5fr 1fr 50px" }}><span>Veículo</span><span>Cliente</span><span>Telefone</span><span></span></div>
+        {vehicles.map((v: any) => (
+          <div key={v.id} className="table-row" style={{ gridTemplateColumns: "1.8fr 1.5fr 1fr 50px" }}>
+            <div><button onClick={() => setHist(v)} className="btn-history">📜 Histórico</button><br /><strong>{v.brand} {v.model}</strong><br /><span style={{ color: "#f97316", fontSize: 10 }}>{v.plate} · {v.year}</span></div>
+            <div style={{ fontSize: 11 }}>{v.owner}</div>
+            <div style={{ fontSize: 11 }}>{v.phone}</div>
+            <button onClick={() => open(v)} className="btn-ghost" style={{ padding: 5 }}>✏️</button>
+          </div>
+        ))}
+      </div></div>
+      {modal && <div className="modal-bg" onClick={() => setModal(false)}><div className="modal" onClick={e => e.stopPropagation()}>
+        <h3>Veículo</h3>
+        <Field label="Placa" value={form.plate} onChange={(v: any) => setForm({ ...form, plate: v.toUpperCase() })} />
+        <BrandSelector value={form.brand} onChange={(v: any) => setForm({ ...form, brand: v })} />
+        <Field label="Modelo" value={form.model} onChange={(v: any) => setForm({ ...form, model: v })} />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <Field label="Ano" value={form.year} onChange={(v: any) => setForm({ ...form, year: v })} />
+          <Field label="KM Inicial" type="number" value={form.mileage} onChange={(v: any) => setForm({ ...form, mileage: v })} />
+        </div>
+        <Field label="Dono" value={form.owner} onChange={(v: any) => setForm({ ...form, owner: v })} />
+        <button className="btn-primary" style={{ width: "100%", marginTop: 10 }} onClick={save}>Salvar</button>
+      </div></div>}
+      {hist && <div className="modal-bg" onClick={() => setHist(null)}><div className="modal" onClick={e => e.stopPropagation()}>
+        <h3>📜 Histórico: {hist.plate}</h3>
+        {services.filter((s: any) => s.vehicle_id === hist.id).map((s: any) => (
+          <div key={s.id} style={{ padding: 10, borderBottom: "1px solid #1e2736" }}>
+            <div style={{ fontSize: 12, fontWeight: 700 }}>{s.description}</div>
+            <div style={{ fontSize: 10, color: "#64748b" }}>KM: {fmtKm(s.mileage)} | Finalizado: {fmtDate(s.exit_date)}</div>
+          </div>
+        ))}
+        <button className="btn-ghost" style={{ width: "100%", marginTop: 15 }} onClick={() => setHist(null)}>Fechar</button>
+      </div></div>}
+    </Section>
+  );
+}
+
+// ── Outros Helper Components ──────────────────────────────────────────────
+function Section({ title, action, children }: any) { return (<div style={{ display: "flex", flexDirection: "column", gap: 12 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><h1 style={{ fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 800 }}>{title}</h1>{action}</div>{children}</div>); }
+function StatusBadge({ status, map }: any) { const color = (map || {})[status] || "#6b7280"; return <span className="badge" style={{ background: color + "22", color, border: `1px solid ${color}44` }}>{status || "—"}</span>; }
+function Field({ label, value, onChange, type = "text" }: any) { return <div style={{ marginBottom: 10 }}><label className="label">{label}</label><input className="input" type={type} value={value || ""} onChange={e => onChange(e.target.value)} /></div>; }
+function SelectField({ label, value, onChange, options }: any) { return <div style={{ marginBottom: 10 }}><label className="label">{label}</label><select className="input" value={value} onChange={e => onChange(e.target.value)}>{options.map((o: any) => <option key={o} value={o}>{o}</option>)}</select></div>; }
+
+function ReportModal({ services, onClose, onGenerate }: any) {
+  const [dateFrom, setDateFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10));
+  const [dateTo, setDateTo] = useState(today());
+  return (
+    <div className="modal-bg" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><h3>📄 Relatório</h3>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 15 }}>
+        <div><label className="label">De</label><input className="input" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} /></div>
+        <div><label className="label">Até</label><input className="input" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} /></div>
+      </div>
+      <button className="btn-primary" style={{ width: "100%" }} onClick={() => onGenerate(dateFrom, dateTo)}>Gerar PDF</button>
+    </div></div>
+  );
+}
