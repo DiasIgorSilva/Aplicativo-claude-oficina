@@ -57,7 +57,7 @@ function VehicleSelector({ vehicles, value, onChange }: any) {
   return (
     <div ref={ref} style={{ position: "relative", marginBottom: 15 }}>
       <label className="label">Carro *</label>
-      <input className="input" placeholder="Busque pela placa ou modelo..." value={open ? query : displayValue} onFocus={() => { setOpen(true); setQuery(""); }} onChange={e => setQuery(e.target.value)} autoComplete="off" />
+      <input className="input" placeholder="Busque placa ou modelo..." value={open ? query : displayValue} onFocus={() => { setOpen(true); setQuery(""); }} onChange={e => setQuery(e.target.value)} autoComplete="off" />
       {open && (
         <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 250, background: "#1a2030", border: "1px solid #f97316", borderRadius: 8, maxHeight: 200, overflowY: "auto", marginTop: 4, boxShadow: "0 8px 24px rgba(0,0,0,.8)" }}>
           {filtered.map((v: any) => (
@@ -72,12 +72,33 @@ function VehicleSelector({ vehicles, value, onChange }: any) {
   );
 }
 
-// ── Gerador de PDF ────────────────────────────────────────────────────────
+// ── Gerador de PDF (v1.2.4 com Botão de Ação) ─────────────────────────────
 function generatePDF(vehicles: any, services: any, dateFrom: any, dateTo: any) {
   const fS = services.filter((s: any) => s.status === "Entregue" && s.exit_date && s.exit_date >= dateFrom && s.exit_date <= dateTo);
   const tP = fS.reduce((s: any, sv: any) => s + (Number(sv.parts_value) || 0), 0);
   const tL = fS.reduce((s: any, sv: any) => s + (Number(sv.labor_value) || 0), 0);
-  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Relatório Financeiro</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:12px;color:#1e293b;padding:40px;}.hdr{display:flex;justify-content:space-between;margin-bottom:30px;border-bottom:3px solid #f97316;padding-bottom:15px;}.resumo{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:30px;}.card-res{border:1px solid #e2e8f0;padding:15px;border-radius:8px;}table{width:100%;border-collapse:collapse;}th{background:#f8fafc;padding:10px;text-align:left;border-bottom:2px solid #e2e8f0;font-size:10px;text-transform:uppercase;}td{padding:10px;border-bottom:1px solid #f1f5f9;}</style></head><body><div class="hdr"><div><strong style="font-size:22px;">AutoGestão</strong><br/>Relatório Financeiro</div><div style="text-align:right">Período: ${fmtDate(dateFrom)} a ${fmtDate(dateTo)}</div></div><div class="resumo"><div class="card-res">Peças:<br/><strong>${fmt(tP)}</strong></div><div class="card-res">Mão de Obra:<br/><strong>${fmt(tL)}</strong></div><div class="card-res" style="border-color:#f97316">Total:<br/><strong>${fmt(tP+tL)}</strong></div></div><table><thead><tr><th>Entrega</th><th>Veículo</th><th>KM</th><th>Descrição</th><th>Total</th></tr></thead><tbody>${fS.map((s: any) => `<tr><td>${fmtDate(s.exit_date)}</td><td><strong>${s.vehicle_plate}</strong><br/>${s.vehicle_brand}</td><td>${fmtKm(s.mileage)}</td><td>${s.description}</td><td><strong>${fmt((Number(s.labor_value)||0)+(Number(s.parts_value)||0))}</strong></td></tr>`).join('')}</tbody></table></body></html>`;
+  
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Relatório Oficina</title><style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:Arial,sans-serif;font-size:12px;color:#1e293b;padding:40px;background:#fff;}
+    .hdr{display:flex;justify-content:space-between;margin-bottom:30px;border-bottom:3px solid #f97316;padding-bottom:15px;}
+    .resumo{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:30px;}
+    .card-res{border:1px solid #e2e8f0;padding:15px;border-radius:8px;}
+    table{width:100%;border-collapse:collapse;}
+    th{background:#f8fafc;padding:10px;text-align:left;border-bottom:2px solid #e2e8f0;font-size:10px;text-transform:uppercase;}
+    td{padding:10px;border-bottom:1px solid #f1f5f9;}
+    .no-print{background:#f97316;color:white;padding:15px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:8px;border:none;width:100%;font-size:16px;}
+    @media print{.no-print{display:none;}body{padding:0;}}
+  </style></head><body>
+    <button class="no-print" onclick="window.print()">CLIQUE AQUI PARA SALVAR COMO PDF / IMPRIMIR</button>
+    <div class="hdr"><div><strong style="font-size:22px;">AutoGestão</strong><br/>Relatório Financeiro</div><div style="text-align:right">Período: ${fmtDate(dateFrom)} a ${fmtDate(dateTo)}</div></div>
+    <div class="resumo"><div class="card-res">Peças:<br/><strong>${fmt(tP)}</strong></div><div class="card-res">Mão de Obra:<br/><strong>${fmt(tL)}</strong></div><div class="card-res" style="border-color:#f97316">Total Real:<br/><strong>${fmt(tP+tL)}</strong></div></div>
+    <table><thead><tr><th>Entrega</th><th>Veículo</th><th>KM</th><th>Descrição</th><th>Total</th></tr></thead><tbody>
+    ${fS.map((s: any) => `<tr><td>${fmtDate(s.exit_date)}</td><td><strong>${s.vehicle_plate}</strong><br/>${s.vehicle_brand}</td><td>${fmtKm(s.mileage)}</td><td>${s.description}</td><td><strong>${fmt((Number(s.labor_value)||0)+(Number(s.parts_value)||0))}</strong></td></tr>`).join('')}
+    </tbody></table>
+    <script>window.onload=()=>setTimeout(()=>window.print(), 500);</script>
+  </body></html>`;
+
   const blob = new Blob([html], { type: "text/html" });
   window.open(URL.createObjectURL(blob), "_blank");
 }
@@ -115,6 +136,7 @@ export default function App() {
         .card{background:#161b26;border:1px solid #1e2736;border-radius:12px;padding:16px;width:100%;}
         .btn-primary{background:#f97316;color:#0d0f14;border:none;border-radius:8px;padding:10px 18px;font-weight:800;cursor:pointer;font-size:13px;}
         .btn-ghost{background:transparent;color:#94a3b8;border:1px solid #1e2736;border-radius:8px;padding:8px 12px;cursor:pointer;}
+        .btn-history{background:rgba(59,130,246,0.1);color:#3b82f6;border:1px solid #3b82f6;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer;margin-bottom:6px;display:inline-block;}
         .input{background:#0d0f14;border:1px solid #1e2736;border-radius:8px;padding:10px 12px;color:#e2e8f0;width:100%;font-family:inherit;font-size:13px;}
         .label{display:block;font-size:11px;color:#64748b;margin-bottom:5px;text-transform:uppercase;}
         .badge{display:inline-block;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:600;}
@@ -164,7 +186,7 @@ export default function App() {
   );
 }
 
-// ── Aba Início (Dashboard) ────────────────────────────────────────────────
+// ── Dashboard ─────────────────────────────────────────────────────────────
 function Dashboard({ services }: any) {
   const [selMonth, setSelMonth] = useState(new Date().getMonth());
   const [selYear, setSelYear] = useState(new Date().getFullYear());
@@ -206,20 +228,11 @@ function Dashboard({ services }: any) {
           </div>
         ))}
       </div>
-      <div className="card">
-        <h3 style={{ fontSize: 13, marginBottom: 12, color: "#10b981" }}>✅ Faturados em {MONTHS[selMonth]}</h3>
-        {filtered.map((s: any) => (
-          <div key={s.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #1e2736" }}>
-            <div style={{ fontSize: 12 }}><strong>{s.vehicle_plate}</strong><br /><span style={{ color: "#64748b", fontSize: 10 }}>{fmtDate(s.exit_date)}</span></div>
-            <div style={{ fontSize: 12, fontWeight: 800, color: "#10b981" }}>{fmt((Number(s.parts_value) || 0) + (Number(s.labor_value) || 0))}</div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
 
-// ── Aba Oficina (Serviços) ────────────────────────────────────────────────
+// ── Oficina ───────────────────────────────────────────────────────────────
 function Services({ services, setServices, vehicles }: any) {
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -228,16 +241,8 @@ function Services({ services, setServices, vehicles }: any) {
 
   const open = (s = null) => { setEditing(s); setForm(s || { status: "Aguardando", entry_date: today(), parts_value: 0, labor_value: 0 }); setModal(true); };
   const save = async () => {
-    if (!form.vehicle_id || !form.description) return alert("Selecione o carro e preencha a descrição.");
     const v = vehicles.find((v: any) => v.id === form.vehicle_id);
-    const row = { 
-      ...form, 
-      id: editing?.id || uid(), 
-      vehicle_plate: v?.plate, 
-      vehicle_brand: v?.brand, 
-      vehicle_model: v?.model,
-      exit_date: form.status === "Entregue" ? (form.exit_date || today()) : null 
-    };
+    const row = { ...form, id: editing?.id || uid(), vehicle_plate: v?.plate, vehicle_brand: v?.brand, vehicle_model: v?.model, exit_date: form.status === "Entregue" ? (form.exit_date || today()) : null };
     const { data } = await supabase.from("services").upsert(row).select();
     if (data) {
       if (editing) setServices(services.map((s: any) => s.id === editing.id ? data[0] : s));
@@ -274,14 +279,12 @@ function Services({ services, setServices, vehicles }: any) {
           <Field label="Peças (R$)" type="number" value={form.parts_value} onChange={(v: any) => setForm({ ...form, parts_value: v })} />
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <Field label="Mão de Obra (R$)" type="number" value={form.labor_value} onChange={(v: any) => setForm({ ...form, labor_value: v })} />
+          <Field label="Mão de Obra" type="number" value={form.labor_value} onChange={(v: any) => setForm({ ...form, labor_value: v })} />
           <SelectField label="Status" value={form.status} onChange={(v: any) => setForm({ ...form, status: v })} options={Object.keys(STATUS_COLORS)} />
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <Field label="Data de Entrada" type="date" value={form.entry_date} onChange={(v: any) => setForm({ ...form, entry_date: v })} />
-          {form.status === "Entregue" && (
-            <Field label="Data de Entrega" type="date" value={form.exit_date || today()} onChange={(v: any) => setForm({ ...form, exit_date: v })} />
-          )}
+          <Field label="Entrada" type="date" value={form.entry_date} onChange={(v: any) => setForm({ ...form, entry_date: v })} />
+          {form.status === "Entregue" && <Field label="Entrega" type="date" value={form.exit_date || today()} onChange={(v: any) => setForm({ ...form, exit_date: v })} />}
         </div>
         <button className="btn-primary" style={{ width: "100%", marginTop: 10 }} onClick={save}>Salvar</button>
       </div></div>}
@@ -289,7 +292,7 @@ function Services({ services, setServices, vehicles }: any) {
   );
 }
 
-// ── Aba Veículos ──────────────────────────────────────────────────────────
+// ── Veículos ──────────────────────────────────────────────────────────────
 function Vehicles({ vehicles, setVehicles, services }: any) {
   const [modal, setModal] = useState(false);
   const [hist, setHist] = useState<any>(null);
@@ -304,7 +307,6 @@ function Vehicles({ vehicles, setVehicles, services }: any) {
     }
     setModal(false);
   };
-
   return (
     <Section title="Base de Veículos" action={<button className="btn-primary" onClick={() => open()}>+ Novo</button>}>
       <div className="card" style={{ padding: 0 }}><div className="table-wrap">
@@ -333,12 +335,12 @@ function Vehicles({ vehicles, setVehicles, services }: any) {
       </div></div>}
       {hist && <div className="modal-bg" onClick={() => setHist(null)}><div className="modal" onClick={e => e.stopPropagation()}>
         <h3>📜 Histórico: {hist.plate}</h3>
-        <div style={{maxHeight: '300px', overflowY: 'auto'}}>
+        <div style={{maxHeight: '320px', overflowY: 'auto'}}>
           {services.filter((s: any) => s.vehicle_id === hist.id).map((s: any) => (
-            <div key={s.id} style={{ padding: 10, borderBottom: "1px solid #1e2736" }}>
+            <div key={s.id} style={{ padding: 12, background: "#0d0f14", borderRadius: 8, marginBottom: 10, borderLeft: "3px solid #10b981" }}>
               <div style={{ fontSize: 12, fontWeight: 700 }}>{s.description}</div>
               <div style={{ fontSize: 10, color: "#64748b" }}>KM: {fmtKm(s.mileage)} | Finalizado: {fmtDate(s.exit_date)}</div>
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#10b981" }}>Total: {fmt((Number(s.parts_value)||0)+(Number(s.labor_value)||0))}</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#f97316", marginTop: 5 }}>Total: {fmt((Number(s.parts_value)||0)+(Number(s.labor_value)||0))}</div>
             </div>
           ))}
         </div>
@@ -348,7 +350,7 @@ function Vehicles({ vehicles, setVehicles, services }: any) {
   );
 }
 
-// ── Outros Helper Components ──────────────────────────────────────────────
+// ── Outros Componentes ────────────────────────────────────────────────────
 function Section({ title, action, children }: any) { return (<div style={{ display: "flex", flexDirection: "column", gap: 12 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><h1 style={{ fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 800 }}>{title}</h1>{action}</div>{children}</div>); }
 function StatusBadge({ status, map }: any) { const color = (map || {})[status] || "#6b7280"; return <span className="badge" style={{ background: color + "22", color, border: `1px solid ${color}44` }}>{status || "—"}</span>; }
 function Field({ label, value, onChange, type = "text" }: any) { return <div style={{ marginBottom: 10 }}><label className="label">{label}</label><input className="input" type={type} value={value || ""} onChange={e => onChange(e.target.value)} /></div>; }
@@ -358,7 +360,7 @@ function ReportModal({ services, onClose, onGenerate }: any) {
   const [dateFrom, setDateFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10));
   const [dateTo, setDateTo] = useState(today());
   return (
-    <div className="modal-bg" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><h3>📄 Relatório de Caixa</h3>
+    <div className="modal-bg" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><h3>📄 Relatório</h3>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 15 }}>
         <div><label className="label">De</label><input className="input" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} /></div>
         <div><label className="label">Até</label><input className="input" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} /></div>
