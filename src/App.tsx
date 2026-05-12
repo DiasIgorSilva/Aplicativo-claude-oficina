@@ -17,7 +17,7 @@ const STATUS_COLORS: any = { "Aguardando": "#f59e0b", "Em andamento": "#3b82f6",
 const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 const CAR_BRANDS = ["Audi", "BMW", "BYD", "Chevrolet", "Citroën", "Ferrari", "Fiat", "Ford", "GWM", "Honda", "Hyundai", "JAC", "Jaguar", "Jeep", "Kia", "Land Rover", "Mercedes-Benz", "Mitsubishi", "Nissan", "Peugeot", "Porsche", "RAM", "Renault", "Toyota", "Volkswagen", "Volvo"].sort();
 
-// ── Componentes de Seleção Inteligente ─────────────────────────────────────
+// ── Componentes de Seleção ────────────────────────────────────────────────
 function BrandSelector({ value, onChange }: any) {
   const [query, setQuery] = useState(value || "");
   const [open, setOpen] = useState(false);
@@ -72,6 +72,16 @@ function VehicleSelector({ vehicles, value, onChange }: any) {
   );
 }
 
+// ── Gerador de PDF ────────────────────────────────────────────────────────
+function generatePDF(vehicles: any, services: any, dateFrom: any, dateTo: any) {
+  const fS = services.filter((s: any) => s.status === "Entregue" && s.exit_date && s.exit_date >= dateFrom && s.exit_date <= dateTo);
+  const tP = fS.reduce((s: any, sv: any) => s + (Number(sv.parts_value) || 0), 0);
+  const tL = fS.reduce((s: any, sv: any) => s + (Number(sv.labor_value) || 0), 0);
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Relatório Financeiro</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:12px;color:#1e293b;padding:40px;}.hdr{display:flex;justify-content:space-between;margin-bottom:30px;border-bottom:3px solid #f97316;padding-bottom:15px;}.resumo{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:30px;}.card-res{border:1px solid #e2e8f0;padding:15px;border-radius:8px;}table{width:100%;border-collapse:collapse;}th{background:#f8fafc;padding:10px;text-align:left;border-bottom:2px solid #e2e8f0;font-size:10px;text-transform:uppercase;}td{padding:10px;border-bottom:1px solid #f1f5f9;}</style></head><body><div class="hdr"><div><strong style="font-size:22px;">AutoGestão</strong><br/>Relatório Financeiro</div><div style="text-align:right">Período: ${fmtDate(dateFrom)} a ${fmtDate(dateTo)}</div></div><div class="resumo"><div class="card-res">Peças:<br/><strong>${fmt(tP)}</strong></div><div class="card-res">Mão de Obra:<br/><strong>${fmt(tL)}</strong></div><div class="card-res" style="border-color:#f97316">Total:<br/><strong>${fmt(tP+tL)}</strong></div></div><table><thead><tr><th>Entrega</th><th>Veículo</th><th>KM</th><th>Descrição</th><th>Total</th></tr></thead><tbody>${fS.map((s: any) => `<tr><td>${fmtDate(s.exit_date)}</td><td><strong>${s.vehicle_plate}</strong><br/>${s.vehicle_brand}</td><td>${fmtKm(s.mileage)}</td><td>${s.description}</td><td><strong>${fmt((Number(s.labor_value)||0)+(Number(s.parts_value)||0))}</strong></td></tr>`).join('')}</tbody></table></body></html>`;
+  const blob = new Blob([html], { type: "text/html" });
+  window.open(URL.createObjectURL(blob), "_blank");
+}
+
 // ── App Principal ─────────────────────────────────────────────────────────
 export default function App() {
   const [tab, setTab] = useState("dashboard");
@@ -87,7 +97,7 @@ export default function App() {
         supabase.from("vehicles").select("*").order("created_at", { ascending: false }),
         supabase.from("services").select("*").order("created_at", { ascending: false }),
       ]);
-      if (v.data) setVehicles(v.data.map((r: any) => ({ ...r, mileage: r.mileage || 0 })));
+      if (v.data) setVehicles(v.data);
       if (s.data) setServices(s.data);
       setLoading(false);
     }
@@ -126,11 +136,11 @@ export default function App() {
           <div style={{ width: 32, height: 32, background: "#f97316", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🔩</div>
           <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 800 }}>AutoGestão</div>
         </div>
-        <button className="btn-primary" style={{ background: "#7c3aed", color: "#fff", fontSize: 11 }} onClick={() => setShowReport(true)}>📄 PDF</button>
+        <button className="btn-primary" onClick={() => setShowReport(true)}>📄 PDF</button>
       </header>
 
       <main style={{ flex: 1, padding: "16px", width: "100%", maxWidth: 1200, margin: "0 auto" }}>
-        {loading ? <div style={{ textAlign: "center", padding: 100 }}>Sincronizando...</div> : (
+        {loading ? <div style={{ textAlign: "center", padding: 100 }}>Carregando...</div> : (
           <>
             {tab === "dashboard" && <Dashboard services={services} />}
             {tab === "services" && <Services services={services} setServices={setServices} vehicles={vehicles} />}
@@ -154,8 +164,7 @@ export default function App() {
   );
 }
 
-// ── Componentes das Abas ───────────────────────────────────────────────────
-
+// ── Aba Início (Dashboard) ────────────────────────────────────────────────
 function Dashboard({ services }: any) {
   const [selMonth, setSelMonth] = useState(new Date().getMonth());
   const [selYear, setSelYear] = useState(new Date().getFullYear());
@@ -210,16 +219,25 @@ function Dashboard({ services }: any) {
   );
 }
 
+// ── Aba Oficina (Serviços) ────────────────────────────────────────────────
 function Services({ services, setServices, vehicles }: any) {
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
   const [filter, setFilter] = useState("");
 
-  const open = (s = null) => { setEditing(s); setForm(s || { status: "Aguardando", entry_date: today() }); setModal(true); };
+  const open = (s = null) => { setEditing(s); setForm(s || { status: "Aguardando", entry_date: today(), parts_value: 0, labor_value: 0 }); setModal(true); };
   const save = async () => {
+    if (!form.vehicle_id || !form.description) return alert("Selecione o carro e preencha a descrição.");
     const v = vehicles.find((v: any) => v.id === form.vehicle_id);
-    const row = { ...form, id: editing?.id || uid(), vehicle_plate: v?.plate, vehicle_brand: v?.brand, exit_date: form.status === "Entregue" ? (form.exit_date || today()) : null };
+    const row = { 
+      ...form, 
+      id: editing?.id || uid(), 
+      vehicle_plate: v?.plate, 
+      vehicle_brand: v?.brand, 
+      vehicle_model: v?.model,
+      exit_date: form.status === "Entregue" ? (form.exit_date || today()) : null 
+    };
     const { data } = await supabase.from("services").upsert(row).select();
     if (data) {
       if (editing) setServices(services.map((s: any) => s.id === editing.id ? data[0] : s));
@@ -253,11 +271,17 @@ function Services({ services, setServices, vehicles }: any) {
         <Field label="Descrição" value={form.description} onChange={(v: any) => setForm({ ...form, description: v })} />
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <Field label="KM Atual" type="number" value={form.mileage} onChange={(v: any) => setForm({ ...form, mileage: v })} />
-          <Field label="Mão de Obra" type="number" value={form.labor_value} onChange={(v: any) => setForm({ ...form, labor_value: v })} />
+          <Field label="Peças (R$)" type="number" value={form.parts_value} onChange={(v: any) => setForm({ ...form, parts_value: v })} />
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <Field label="Entrada" type="date" value={form.entry_date} onChange={(v: any) => setForm({ ...form, entry_date: v })} />
+          <Field label="Mão de Obra (R$)" type="number" value={form.labor_value} onChange={(v: any) => setForm({ ...form, labor_value: v })} />
           <SelectField label="Status" value={form.status} onChange={(v: any) => setForm({ ...form, status: v })} options={Object.keys(STATUS_COLORS)} />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <Field label="Data de Entrada" type="date" value={form.entry_date} onChange={(v: any) => setForm({ ...form, entry_date: v })} />
+          {form.status === "Entregue" && (
+            <Field label="Data de Entrega" type="date" value={form.exit_date || today()} onChange={(v: any) => setForm({ ...form, exit_date: v })} />
+          )}
         </div>
         <button className="btn-primary" style={{ width: "100%", marginTop: 10 }} onClick={save}>Salvar</button>
       </div></div>}
@@ -265,11 +289,11 @@ function Services({ services, setServices, vehicles }: any) {
   );
 }
 
+// ── Aba Veículos ──────────────────────────────────────────────────────────
 function Vehicles({ vehicles, setVehicles, services }: any) {
   const [modal, setModal] = useState(false);
   const [hist, setHist] = useState<any>(null);
   const [form, setForm] = useState<any>({});
-
   const open = (v = null) => { setForm(v || {}); setModal(true); };
   const save = async () => {
     const row = { ...form, id: form.id || uid() };
@@ -304,16 +328,20 @@ function Vehicles({ vehicles, setVehicles, services }: any) {
           <Field label="KM Inicial" type="number" value={form.mileage} onChange={(v: any) => setForm({ ...form, mileage: v })} />
         </div>
         <Field label="Dono" value={form.owner} onChange={(v: any) => setForm({ ...form, owner: v })} />
+        <Field label="Telefone" value={form.phone} onChange={(v: any) => setForm({ ...form, phone: v })} />
         <button className="btn-primary" style={{ width: "100%", marginTop: 10 }} onClick={save}>Salvar</button>
       </div></div>}
       {hist && <div className="modal-bg" onClick={() => setHist(null)}><div className="modal" onClick={e => e.stopPropagation()}>
         <h3>📜 Histórico: {hist.plate}</h3>
-        {services.filter((s: any) => s.vehicle_id === hist.id).map((s: any) => (
-          <div key={s.id} style={{ padding: 10, borderBottom: "1px solid #1e2736" }}>
-            <div style={{ fontSize: 12, fontWeight: 700 }}>{s.description}</div>
-            <div style={{ fontSize: 10, color: "#64748b" }}>KM: {fmtKm(s.mileage)} | Finalizado: {fmtDate(s.exit_date)}</div>
-          </div>
-        ))}
+        <div style={{maxHeight: '300px', overflowY: 'auto'}}>
+          {services.filter((s: any) => s.vehicle_id === hist.id).map((s: any) => (
+            <div key={s.id} style={{ padding: 10, borderBottom: "1px solid #1e2736" }}>
+              <div style={{ fontSize: 12, fontWeight: 700 }}>{s.description}</div>
+              <div style={{ fontSize: 10, color: "#64748b" }}>KM: {fmtKm(s.mileage)} | Finalizado: {fmtDate(s.exit_date)}</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#10b981" }}>Total: {fmt((Number(s.parts_value)||0)+(Number(s.labor_value)||0))}</div>
+            </div>
+          ))}
+        </div>
         <button className="btn-ghost" style={{ width: "100%", marginTop: 15 }} onClick={() => setHist(null)}>Fechar</button>
       </div></div>}
     </Section>
@@ -330,7 +358,7 @@ function ReportModal({ services, onClose, onGenerate }: any) {
   const [dateFrom, setDateFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10));
   const [dateTo, setDateTo] = useState(today());
   return (
-    <div className="modal-bg" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><h3>📄 Relatório</h3>
+    <div className="modal-bg" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><h3>📄 Relatório de Caixa</h3>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 15 }}>
         <div><label className="label">De</label><input className="input" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} /></div>
         <div><label className="label">Até</label><input className="input" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} /></div>
