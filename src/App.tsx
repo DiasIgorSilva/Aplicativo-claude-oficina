@@ -24,7 +24,7 @@ const STATUS_COLORS: any = { "Aguardando": "#f59e0b", "Em andamento": "#3b82f6",
 const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 const CAR_BRANDS = ["Audi", "BMW", "BYD", "Chevrolet", "Citroën", "Ferrari", "Fiat", "Ford", "GWM", "Honda", "Hyundai", "JAC", "Jaguar", "Jeep", "Kia", "Land Rover", "Mercedes-Benz", "Mitsubishi", "Nissan", "Peugeot", "Porsche", "RAM", "Renault", "Toyota", "Volkswagen", "Volvo"].sort();
 
-// ── MAPEADORES SALVA-VIDAS (RESTAURA O HISTÓRICO ANTIGO) ──────────────────
+// ── MAPEADORES SALVA-VIDAS ────────────────────────────────────────────────
 const mapV = (r: any) => ({
   id: r.id, plate: r.plate, brand: r.brand, model: r.model, year: r.year, 
   color: r.color, owner: r.owner, phone: r.phone, notes: r.notes, 
@@ -34,7 +34,6 @@ const mapV = (r: any) => ({
 const mapS = (r: any) => {
   const parts = Number(r.parts_value) || 0;
   const labor = Number(r.labor_value) || 0;
-  // Se for serviço antigo (sem net_value), soma peças e MO para não zerar o caixa!
   const net = r.net_value != null ? Number(r.net_value) : (parts + labor);
 
   return {
@@ -109,7 +108,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [showReport, setShowReport] = useState(false);
 
-  // A FUNÇÃO QUE GARANTE DADOS SEMPRE ATUALIZADOS
   async function loadAll() {
     setLoading(true);
     const vRes = await supabase.from("vehicles").select("*").order("created_at", { ascending: false });
@@ -153,8 +151,6 @@ export default function App() {
         .nav-item.active{color:#f97316;}
         .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;}
         .modal{background:#161b26;border:1px solid #1e2736;border-radius:16px;padding:24px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;}
-        
-        /* A TABELA VISUAL QUE VOCÊ GOSTA VOLTOU AQUI */
         .table-wrap{width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 10px;}
         .table-header, .table-row { min-width: 650px; display: grid; align-items: center; }
         .table-header{padding:10px 14px;font-size:10px;color:#475569;text-transform:uppercase;border-bottom:1px solid #1e2736;}
@@ -269,7 +265,7 @@ function Dashboard({ services }: any) {
   );
 }
 
-// ── ABA OFICINA (TABELA ORIGINAL RESTAURADA) ──────────────────────────────
+// ── ABA OFICINA ────────────────────────────────────────────────────────────
 function ServicesTab({ services, vehicles, loadAll }: any) {
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -283,7 +279,6 @@ function ServicesTab({ services, vehicles, loadAll }: any) {
     if (!form.vehicleId || !form.description) return alert("Selecione o carro e descreva o serviço.");
     const v = vehicles.find((v: any) => v.id === form.vehicleId);
     
-    // Calcula o líquido
     const bruto = (Number(form.partsValue) || 0) + (Number(form.laborValue) || 0);
     const taxa = PAYMENT_METHODS[form.paymentMethod] || 0;
     const liquido = bruto - (bruto * (taxa / 100));
@@ -360,7 +355,7 @@ function ServicesTab({ services, vehicles, loadAll }: any) {
   )
 }
 
-// ── ABA FINANCEIRO (COM A CORREÇÃO DE SALVAMENTO) ─────────────────────────
+// ── ABA FINANCEIRO (ADICIONADA EDIÇÃO DE DESPESA AQUI) ─────────────────────
 function FinanceTab({ services, expenses, loadAll }: any) {
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState<any>({ expense_date: today() });
@@ -375,8 +370,8 @@ function FinanceTab({ services, expenses, loadAll }: any) {
 
   const saveExp = async () => {
     if (!form.category || !form.value) return alert("Preencha categoria e valor.");
-    const row = { id: uid(), category: form.category, value: Number(form.value), supplier: form.supplier || "Geral", expense_date: form.expense_date || today() };
-    const { error } = await supabase.from("expenses").insert(row);
+    const row = { id: form.id || uid(), category: form.category, value: Number(form.value), supplier: form.supplier || "Geral", expense_date: form.expense_date || today() };
+    const { error } = await supabase.from("expenses").upsert(row);
     if (!error) { await loadAll(); setModal(false); setForm({ expense_date: today() }); } else { alert("Erro ao salvar: " + error.message); }
   };
 
@@ -399,20 +394,23 @@ function FinanceTab({ services, expenses, loadAll }: any) {
         <div className="card" style={{ borderLeft: "3px solid #3b82f6", gridColumn: "1 / -1" }}><label className="label">Margem de Lucro</label><div style={{ fontSize: 20, fontWeight: 800, color: (totalIn - totalOut) >= 0 ? "#10b981" : "#ef4444" }}>{fmt(totalIn - totalOut)}</div></div>
       </div>
 
-      <button className="btn-primary" onClick={() => setModal(true)}>+ Lançar Despesa Mensal</button>
+      <button className="btn-primary" onClick={() => { setForm({ expense_date: today() }); setModal(true); }}>+ Lançar Despesa Mensal</button>
 
       <div className="card">
         <h3 style={{ fontSize: 13, marginBottom: 12 }}>Relatório de Gastos</h3>
         {filteredExp.length === 0 ? <p style={{fontSize:11, color:"#64748b"}}>Nenhuma despesa lançada neste mês.</p> : filteredExp.map((e: any) => (
-          <div key={e.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #1e2736" }}>
+          <div key={e.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #1e2736", alignItems: "center" }}>
             <div style={{ fontSize: 11 }}><strong>{e.category}</strong><br /><span style={{ color: "#64748b" }}>{e.supplier} - {fmtDate(e.expense_date)}</span></div>
-            <div style={{ fontSize: 12, fontWeight: 800, color: "#ef4444" }}>-{fmt(e.value)}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: "#ef4444" }}>-{fmt(e.value)}</div>
+              <button onClick={() => { setForm({ id: e.id, category: e.category, value: e.value, supplier: e.supplier, expense_date: e.expense_date }); setModal(true); }} className="btn-ghost" style={{ padding: "4px 8px", fontSize: 11 }}>✏️</button>
+            </div>
           </div>
         ))}
       </div>
 
-      {modal && <div className="modal-bg" onClick={() => setModal(false)}><div className="modal" onClick={e => e.stopPropagation()}>
-        <h3>Nova Despesa</h3>
+      {modal && <div className="modal-bg" onClick={() => { setModal(false); setForm({ expense_date: today() }); }}><div className="modal" onClick={e => e.stopPropagation()}>
+        <h3>{form.id ? "Editar Gasto" : "Nova Despesa"}</h3>
         <Field label="Categoria (Ex: Luz, Aluguel, Peças)" value={form.category} onChange={(v: any) => setForm({ ...form, category: v })} />
         <Field label="Valor (R$)" type="number" value={form.value} onChange={(v: any) => setForm({ ...form, value: v })} />
         <Field label="Fornecedor / Observação" value={form.supplier} onChange={(v: any) => setForm({ ...form, supplier: v })} />
@@ -423,7 +421,7 @@ function FinanceTab({ services, expenses, loadAll }: any) {
   );
 }
 
-// ── ABA BASE DE VEÍCULOS (TABELA ORIGINAL RESTAURADA) ─────────────────────
+// ── ABA BASE DE VEÍCULOS ──────────────────────────────────────────────────
 function VehiclesTab({ vehicles, services, loadAll }: any) {
   const [modal, setModal] = useState(false);
   const [historyModal, setHistoryModal] = useState(false);
@@ -515,7 +513,7 @@ function generatePDF(vehicles: any, services: any, dateFrom: any, dateTo: any) {
   const fS = services.filter((s: any) => s.status === "Entregue" && s.exitDate && s.exitDate >= dateFrom && s.exitDate <= dateTo);
   const tP = fS.reduce((s: any, sv: any) => s + (Number(sv.partsValue) || 0), 0);
   const tL = fS.reduce((s: any, sv: any) => s + (Number(sv.laborValue) || 0), 0);
-  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Relatório Financeiro</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:12px;color:#1e293b;padding:40px;}.hdr{display:flex;justify-content:space-between;margin-bottom:30px;border-bottom:3px solid #f97316;padding-bottom:15px;}.resumo{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:30px;}.card-res{border:1px solid #e2e8f0;padding:15px;border-radius:8px;}table{width:100%;border-collapse:collapse;}th{background:#f8fafc;padding:10px;text-align:left;border-bottom:2px solid #e2e8f0;font-size:10px;text-transform:uppercase;}td{padding:10px;border-bottom:1px solid #f1f5f9;}.no-print{background:#f97316;color:white;padding:15px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:8px;border:none;width:100%;font-size:16px;}@media print{.no-print{display:none;}body{padding:0;}}</style></head><body><button class="no-print" onclick="window.print()">CLIQUE AQUI PARA SALVAR COMO PDF / IMPRIMIR</button><div class="hdr"><div><strong style="font-size:22px;">AutoGestão</strong><br/>Relatório Financeiro</div><div style="text-align:right">Período: ${fmtDate(dateFrom)} a ${fmtDate(dateTo)}</div></div><div class="resumo"><div class="card-res">Peças:<br/><strong>${fmt(tP)}</strong></div><div class="card-res">Mão de Obra:<br/><strong>${fmt(tL)}</strong></div><div class="card-res" style="border-color:#f97316">Total Bruto:<br/><strong>${fmt(tP+tL)}</strong></div></div><table><thead><tr><th>Entrega</th><th>Veículo</th><th>KM</th><th>Descrição</th><th>Total Bruto</th></tr></thead><tbody>${fS.map((s: any) => `<tr><td>${fmtDate(s.exitDate)}</td><td><strong>${s.vehiclePlate}</strong><br/>${s.vehicleBrand} ${s.vehicleModel}</td><td>${fmtKm(s.mileage)}</td><td>${s.description}</td><td><strong>${fmt((Number(s.laborValue)||0)+(Number(s.partsValue)||0))}</strong></td></tr>`).join('')}</tbody></table><script>window.onload=()=>setTimeout(()=>window.print(), 500);</script></body></html>`;
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Relatório Financeiro</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:12px;color:#1e293b;padding:40px;}.hdr{display:flex;justify-content:space-between;margin-bottom:30px;border-bottom:3px solid #f97316;padding-bottom:15px;}.resumo{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:30px;}.card-res{border:1px solid #e2e8f0;padding:15px;border-radius:8px;}table{width:100%;border-collapse:collapse;}th{background:#f8fafc;padding:10px;text-align:left;border-bottom:2px solid #e2e8f0;font-size:10px;text-transform:uppercase;}td{padding:10px;border-bottom:1px solid #f1f5f9;}.no-print{background:#f97316;color:white;padding:15px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:8px;border:none;width:100%;font-size:16px;}@media print{.no-print{display:none;}body{padding:0;}}</style></head><body><button class="no-print" onclick="window.print()">CLIQUE AQUI PARA SALVAR COMO PDF / IMPRIMIR</button><div class="hdr"><div><strong style="font-size:22px;">AutoGestão</strong><br/>Relatório Financeiro</div><div style="text-align:right">Período: ${fmtDate(dateFrom)} a ${fmtDate(dateTo)}</div></div><div class="resumo"><div class="card-res">Peças:<br/><strong>${fmt(tP)}</strong></div><div class="card-res">Mão de Obra:<br/><strong>${fmt(tL)}</strong></div><div class="card-res" style="border-color:#f97316">Total Bruto:<br/><strong>${fmt(tP+tL)}</strong></div></div><table><thead><tr><th>Entrega</th><th>Veículo</th><th>KM</th><th>Descrição</th><th>Total Bruto</th></tr></thead><tbody>${fS.map((s: any) => `<tr><td>${fmtDate(s.exitDate)}</td><td>export const sPlate = s.vehiclePlate;<strong>${s.vehiclePlate}</strong><br/>${s.vehicleBrand} ${s.vehicleModel}</td><td>${fmtKm(s.mileage)}</td><td>${s.description}</td><td><strong>${fmt((Number(s.laborValue)||0)+(Number(s.partsValue)||0))}</strong></td></tr>`).join('')}</tbody></table><script>window.onload=()=>setTimeout(()=>window.print(), 500);</script></body></html>`;
   const blob = new Blob([html], { type: "text/html" });
   window.open(URL.createObjectURL(blob), "_blank");
 }
