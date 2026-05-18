@@ -24,7 +24,7 @@ const STATUS_COLORS: any = { "Aguardando": "#f59e0b", "Em andamento": "#3b82f6",
 const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 const CAR_BRANDS = ["Audi", "BMW", "BYD", "Chevrolet", "Citroën", "Ferrari", "Fiat", "Ford", "GWM", "Honda", "Hyundai", "JAC", "Jaguar", "Jeep", "Kia", "Land Rover", "Mercedes-Benz", "Mitsubishi", "Nissan", "Peugeot", "Porsche", "RAM", "Renault", "Toyota", "Volkswagen", "Volvo"].sort();
 
-// ── MAPEADORES SALVA-VIDAS ────────────────────────────────────────────────
+// ── MAPEADORES DE DADOS ──────────────────────────────────────────────────
 const mapV = (r: any) => ({
   id: r.id, plate: r.plate, brand: r.brand, model: r.model, year: r.year, 
   color: r.color, owner: r.owner, phone: r.phone, notes: r.notes, 
@@ -46,7 +46,7 @@ const mapS = (r: any) => {
   };
 };
 
-// ── COMPONENTES DE BUSCA INTELIGENTE ──────────────────────────────────────
+// ── COMPONENTES DE BUSCA ──────────────────────────────────────────────────
 function BrandSelector({ value, onChange }: any) {
   const [query, setQuery] = useState(value || "");
   const [open, setOpen] = useState(false);
@@ -355,15 +355,27 @@ function ServicesTab({ services, vehicles, loadAll }: any) {
   )
 }
 
-// ── ABA FINANCEIRO (ADICIONADA EDIÇÃO DE DESPESA AQUI) ─────────────────────
+// ── ABA FINANCEIRO (SELETOR DE M.O. VS TOTAL ADICIONADO) ──────────────────
 function FinanceTab({ services, expenses, loadAll }: any) {
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState<any>({ expense_date: today() });
   const [selMonth, setSelMonth] = useState(new Date().getMonth());
   const [selYear, setSelYear] = useState(new Date().getFullYear());
+  const [viewMode, setViewMode] = useState("labor"); // 'labor' = apenas M.O, 'total' = faturamento bruto com peças
 
+  // Cálculo das entradas baseado no modelo selecionado
   const totalIn = services.filter((s:any) => s.status === "Entregue" && s.exitDate && new Date(s.exitDate + "T12:00:00").getMonth() === selMonth && new Date(s.exitDate + "T12:00:00").getFullYear() === selYear)
-    .reduce((acc:any, s:any) => acc + (s.netValue || 0), 0);
+    .reduce((acc:any, s:any) => {
+      const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
+      if (viewMode === "labor") {
+        // Calcula apenas o valor da Mão de Obra com o desconto proporcional da taxa do cartão
+        const laborLiquido = Number(s.laborValue || 0) * (1 - taxa / 100);
+        return acc + laborLiquido;
+      } else {
+        // Puxa o valor líquido total (Mão de Obra + Peças)
+        return acc + (s.netValue || 0);
+      }
+    }, 0);
 
   const filteredExp = expenses.filter((e:any) => e.expense_date && new Date(e.expense_date + "T12:00:00").getMonth() === selMonth && new Date(e.expense_date + "T12:00:00").getFullYear() === selYear);
   const totalOut = filteredExp.reduce((acc:any, e:any) => acc + Number(e.value || 0), 0);
@@ -377,21 +389,33 @@ function FinanceTab({ services, expenses, loadAll }: any) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div className="card" style={{ display: "flex", gap: 10, alignItems: "center", background: "#1a2030" }}>
-        <div style={{ flex: 1 }}>
-          <label className="label">Mês Financeiro</label>
-          <select className="input" value={selMonth} onChange={(e) => setSelMonth(Number(e.target.value))}>{MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}</select>
+      <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10, background: "#1a2030" }}>
+        <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ flex: 1 }}>
+            <label className="label">Mês Financeiro</label>
+            <select className="input" value={selMonth} onChange={(e) => setSelMonth(Number(e.target.value))}>{MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}</select>
+          </div>
+          <div style={{ width: 100 }}>
+            <label className="label">Ano</label>
+            <select className="input" value={selYear} onChange={(e) => setSelYear(Number(e.target.value))}>{[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}</select>
+          </div>
         </div>
-        <div style={{ width: 100 }}>
-          <label className="label">Ano</label>
-          <select className="input" value={selYear} onChange={(e) => setSelYear(Number(e.target.value))}>{[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}</select>
+        <div>
+          <label className="label">Modelo de Análise do Caixa</label>
+          <select className="input" value={viewMode} onChange={(e) => setViewMode(e.target.value)} style={{ marginBottom: 0 }}>
+            <option value="labor">Apenas Mão de Obra Líquida (Recomendado)</option>
+            <option value="total">Faturamento Total Líquido (Com Peças)</option>
+          </select>
         </div>
       </div>
 
       <div className="kpi-grid">
-        <div className="card" style={{ borderLeft: "3px solid #10b981" }}><label className="label">Entradas (Líquidas)</label><div style={{ fontSize: 16, fontWeight: 800 }}>{fmt(totalIn)}</div></div>
+        <div className="card" style={{ borderLeft: "3px solid #10b981" }}>
+          <label className="label">{viewMode === "labor" ? "Entradas (M.O. Líquida)" : "Entradas (Total Líquido)"}</label>
+          <div style={{ fontSize: 16, fontWeight: 800 }}>{fmt(totalIn)}</div>
+        </div>
         <div className="card" style={{ borderLeft: "3px solid #ef4444" }}><label className="label">Despesas (Saídas)</label><div style={{ fontSize: 16, fontWeight: 800 }}>{fmt(totalOut)}</div></div>
-        <div className="card" style={{ borderLeft: "3px solid #3b82f6", gridColumn: "1 / -1" }}><label className="label">Margem de Lucro</label><div style={{ fontSize: 20, fontWeight: 800, color: (totalIn - totalOut) >= 0 ? "#10b981" : "#ef4444" }}>{fmt(totalIn - totalOut)}</div></div>
+        <div className="card" style={{ borderLeft: "3px solid #3b82f6", gridColumn: "1 / -1" }}><label className="label">Margem de Lucro Real</label><div style={{ fontSize: 20, fontWeight: 800, color: (totalIn - totalOut) >= 0 ? "#10b981" : "#ef4444" }}>{fmt(totalIn - totalOut)}</div></div>
       </div>
 
       <button className="btn-primary" onClick={() => { setForm({ expense_date: today() }); setModal(true); }}>+ Lançar Despesa Mensal</button>
@@ -513,7 +537,7 @@ function generatePDF(vehicles: any, services: any, dateFrom: any, dateTo: any) {
   const fS = services.filter((s: any) => s.status === "Entregue" && s.exitDate && s.exitDate >= dateFrom && s.exitDate <= dateTo);
   const tP = fS.reduce((s: any, sv: any) => s + (Number(sv.partsValue) || 0), 0);
   const tL = fS.reduce((s: any, sv: any) => s + (Number(sv.laborValue) || 0), 0);
-  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Relatório Financeiro</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:12px;color:#1e293b;padding:40px;}.hdr{display:flex;justify-content:space-between;margin-bottom:30px;border-bottom:3px solid #f97316;padding-bottom:15px;}.resumo{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:30px;}.card-res{border:1px solid #e2e8f0;padding:15px;border-radius:8px;}table{width:100%;border-collapse:collapse;}th{background:#f8fafc;padding:10px;text-align:left;border-bottom:2px solid #e2e8f0;font-size:10px;text-transform:uppercase;}td{padding:10px;border-bottom:1px solid #f1f5f9;}.no-print{background:#f97316;color:white;padding:15px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:8px;border:none;width:100%;font-size:16px;}@media print{.no-print{display:none;}body{padding:0;}}</style></head><body><button class="no-print" onclick="window.print()">CLIQUE AQUI PARA SALVAR COMO PDF / IMPRIMIR</button><div class="hdr"><div><strong style="font-size:22px;">AutoGestão</strong><br/>Relatório Financeiro</div><div style="text-align:right">Período: ${fmtDate(dateFrom)} a ${fmtDate(dateTo)}</div></div><div class="resumo"><div class="card-res">Peças:<br/><strong>${fmt(tP)}</strong></div><div class="card-res">Mão de Obra:<br/><strong>${fmt(tL)}</strong></div><div class="card-res" style="border-color:#f97316">Total Bruto:<br/><strong>${fmt(tP+tL)}</strong></div></div><table><thead><tr><th>Entrega</th><th>Veículo</th><th>KM</th><th>Descrição</th><th>Total Bruto</th></tr></thead><tbody>${fS.map((s: any) => `<tr><td>${fmtDate(s.exitDate)}</td><td>export const sPlate = s.vehiclePlate;<strong>${s.vehiclePlate}</strong><br/>${s.vehicleBrand} ${s.vehicleModel}</td><td>${fmtKm(s.mileage)}</td><td>${s.description}</td><td><strong>${fmt((Number(s.laborValue)||0)+(Number(s.partsValue)||0))}</strong></td></tr>`).join('')}</tbody></table><script>window.onload=()=>setTimeout(()=>window.print(), 500);</script></body></html>`;
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Relatório Financeiro</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:12px;color:#1e293b;padding:40px;}.hdr{display:flex;justify-content:space-between;margin-bottom:30px;border-bottom:3px solid #f97316;padding-bottom:15px;}.resumo{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:30px;}.card-res{border:1px solid #e2e8f0;padding:15px;border-radius:8px;}table{width:100%;border-collapse:collapse;}th{background:#f8fafc;padding:10px;text-align:left;border-bottom:2px solid #e2e8f0;font-size:10px;text-transform:uppercase;}td{padding:10px;border-bottom:1px solid #f1f5f9;}.no-print{background:#f97316;color:white;padding:15px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:8px;border:none;width:100%;font-size:16px;}@media print{.no-print{display:none;}body{padding:0;}}</style></head><body><button class="no-print" onclick="window.print()">CLIQUE AQUI PARA SALVAR COMO PDF / IMPRIMIR</button><div class="hdr"><div><strong style="font-size:22px;">AutoGestão</strong><br/>Relatório Financeiro</div><div style="text-align:right">Período: ${fmtDate(dateFrom)} a ${fmtDate(dateTo)}</div></div><div class="resumo"><div class="card-res">Peças:<br/><strong>${fmt(tP)}</strong></div><div class="card-res">Mão de Obra:<br/><strong>${fmt(tL)}</strong></div><div class="card-res" style="border-color:#f97316">Total Bruto:<br/><strong>${fmt(tP+tL)}</strong></div></div><table><thead><tr><th>Entrega</th><th>Veículo</th><th>KM</th><th>Descrição</th><th>Total Bruto</th></tr></thead><tbody>${fS.map((s: any) => `<tr><td>${fmtDate(s.exitDate)}</td><td><strong>${s.vehiclePlate}</strong><br/>${s.vehicleBrand} ${s.vehicleModel}</td><td>${fmtKm(s.mileage)}</td><td>${s.description}</td><td><strong>${fmt((Number(s.laborValue)||0)+(Number(s.partsValue)||0))}</strong></td></tr>`).join('')}</tbody></table><script>window.onload=()=>setTimeout(()=>window.print(), 500);</script></body></html>`;
   const blob = new Blob([html], { type: "text/html" });
   window.open(URL.createObjectURL(blob), "_blank");
 }
