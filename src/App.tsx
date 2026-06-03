@@ -107,6 +107,7 @@ export default function App() {
   const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showReport, setShowReport] = useState(false);
+  const [globalViewMode, setGlobalViewMode] = useState("labor"); // 'labor' = apenas M.O, 'total' = faturamento bruto com peças
 
   async function loadAll() {
     setLoading(true);
@@ -168,9 +169,9 @@ export default function App() {
       <main style={{ flex: 1, padding: "16px", width: "100%", maxWidth: 1200, margin: "0 auto" }}>
         {loading ? <div style={{ textAlign: "center", padding: 100 }}>Sincronizando...</div> : (
           <>
-            {tab === "dashboard" && <Dashboard services={services} />}
+            {tab === "dashboard" && <Dashboard services={services} viewMode={globalViewMode} setViewMode={setGlobalViewMode} />}
             {tab === "services" && <ServicesTab services={services} vehicles={vehicles} loadAll={loadAll} />}
-            {tab === "finance" && <FinanceTab services={services} expenses={expenses} loadAll={loadAll} />}
+            {tab === "finance" && <FinanceTab services={services} expenses={expenses} loadAll={loadAll} viewMode={globalViewMode} setViewMode={setGlobalViewMode} />}
             {tab === "vehicles" && <VehiclesTab vehicles={vehicles} services={services} loadAll={loadAll} />}
           </>
         )}
@@ -186,13 +187,13 @@ export default function App() {
         </div>
       </nav>
 
-      {showReport && <ReportModal services={services} onClose={() => setShowReport(false)} onGenerate={(f:any, t:any) => { generatePDF(vehicles, services, f, t); setShowReport(false); }} />}
+      {showReport && <ReportModal services={services} viewMode={globalViewMode} onClose={() => setShowReport(false)} onGenerate={(f:any, t:any) => { generatePDF(vehicles, services, f, t, globalViewMode); setShowReport(false); }} />}
     </div>
   );
 }
 
-// ── ABA INÍCIO ─────────────────────────────────────────────────────────────
-function Dashboard({ services }: any) {
+// ── ABA INÍCIO (SELETOR INTEGRADO CONFORME O PRINT) ────────────────────────
+function Dashboard({ services, viewMode, setViewMode }: any) {
   const [selMonth, setSelMonth] = useState(new Date().getMonth());
   const [selYear, setSelYear] = useState(new Date().getFullYear());
 
@@ -206,19 +207,38 @@ function Dashboard({ services }: any) {
   const tP = filteredDelivered.reduce((acc: any, s: any) => acc + (Number(s.partsValue) || 0), 0);
   const tL = filteredDelivered.reduce((acc: any, s: any) => acc + (Number(s.laborValue) || 0), 0);
 
+  // Calcula o valor final dinâmico do último card baseado na seleção
+  const receitaCalculada = filteredDelivered.reduce((acc: any, s: any) => {
+    const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
+    if (viewMode === "labor") {
+      return acc + (Number(s.laborValue || 0) * (1 - taxa / 100));
+    } else {
+      return acc + (Number(s.partsValue || 0) + Number(s.laborValue || 0));
+    }
+  }, 0);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div className="card" style={{ display: "flex", gap: 10, alignItems: "center", background: "#1a2030" }}>
-        <div style={{ flex: 1 }}>
-          <label className="label">Mês de Referência</label>
-          <select className="input" value={selMonth} onChange={(e) => setSelMonth(Number(e.target.value))}>
-            {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
-          </select>
+      <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10, background: "#1a2030" }}>
+        <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ flex: 1 }}>
+            <label className="label">Mês de Referência</label>
+            <select className="input" value={selMonth} onChange={(e) => setSelMonth(Number(e.target.value))}>
+              {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
+            </select>
+          </div>
+          <div style={{ width: 100 }}>
+            <label className="label">Ano</label>
+            <select className="input" value={selYear} onChange={(e) => setSelYear(Number(e.target.value))}>
+              {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
         </div>
-        <div style={{ width: 100 }}>
-          <label className="label">Ano</label>
-          <select className="input" value={selYear} onChange={(e) => setSelYear(Number(e.target.value))}>
-            {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+        <div>
+          <label className="label">Modelo de Filtro (Painel & PDF)</label>
+          <select className="input" value={viewMode} onChange={(e) => setViewMode(e.target.value)} style={{ marginBottom: 0 }}>
+            <option value="labor">Visualizar Apenas Mão de Obra Líquida</option>
+            <option value="total">Visualizar Faturamento Total Bruto</option>
           </select>
         </div>
       </div>
@@ -228,7 +248,7 @@ function Dashboard({ services }: any) {
           { label: "Na Oficina", value: activeServices.length, icon: "🔧", accent: "#f97316" },
           { label: `Peças (${MONTHS[selMonth].slice(0,3)})`, value: fmt(tP), icon: "⚙️", accent: "#6366f1" },
           { label: `M.O. (${MONTHS[selMonth].slice(0,3)})`, value: fmt(tL), icon: "🔧", accent: "#10b981" },
-          { label: "Receita Bruta", value: fmt(tP + tL), icon: "💰", accent: "#10b981" },
+          { label: viewMode === "labor" ? "Receita (M.O. Líq)" : "Receita Bruta Total", value: fmt(receitaCalculada), icon: "💰", accent: "#3b82f6" },
         ].map((k, i) => (
           <div key={i} className="card" style={{ borderLeft: `3px solid ${k.accent}`, padding: 12 }}>
             <div style={{ fontSize: 16 }}>{k.icon}</div>
@@ -355,24 +375,19 @@ function ServicesTab({ services, vehicles, loadAll }: any) {
   )
 }
 
-// ── ABA FINANCEIRO (SELETOR DE M.O. VS TOTAL ADICIONADO) ──────────────────
-function FinanceTab({ services, expenses, loadAll }: any) {
+// ── ABA FINANCEIRO ─────────────────────────────────────────────────────────
+function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any) {
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState<any>({ expense_date: today() });
   const [selMonth, setSelMonth] = useState(new Date().getMonth());
   const [selYear, setSelYear] = useState(new Date().getFullYear());
-  const [viewMode, setViewMode] = useState("labor"); // 'labor' = apenas M.O, 'total' = faturamento bruto com peças
 
-  // Cálculo das entradas baseado no modelo selecionado
   const totalIn = services.filter((s:any) => s.status === "Entregue" && s.exitDate && new Date(s.exitDate + "T12:00:00").getMonth() === selMonth && new Date(s.exitDate + "T12:00:00").getFullYear() === selYear)
     .reduce((acc:any, s:any) => {
       const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
       if (viewMode === "labor") {
-        // Calcula apenas o valor da Mão de Obra com o desconto proporcional da taxa do cartão
-        const laborLiquido = Number(s.laborValue || 0) * (1 - taxa / 100);
-        return acc + laborLiquido;
+        return acc + (Number(s.laborValue || 0) * (1 - taxa / 100));
       } else {
-        // Puxa o valor líquido total (Mão de Obra + Peças)
         return acc + (s.netValue || 0);
       }
     }, 0);
@@ -528,21 +543,38 @@ function VehiclesTab({ vehicles, services, loadAll }: any) {
 }
 
 // ── HELPERS E EXTRAS ──────────────────────────────────────────────────────
-function Section({ title, action, children }: any) { return (<div style={{ display: "flex", flexDirection: "column", gap: 12 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><h1 style={{ fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 800 }}>{title}</h1>{action}</div>{children}</div>); }
+function Section({ title, action, children }: any) { return (<div style={{ display: "flex", flexDirection: "column", gap: 12 }}><div style={{ display: "flex", justifycontent: "space-between", alignItems: "center" }}><h1 style={{ fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 800 }}>{title}</h1>{action}</div>{children}</div>); }
 function StatusBadge({ status, map }: any) { const color = (map || {})[status] || "#6b7280"; return <span className="badge" style={{ background: color + "22", color, border: `1px solid ${color}44` }}>{status || "—"}</span>; }
 function Field({ label, value, onChange, type = "text" }: any) { return <div style={{ marginBottom: 10 }}><label className="label">{label}</label><input className="input" type={type} value={value || ""} onChange={e => onChange(e.target.value)} /></div>; }
 function SelectField({ label, value, onChange, options }: any) { return <div style={{ marginBottom: 10 }}><label className="label">{label}</label><select className="input" value={value} onChange={e => onChange(e.target.value)}>{options.map((o: any) => <option key={o} value={o}>{o}</option>)}</select></div>; }
 
-function generatePDF(vehicles: any, services: any, dateFrom: any, dateTo: any) {
+// O GERADOR DE PDF AGORA LEVA EM CONTA O MODO DE VISÃO ATIVO
+function generatePDF(vehicles: any, services: any, dateFrom: any, dateTo: any, viewMode: string) {
   const fS = services.filter((s: any) => s.status === "Entregue" && s.exitDate && s.exitDate >= dateFrom && s.exitDate <= dateTo);
-  const tP = fS.reduce((s: any, sv: any) => s + (Number(sv.partsValue) || 0), 0);
-  const tL = fS.reduce((s: any, sv: any) => s + (Number(sv.laborValue) || 0), 0);
-  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Relatório Financeiro</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:12px;color:#1e293b;padding:40px;}.hdr{display:flex;justify-content:space-between;margin-bottom:30px;border-bottom:3px solid #f97316;padding-bottom:15px;}.resumo{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:30px;}.card-res{border:1px solid #e2e8f0;padding:15px;border-radius:8px;}table{width:100%;border-collapse:collapse;}th{background:#f8fafc;padding:10px;text-align:left;border-bottom:2px solid #e2e8f0;font-size:10px;text-transform:uppercase;}td{padding:10px;border-bottom:1px solid #f1f5f9;}.no-print{background:#f97316;color:white;padding:15px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:8px;border:none;width:100%;font-size:16px;}@media print{.no-print{display:none;}body{padding:0;}}</style></head><body><button class="no-print" onclick="window.print()">CLIQUE AQUI PARA SALVAR COMO PDF / IMPRIMIR</button><div class="hdr"><div><strong style="font-size:22px;">AutoGestão</strong><br/>Relatório Financeiro</div><div style="text-align:right">Período: ${fmtDate(dateFrom)} a ${fmtDate(dateTo)}</div></div><div class="resumo"><div class="card-res">Peças:<br/><strong>${fmt(tP)}</strong></div><div class="card-res">Mão de Obra:<br/><strong>${fmt(tL)}</strong></div><div class="card-res" style="border-color:#f97316">Total Bruto:<br/><strong>${fmt(tP+tL)}</strong></div></div><table><thead><tr><th>Entrega</th><th>Veículo</th><th>KM</th><th>Descrição</th><th>Total Bruto</th></tr></thead><tbody>${fS.map((s: any) => `<tr><td>${fmtDate(s.exitDate)}</td><td><strong>${s.vehiclePlate}</strong><br/>${s.vehicleBrand} ${s.vehicleModel}</td><td>${fmtKm(s.mileage)}</td><td>${s.description}</td><td><strong>${fmt((Number(s.laborValue)||0)+(Number(s.partsValue)||0))}</strong></td></tr>`).join('')}</tbody></table><script>window.onload=()=>setTimeout(()=>window.print(), 500);</script></body></html>`;
+  
+  const totalPeca = fS.reduce((s: any, sv: any) => s + (Number(sv.partsValue) || 0), 0);
+  const totalLaborBruto = fS.reduce((s: any, sv: any) => s + (Number(sv.laborValue) || 0), 0);
+  
+  const totalRelatorio = fS.reduce((acc: any, s: any) => {
+    const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
+    if (viewMode === "labor") {
+      return acc + (Number(s.laborValue || 0) * (1 - taxa / 100));
+    } else {
+      return acc + (Number(s.partsValue || 0) + Number(s.laborValue || 0));
+    }
+  }, 0);
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Relatório Financeiro</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:12px;color:#1e293b;padding:40px;}.hdr{display:flex;justify-content:space-between;margin-bottom:30px;border-bottom:3px solid #f97316;padding-bottom:15px;}.resumo{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:30px;}.card-res{border:1px solid #e2e8f0;padding:15px;border-radius:8px;}table{width:100%;border-collapse:collapse;}th{background:#f8fafc;padding:10px;text-align:left;border-bottom:2px solid #e2e8f0;font-size:10px;text-transform:uppercase;}td{padding:10px;border-bottom:1px solid #f1f5f9;}.no-print{background:#f97316;color:white;padding:15px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:8px;border:none;width:100%;font-size:16px;}@media print{.no-print{display:none;}body{padding:0;}}</style></head><body><button class="no-print" onclick="window.print()">CLIQUE AQUI PARA SALVAR COMO PDF / IMPRIMIR</button><div class="hdr"><div><strong style="font-size:22px;">AutoGestão</strong><br/>Relatório de Caixa (${viewMode === 'labor' ? 'Apenas M.O. Líquida' : 'Faturamento Bruto Total'})</div><div style="text-align:right">Período: ${fmtDate(dateFrom)} a ${fmtDate(dateTo)}</div></div><div class="resumo"><div class="card-res">Peças Acumulado:<br/><strong>${fmt(totalPeca)}</strong></div><div class="card-res">M.O. Bruta:<br/><strong>${fmt(totalLaborBruto)}</strong></div><div class="card-res" style="border-color:#3b82f6">Total no Modelo:<br/><strong>${fmt(totalRelatorio)}</strong></div></div><table><thead><tr><th>Entrega</th><th>Veículo</th><th>KM</th><th>Descrição</th><th>Valor Base</th></tr></thead><tbody>${fS.map((s: any) => {
+    const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
+    const valorExibido = viewMode === "labor" ? (Number(s.laborValue || 0) * (1 - taxa / 100)) : (Number(s.partsValue||0) + Number(s.laborValue||0));
+    return `<tr><td>${fmtDate(s.exitDate)}</td><td><strong>${s.vehiclePlate}</strong><br/>${s.vehicleBrand} ${s.vehicleModel}</td><td>${fmtKm(s.mileage)}</td><td>${s.description}</td><td><strong>${fmt(valorExibido)}</strong></td></tr>`
+  }).join('')}</tbody></table><script>window.onload=()=>setTimeout(()=>window.print(), 500);</script></body></html>`;
+  
   const blob = new Blob([html], { type: "text/html" });
   window.open(URL.createObjectURL(blob), "_blank");
 }
 
-function ReportModal({ services, onClose, onGenerate }: any) {
+function ReportModal({ services, viewMode, onClose, onGenerate }: any) {
   const [dateFrom, setDateFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10));
   const [dateTo, setDateTo] = useState(today());
   return (
@@ -551,6 +583,7 @@ function ReportModal({ services, onClose, onGenerate }: any) {
         <div><label className="label">De</label><input className="input" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} /></div>
         <div><label className="label">Até</label><input className="input" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} /></div>
       </div>
+      <p style={{fontSize:11, color:"#64748b", marginBottom:15}}>O PDF gerado seguirá a regra ativa: <strong>{viewMode === 'labor' ? 'Apenas Mão de Obra Líquida' : 'Faturamento Total com Peças'}</strong>.</p>
       <button className="btn-primary" style={{ width: "100%" }} onClick={() => onGenerate(dateFrom, dateTo)}>Gerar PDF</button>
     </div></div>
   );
