@@ -70,35 +70,6 @@ function BrandSelector({ value, onChange }: any) {
   );
 }
 
-function VehicleSelector({ vehicles, value, onChange }: any) {
-  const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(false);
-  const ref = useRef<any>(null);
-  const selected = vehicles.find((v: any) => v.id === value);
-  const displayValue = selected ? `${selected.plate} — ${selected.brand} ${selected.model}` : query;
-  const filtered = vehicles.filter((v: any) => (v.plate||"").toLowerCase().includes(query.toLowerCase()) || (v.model||"").toLowerCase().includes(query.toLowerCase())).slice(0, 10);
-  useEffect(() => {
-    function handleClick(e: any) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
-    document.addEventListener("mousedown", handleClick); return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
-  return (
-    <div ref={ref} style={{ position: "relative", marginBottom: 15 }}>
-      <label className="label">Carro *</label>
-      <input className="input" placeholder="Busque placa ou modelo..." value={open ? query : displayValue} onFocus={() => { setOpen(true); setQuery(""); }} onChange={e => setQuery(e.target.value)} autoComplete="off" />
-      {open && (
-        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 250, background: "#1a2030", border: "1px solid #f97316", borderRadius: 8, maxHeight: 200, overflowY: "auto", marginTop: 4, boxShadow: "0 8px 24px rgba(0,0,0,.8)" }}>
-          {filtered.map((v: any) => (
-            <div key={v.id} onClick={() => { onChange(v.id); setOpen(false); }} style={{ padding: "12px 14px", cursor: "pointer", borderBottom: "1px solid #1e2736" }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{v.plate}</div>
-              <div style={{ fontSize: 11, color: "#64748b" }}>{v.brand} {v.model} {v.owner ? `· ${v.owner}` : ""}</div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── APP PRINCIPAL ─────────────────────────────────────────────────────────
 export default function App() {
   const [tab, setTab] = useState("dashboard");
@@ -107,7 +78,7 @@ export default function App() {
   const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showReport, setShowReport] = useState(false);
-  const [globalViewMode, setGlobalViewMode] = useState("labor"); // 'labor' = apenas M.O, 'total' = faturamento bruto com peças
+  const [globalViewMode, setGlobalViewMode] = useState("labor");
 
   async function loadAll() {
     setLoading(true);
@@ -160,7 +131,7 @@ export default function App() {
 
       <header style={{ padding: "14px 20px", borderBottom: "1px solid #1e2736", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0d0f14" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 32, height: 32, background: "#f97316", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🔩</div>
+          <div style={{ width: 32, height: 32, background: "#f97316", borderRadius: 8, display: "flex", alignItems: "center", center: "center", fontSize: 18 }}>🔩</div>
           <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 800 }}>AutoGestão</div>
         </div>
         <button className="btn-primary" style={{ background: "#7c3aed", color: "#fff", fontSize: 11 }} onClick={() => setShowReport(true)}>📄 PDF</button>
@@ -187,12 +158,12 @@ export default function App() {
         </div>
       </nav>
 
-      {showReport && <ReportModal services={services} viewMode={globalViewMode} onClose={() => setShowReport(false)} onGenerate={(f:any, t:any) => { generatePDF(vehicles, services, f, t, globalViewMode); setShowReport(false); }} />}
+      {showReport && <ReportModal services={services} viewMode={globalViewMode} onClose={() => setShowReport(false)} onGenerate={(f:any, t:any) => { generatePDF(vehicles, services, expenses, f, t, globalViewMode); setShowReport(false); }} />}
     </div>
   );
 }
 
-// ── ABA INÍCIO (SELETOR INTEGRADO CONFORME O PRINT) ────────────────────────
+// ── ABA INÍCIO ─────────────────────────────────────────────────────────────
 function Dashboard({ services, viewMode, setViewMode }: any) {
   const [selMonth, setSelMonth] = useState(new Date().getMonth());
   const [selYear, setSelYear] = useState(new Date().getFullYear());
@@ -207,7 +178,6 @@ function Dashboard({ services, viewMode, setViewMode }: any) {
   const tP = filteredDelivered.reduce((acc: any, s: any) => acc + (Number(s.partsValue) || 0), 0);
   const tL = filteredDelivered.reduce((acc: any, s: any) => acc + (Number(s.laborValue) || 0), 0);
 
-  // Calcula o valor final dinâmico do último card baseado na seleção
   const receitaCalculada = filteredDelivered.reduce((acc: any, s: any) => {
     const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
     if (viewMode === "labor") {
@@ -404,23 +374,14 @@ function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any)
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10, background: "#1a2030" }}>
-        <div style={{ display: "flex", gap: 10 }}>
-          <div style={{ flex: 1 }}>
-            <label className="label">Mês Financeiro</label>
-            <select className="input" value={selMonth} onChange={(e) => setSelMonth(Number(e.target.value))}>{MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}</select>
-          </div>
-          <div style={{ width: 100 }}>
-            <label className="label">Ano</label>
-            <select className="input" value={selYear} onChange={(e) => setSelYear(Number(e.target.value))}>{[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}</select>
-          </div>
+      <div className="card" style={{ display: "flex", gap: 10, alignItems: "center", background: "#1a2030" }}>
+        <div style={{ flex: 1 }}>
+          <label className="label">Mês Financeiro</label>
+          <select className="input" value={selMonth} onChange={(e) => setSelMonth(Number(e.target.value))}>{MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}</select>
         </div>
-        <div>
-          <label className="label">Modelo de Análise do Caixa</label>
-          <select className="input" value={viewMode} onChange={(e) => setViewMode(e.target.value)} style={{ marginBottom: 0 }}>
-            <option value="labor">Apenas Mão de Obra Líquida (Recomendado)</option>
-            <option value="total">Faturamento Total Líquido (Com Peças)</option>
-          </select>
+        <div style={{ width: 100 }}>
+          <label className="label">Ano</label>
+          <select className="input" value={selYear} onChange={(e) => setSelYear(Number(e.target.value))}>{[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}</select>
         </div>
       </div>
 
@@ -511,7 +472,7 @@ function VehiclesTab({ vehicles, services, loadAll }: any) {
         <div className="modal-bg" onClick={close}><div className="modal" onClick={e => e.stopPropagation()}>
           <h3>Cadastro Master</h3>
           <Field label="Placa *" value={form.plate} onChange={(v: any) => setForm({ ...form, plate: v.toUpperCase() })} />
-          <BrandSelector value={form.brand || ""} onChange={(v: any) => setForm({ ...form, brand: v })} />
+          <Field label="Marca *" value={form.brand} onChange={(v: any) => setForm({ ...form, brand: v })} />
           <Field label="Modelo *" value={form.model} onChange={(v: any) => setForm({ ...form, model: v })} />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <Field label="Ano" value={form.year} onChange={(v: any) => setForm({ ...form, year: v })} />
@@ -543,19 +504,20 @@ function VehiclesTab({ vehicles, services, loadAll }: any) {
 }
 
 // ── HELPERS E EXTRAS ──────────────────────────────────────────────────────
-function Section({ title, action, children }: any) { return (<div style={{ display: "flex", flexDirection: "column", gap: 12 }}><div style={{ display: "flex", justifycontent: "space-between", alignItems: "center" }}><h1 style={{ fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 800 }}>{title}</h1>{action}</div>{children}</div>); }
+function Section({ title, action, children }: any) { return (<div style={{ display: "flex", flexDirection: "column", gap: 12 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><h1 style={{ fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 800 }}>{title}</h1>{action}</div>{children}</div>); }
 function StatusBadge({ status, map }: any) { const color = (map || {})[status] || "#6b7280"; return <span className="badge" style={{ background: color + "22", color, border: `1px solid ${color}44` }}>{status || "—"}</span>; }
 function Field({ label, value, onChange, type = "text" }: any) { return <div style={{ marginBottom: 10 }}><label className="label">{label}</label><input className="input" type={type} value={value || ""} onChange={e => onChange(e.target.value)} /></div>; }
 function SelectField({ label, value, onChange, options }: any) { return <div style={{ marginBottom: 10 }}><label className="label">{label}</label><select className="input" value={value} onChange={e => onChange(e.target.value)}>{options.map((o: any) => <option key={o} value={o}>{o}</option>)}</select></div>; }
 
-// O GERADOR DE PDF AGORA LEVA EM CONTA O MODO DE VISÃO ATIVO
-function generatePDF(vehicles: any, services: any, dateFrom: any, dateTo: any, viewMode: string) {
+// NOVO GERADOR DE PDF COM CONTROLE DE DESPESAS INCLUSO NO PERÍODO
+function generatePDF(vehicles: any, services: any, expenses: any, dateFrom: any, dateTo: any, viewMode: string) {
   const fS = services.filter((s: any) => s.status === "Entregue" && s.exitDate && s.exitDate >= dateFrom && s.exitDate <= dateTo);
+  const fE = expenses.filter((e: any) => e.expense_date && e.expense_date >= dateFrom && e.expense_date <= dateTo);
   
   const totalPeca = fS.reduce((s: any, sv: any) => s + (Number(sv.partsValue) || 0), 0);
   const totalLaborBruto = fS.reduce((s: any, sv: any) => s + (Number(sv.laborValue) || 0), 0);
   
-  const totalRelatorio = fS.reduce((acc: any, s: any) => {
+  const totalInRelatorio = fS.reduce((acc: any, s: any) => {
     const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
     if (viewMode === "labor") {
       return acc + (Number(s.laborValue || 0) * (1 - taxa / 100));
@@ -564,11 +526,69 @@ function generatePDF(vehicles: any, services: any, dateFrom: any, dateTo: any, v
     }
   }, 0);
 
-  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Relatório Financeiro</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:12px;color:#1e293b;padding:40px;}.hdr{display:flex;justify-content:space-between;margin-bottom:30px;border-bottom:3px solid #f97316;padding-bottom:15px;}.resumo{display:grid;grid-template-columns:repeat(3,1fr);gap:15px;margin-bottom:30px;}.card-res{border:1px solid #e2e8f0;padding:15px;border-radius:8px;}table{width:100%;border-collapse:collapse;}th{background:#f8fafc;padding:10px;text-align:left;border-bottom:2px solid #e2e8f0;font-size:10px;text-transform:uppercase;}td{padding:10px;border-bottom:1px solid #f1f5f9;}.no-print{background:#f97316;color:white;padding:15px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:8px;border:none;width:100%;font-size:16px;}@media print{.no-print{display:none;}body{padding:0;}}</style></head><body><button class="no-print" onclick="window.print()">CLIQUE AQUI PARA SALVAR COMO PDF / IMPRIMIR</button><div class="hdr"><div><strong style="font-size:22px;">AutoGestão</strong><br/>Relatório de Caixa (${viewMode === 'labor' ? 'Apenas M.O. Líquida' : 'Faturamento Bruto Total'})</div><div style="text-align:right">Período: ${fmtDate(dateFrom)} a ${fmtDate(dateTo)}</div></div><div class="resumo"><div class="card-res">Peças Acumulado:<br/><strong>${fmt(totalPeca)}</strong></div><div class="card-res">M.O. Bruta:<br/><strong>${fmt(totalLaborBruto)}</strong></div><div class="card-res" style="border-color:#3b82f6">Total no Modelo:<br/><strong>${fmt(totalRelatorio)}</strong></div></div><table><thead><tr><th>Entrega</th><th>Veículo</th><th>KM</th><th>Descrição</th><th>Valor Base</th></tr></thead><tbody>${fS.map((s: any) => {
-    const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
-    const valorExibido = viewMode === "labor" ? (Number(s.laborValue || 0) * (1 - taxa / 100)) : (Number(s.partsValue||0) + Number(s.laborValue||0));
-    return `<tr><td>${fmtDate(s.exitDate)}</td><td><strong>${s.vehiclePlate}</strong><br/>${s.vehicleBrand} ${s.vehicleModel}</td><td>${fmtKm(s.mileage)}</td><td>${s.description}</td><td><strong>${fmt(valorExibido)}</strong></td></tr>`
-  }).join('')}</tbody></table><script>window.onload=()=>setTimeout(()=>window.print(), 500);</script></body></html>`;
+  const totalOutRelatorio = fE.reduce((acc: any, e: any) => acc + Number(e.value || 0), 0);
+  const saldoLiquidoFinal = totalInRelatorio - totalOutRelatorio;
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Relatório de Caixa Master</title><style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:Arial,sans-serif;font-size:11px;color:#1e293b;padding:35px;background:#fff;}
+    .hdr{display:flex;justify-content:space-between;margin-bottom:25px;border-bottom:3px solid #f97316;padding-bottom:12px;}
+    .resumo{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:25px;}
+    .card-res{border:1px solid #e2e8f0;padding:12px;border-radius:8px;}
+    h2{font-size:13px;margin:20px 0 10px 0;text-transform:uppercase;color:#0f172a;border-left:4px solid #f97316;padding-left:8px;}
+    table{width:100%;border-collapse:collapse;margin-bottom:20px;}
+    th{background:#f8fafc;padding:8px;text-align:left;border-bottom:2px solid #e2e8f0;font-size:9px;text-transform:uppercase;color:#475569;}
+    td{padding:8px;border-bottom:1px solid #f1f5f9;vertical-align:middle;}
+    .no-print{background:#f97316;color:white;padding:14px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:8px;border:none;width:100%;font-size:15px;}
+    @media print{.no-print{display:none;}body{padding:0;}}
+  </style></head><body>
+    <button class="no-print" onclick="window.print()">CLIQUE AQUI PARA SALVAR COMO PDF / IMPRIMIR</button>
+    
+    <div class="hdr">
+      <div><strong style="font-size:20px;color:#f97316;">AutoGestão</strong><br/>Faturamento Comercial da Oficina</div>
+      <div style="text-align:right;font-size:11px;">Período: <strong>${fmtDate(dateFrom)}</strong> a <strong>${fmtDate(dateTo)}</strong><br/>Modelo: ${viewMode === 'labor' ? 'Apenas M.O. Líquida' : 'Faturamento Total bruto'}</div>
+    </div>
+    
+    <div class="resumo">
+      <div class="card-res">Peças Bruto:<br/><strong style="font-size:13px;">${fmt(totalPeca)}</strong></div>
+      <div class="card-res">M.O. Bruta:<br/><strong style="font-size:13px;">${fmt(totalLaborBruto)}</strong></div>
+      <div class="card-res" style="background:#f0fdf4;border-color:#bbf7d0;">Entradas (${viewMode === 'labor' ? 'M.O' : 'Total'}):<br/><strong style="font-size:13px;color:#15803d;">+${fmt(totalInRelatorio)}</strong></div>
+      <div class="card-res" style="background:#fef2f2;border-color:#fecaca;">Despesas:<br/><strong style="font-size:13px;color:#b91c1c;">-${fmt(totalOutRelatorio)}</strong></div>
+    </div>
+
+    <div style="background:#f8fafc;border:2px solid #e2e8f0;padding:15px;border-radius:8px;margin-bottom:25px;text-align:right;">
+      <span style="font-size:11px;color:#475569;text-transform:uppercase;">Saldo Líquido Real no Período:</span><br/>
+      <strong style="font-size:20px;color:${saldoLiquidoFinal >= 0 ? '#16a34a' : '#dc2626'}">${fmt(saldoLiquidoFinal)}</strong>
+    </div>
+
+    <h2>📈 Serviços Entregues (${fS.length})</h2>
+    <table>
+      <thead>
+        <tr><th>Entrega</th><th>Veículo</th><th>KM</th><th>Descrição do Serviço</th><th>Valor Aplicado</th></tr>
+      </thead>
+      <tbody>
+        ${fS.length === 0 ? '<tr><td colspan="5" style="text-align:center;color:#64748b;">Nenhum serviço finalizado no período.</td></tr>' : fS.map((s: any) => {
+          const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
+          const valorExibido = viewMode === "labor" ? (Number(s.laborValue || 0) * (1 - taxa / 100)) : (Number(s.partsValue||0) + Number(s.laborValue||0));
+          return `<tr><td>${fmtDate(s.exitDate)}</td><td><strong>${s.vehiclePlate}</strong><br/><small style="color:#64748b;">${s.vehicleBrand} ${s.vehicleModel}</small></td><td>${fmtKm(s.mileage)}</td><td>${s.description} <br/><small style="color:#64748b;">Pgto: ${s.paymentMethod}</small></td><td><strong>${fmt(valorExibido)}</strong></td></tr>`
+        }).join('')}
+      </tbody>
+    </table>
+
+    <h2>📉 Despesas e Gastos Operacionais (${fE.length})</h2>
+    <table>
+      <thead>
+        <tr><th>Data Pagto</th><th>Categoria / Conta</th><th>Fornecedor / Observação</th><th>Valor Pago</th></tr>
+      </thead>
+      <tbody>
+        ${fE.length === 0 ? '<tr><td colspan="4" style="text-align:center;color:#64748b;">Nenhum gasto operacional lançado no período.</td></tr>' : fE.map((e: any) => `
+          <tr><td>${fmtDate(e.expense_date)}</td><td><strong>${e.category}</strong></td><td>${e.supplier || '—'}</td><td style="color:#b91c1c;fontWeight:700;">-${fmt(e.value)}</td></tr>
+        `).join('')}
+      </tbody>
+    </table>
+    
+    <script>window.onload=()=>setTimeout(()=>window.print(), 500);</script>
+  </body></html>`;
   
   const blob = new Blob([html], { type: "text/html" });
   window.open(URL.createObjectURL(blob), "_blank");
@@ -583,7 +603,7 @@ function ReportModal({ services, viewMode, onClose, onGenerate }: any) {
         <div><label className="label">De</label><input className="input" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} /></div>
         <div><label className="label">Até</label><input className="input" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} /></div>
       </div>
-      <p style={{fontSize:11, color:"#64748b", marginBottom:15}}>O PDF gerado seguirá a regra ativa: <strong>{viewMode === 'labor' ? 'Apenas Mão de Obra Líquida' : 'Faturamento Total com Peças'}</strong>.</p>
+      <p style={{fontSize:11, color:"#64748b", marginBottom:15}}>O PDF gerado conterá a lista de serviços e despesas seguindo a regra ativa: <br/><strong>{viewMode === 'labor' ? 'Apenas Mão de Obra Líquida' : 'Faturamento Total com Peças'}</strong>.</p>
       <button className="btn-primary" style={{ width: "100%" }} onClick={() => onGenerate(dateFrom, dateTo)}>Gerar PDF</button>
     </div></div>
   );
