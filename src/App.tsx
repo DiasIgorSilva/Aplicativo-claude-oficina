@@ -218,7 +218,6 @@ function Dashboard({ services, viewMode, setViewMode }: any) {
       const dinheiroPixLivre = Number(s.mixedCash || 0);
       
       if (viewMode === "labor") {
-        // Mão de Obra proporcional no misto
         const totalBrutoServico = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
         if (totalBrutoServico <= 0) return acc;
         const percentualLabor = Number(s.laborValue) / totalBrutoServico;
@@ -310,7 +309,7 @@ function Dashboard({ services, viewMode, setViewMode }: any) {
   );
 }
 
-// ── ABA OFICINA (ATUALIZADA COM ENTRADA MISTA DE PAGAMENTO) ────────────────
+// ── ABA OFICINA ────────────────────────────────────────────────────────────
 function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -357,7 +356,6 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
       descLimpa += ` || Peças Oficina: ${oficinaPartsText || "Especificadas"} || Peças Cliente: ${clientePartsText || "Especificadas"}`;
     }
 
-    // Lógica de cálculo do Líquido Real (Separando o misto se houver)
     let liquido = 0;
     const bruto = finalPartsValue + (Number(form.laborValue) || 0);
 
@@ -372,10 +370,20 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
     }
 
     const row = { 
-      id: editing?.id || uid(), vehicle_id: form.vehicleId, vehicle_plate: v?.plate, vehicle_brand: v?.brand, vehicle_model: v?.model, 
-      description: descLimpa, parts_value: finalPartsValue, labor_value: Number(form.laborValue) || 0, 
-      net_value: liquido, status: form.status, entry_date: form.entryDate, exit_date: form.status === "Entregue" ? (form.exitDate || today()) : null, 
-      payment_method: form.paymentMethod || "Dinheiro", mileage: Number(form.mileage) || 0,
+      id: editing?.id || uid(), 
+      vehicle_id: form.vehicleId, 
+      vehicle_plate: v?.plate, 
+      vehicle_brand: v?.brand, 
+      vehicle_model: v?.model, 
+      description: descLimpa, 
+      parts_value: finalPartsValue, 
+      labor_value: Number(form.laborValue) || 0, 
+      net_value: liquido, 
+      status: form.status, 
+      entry_date: form.entryDate, 
+      exit_date: form.status === "Entregue" ? (form.exitDate || today()) : null, 
+      payment_method: form.paymentMethod || "Dinheiro", 
+      mileage: Number(form.mileage) || 0,
       mixed_cash: form.paymentMethod === "Múltiplo / Misto" ? Number(form.mixedCash) : 0,
       mixed_card: form.paymentMethod === "Múltiplo / Misto" ? Number(form.mixedCard) : 0,
       mixed_card_method: form.paymentMethod === "Múltiplo / Misto" ? form.mixedCardMethod : null
@@ -457,31 +465,30 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
             {form.status === "Entregue" && <Field label="Entrega" type="date" value={form.exitDate || today()} onChange={(v: any) => setForm({ ...form, exitDate: v })} />}
           </div>
 
-          {/* FLUXO DE SAÍDA / PAGAMENTO */}
-{form.status === "Entregue" && (
-  <div style={{ background: "#0d0f14", padding: 15, borderRadius: 10, border: "1px solid #10b981", marginTop: 10 }}>
-    <label className="label">Forma de Pagamento</label>
-    <select className="input" value={form.paymentMethod} onChange={e => setForm({ ...form, paymentMethod: e.target.value })}>
-      {Object.keys(PAYMENT_METHODS).map(m => <option key={m} value={m}>{m}</option>)}
-      <option value="Múltiplo / Misto">Múltiplo / Misto (Cartão + Pix/Dinheiro)</option>
-    </select>
+          {form.status === "Entregue" && (
+            <div style={{ background: "#0d0f14", padding: 15, borderRadius: 10, border: "1px solid #10b981", marginTop: 10 }}>
+              <label className="label">Forma de Pagamento</label>
+              <select className="input" value={form.paymentMethod} onChange={e => setForm({ ...form, paymentMethod: e.target.value })}>
+                {Object.keys(PAYMENT_METHODS).map(m => <option key={m} value={m}>{m}</option>)}
+                <option value="Múltiplo / Misto">Múltiplo / Misto (Cartão + Pix/Dinheiro)</option>
+              </select>
 
-    {form.paymentMethod === "Múltiplo / Misto" && (
-      <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #1e2736" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <Field label="Parte Pix / Dinheiro (R$)" type="number" value={form.mixedCash} onChange={v => setForm({ ...form, mixedCash: v })} />
-          <Field label="Parte Cartão (R$)" type="number" value={form.mixedCard} onChange={v => setForm({ ...form, mixedCard: v })} />
-        </div>
-        <label className="label">Plano do Cartão (Para calcular a taxa)</label>
-        <select className="input" value={form.mixedCardMethod} onChange={e => setForm({ ...form, mixedCardMethod: e.target.value })}>
-          {Object.keys(PAYMENT_METHODS).filter(m => m !== "Dinheiro" && m !== "Pix").map(m => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </select>
-      </div>
-    )}
-  </div>
-)}
+              {form.paymentMethod === "Múltiplo / Misto" && (
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #1e2736" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <Field label="Parte Pix / Dinheiro (R$)" type="number" value={form.mixedCash} onChange={v => setForm({ ...form, mixedCash: v })} />
+                    <Field label="Parte Cartão (R$)" type="number" value={form.mixedCard} onChange={v => setForm({ ...form, mixedCard: v })} />
+                  </div>
+                  <label className="label">Plano do Cartão (Para calcular a taxa)</label>
+                  <select className="input" value={form.mixedCardMethod} onChange={e => setForm({ ...form, mixedCardMethod: e.target.value })}>
+                    {Object.keys(PAYMENT_METHODS).filter(m => m !== "Dinheiro" && m !== "Pix").map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
           <button className="btn-primary" style={{ width: "100%", marginTop: 15 }} onClick={save}>Salvar Informações</button>
         </div></div>
       )}
@@ -489,7 +496,7 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
   );
 }
 
-// ── ABA FINANCEIRO (ATUALIZADA COM O CÁLCULO MISTO) ───────────────────────
+// ── ABA FINANCEIRO ─────────────────────────────────────────────────────────
 function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any) {
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState<any>({ expense_date: today() });
@@ -501,23 +508,15 @@ function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any)
       if (s.paymentMethod === "Múltiplo / Misto") {
         const taxaCard = PAYMENT_METHODS[s.mixedCardMethod] || 0;
         const dinheiroPixLivre = Number(s.mixedCash || 0);
-        
         if (viewMode === "labor") {
           const totalBrutoServico = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
           if (totalBrutoServico <= 0) return acc;
           const percentualLabor = Number(s.laborValue) / totalBrutoServico;
-          
-          const cashProporcional = dinheiroPixLivre * percentualLabor;
-          const cardProporcionalBruto = Number(s.mixedCard || 0) * percentualLabor;
-          const cardProporcionalLiquido = cardProporcionalBruto * (1 - taxaCard / 100);
-          
-          return acc + cashProporcional + cardProporcionalLiquido;
+          return acc + (dinheiroPixLivre * percentualLabor) + ((Number(s.mixedCard || 0) * percentualLabor) * (1 - taxaCard / 100));
         } else {
-          const cardLiquido = Number(s.mixedCard || 0) * (1 - taxaCard / 100);
-          return acc + dinheiroPixLivre + cardLiquido;
+          return acc + dinheiroPixLivre + (Number(s.mixedCard || 0) * (1 - taxaCard / 100));
         }
       }
-
       const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
       return viewMode === "labor" ? acc + (Number(s.laborValue || 0) * (1 - taxa / 100)) : acc + (s.netValue || 0);
     }, 0);
@@ -702,8 +701,7 @@ function generatePDF(vehicles: any, services: any, expenses: any, dateFrom: any,
       const dinheiroPixLivre = Number(s.mixedCash || 0);
       if (viewMode === "labor") {
         const totalBrutoServico = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
-        if (totalBrutoServico <= 0) return acc;
-        const percentualLabor = Number(s.laborValue) / totalBrutoServico;
+        const percentualLabor = totalBrutoServico > 0 ? Number(s.laborValue) / totalBrutoServico : 0;
         return acc + (dinheiroPixLivre * percentualLabor) + ((Number(s.mixedCard || 0) * percentualLabor) * (1 - taxaCard / 100));
       } else {
         return acc + dinheiroPixLivre + (Number(s.mixedCard || 0) * (1 - taxaCard / 100));
@@ -736,19 +734,4 @@ function generatePDF(vehicles: any, services: any, expenses: any, dateFrom: any,
   }).join('')}</tbody></table><h2>📉 Despesas</h2><table><thead><tr><th>Data Pagto</th><th>Categoria / Conta</th><th>Fornecedor</th><th>Valor Pago</th></tr></thead><tbody>${fE.map((e: any) => `<tr><td>${fmtDate(e.expense_date)}</td><td><strong>${e.category}</strong></td><td>${e.supplier || '—'}</td><td style="color:#b91c1c;font-weight:700;">-${fmt(e.value)}</td></tr>`).join('')}</tbody></table></body></html>`;
   const blob = new Blob([html], { type: "text/html" });
   window.open(URL.createObjectURL(blob), "_blank");
-}
-
-function ReportModal({ services, viewMode, onClose, onGenerate }: any) {
-  const [dateFrom, setDateFrom] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10));
-  const [dateTo, setDateTo] = useState(today());
-  return (
-    <div className="modal-bg" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><h3>📄 Relatório de Caixa</h3>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 15 }}>
-        <div><label className="label">De</label><input className="input" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} /></div>
-        <div><label className="label">Até</label><input className="input" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} /></div>
-      </div>
-      <p style={{fontSize:11, color:"#64748b", marginBottom:15}}>O PDF gerado conterá a lista de serviços e despesas seguindo a regra ativa: <br/><strong>{viewMode === 'labor' ? 'Apenas Mão de Obra Líquida' : 'Faturamento Total com Peças'}</strong>.</p>
-      <button className="btn-primary" style={{ width: "100%" }} onClick={() => onGenerate(dateFrom, dateTo)}>Gerar PDF</button>
-    </div></div>
-  );
 }
