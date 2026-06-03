@@ -458,31 +458,30 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
           </div>
 
           {/* FLUXO DE SAÍDA / PAGAMENTO */}
-          {form.status === "Entregue" && (
-            <div style={{ background: "#0d0f14", padding: 15, borderRadius: 10, border: "1px solid #10b981", marginTop: 10 }}>
-              <label className="label">Forma de Pagamento</label>
-              <select className="input" value={form.paymentMethod} onChange={e => setForm({ ...form, paymentMethod: e.target.value })}>
-                {Object.keys(PAYMENT_METHODS).map(m => <option key={m} value={m}>{m}</option>)}
-                <option value="Múltiplo / Misto">Múltiplo / Misto (Cartão + Pix/Dinheiro)</option>
-              </select>
+{form.status === "Entregue" && (
+  <div style={{ background: "#0d0f14", padding: 15, borderRadius: 10, border: "1px solid #10b981", marginTop: 10 }}>
+    <label className="label">Forma de Pagamento</label>
+    <select className="input" value={form.paymentMethod} onChange={e => setForm({ ...form, paymentMethod: e.target.value })}>
+      {Object.keys(PAYMENT_METHODS).map(m => <option key={m} value={m}>{m}</option>)}
+      <option value="Múltiplo / Misto">Múltiplo / Misto (Cartão + Pix/Dinheiro)</option>
+    </select>
 
-              {/* CAMPOS SE SELECIONADO O MODO MISTO */}
-              {form.paymentMethod === "Múltiplo / Misto" && (
-                <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #1e2736" }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                    <Field label="Parte Pix / Dinheiro (R$)" type="number" value={form.mixedCash} onChange={v => setForm({ ...form, mixedCash: v })} />
-                    <Field label="Parte Cartão (R$)" type="number" value={form.mixedCard} onChange={v => setForm({ ...form, mixedCard: v })} />
-                  </div>
-                  <label className="label">Plano do Cartão (Para calcular a taxa)</label>
-                  <select className="input" value={form.mixedCardMethod} onChange={e => setForm({ ...form, mixedCard_method: e.target.value })}>
-                    {Object.keys(PAYMENT_METHODS).filter(m => m !== "Dinheiro" && m !== "Pix").map(m => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-          )}
+    {form.paymentMethod === "Múltiplo / Misto" && (
+      <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #1e2736" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <Field label="Parte Pix / Dinheiro (R$)" type="number" value={form.mixedCash} onChange={v => setForm({ ...form, mixedCash: v })} />
+          <Field label="Parte Cartão (R$)" type="number" value={form.mixedCard} onChange={v => setForm({ ...form, mixedCard: v })} />
+        </div>
+        <label className="label">Plano do Cartão (Para calcular a taxa)</label>
+        <select className="input" value={form.mixedCardMethod} onChange={e => setForm({ ...form, mixedCardMethod: e.target.value })}>
+          {Object.keys(PAYMENT_METHODS).filter(m => m !== "Dinheiro" && m !== "Pix").map(m => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select>
+      </div>
+    )}
+  </div>
+)}
           <button className="btn-primary" style={{ width: "100%", marginTop: 15 }} onClick={save}>Salvar Informações</button>
         </div></div>
       )}
