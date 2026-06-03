@@ -258,55 +258,72 @@ function Dashboard({ services, viewMode, setViewMode }: any) {
           </div>
         ))}
       </div>
-
-      <div className="card">
-        <h3 style={{ fontSize: 14, marginBottom: 12, color: "#f97316", fontFamily: "'Syne', sans-serif" }}>🛠️ Carros na Oficina (Ativos)</h3>
-        {activeServices.length === 0 ? <div style={{ fontSize: 12, color: "#475569", textAlign: "center", padding: 10 }}>Pátio vazio no momento.</div> : 
-          activeServices.map((sv: any) => (
-            <div key={sv.id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #1e2736", alignItems: "center" }}>
-              <div style={{ flex: 1, paddingRight: 10 }}><div style={{ fontSize: 12, color: "#e2e8f0", fontWeight: 700 }}>{sv.vehiclePlate} — {sv.vehicleBrand}</div><div style={{ fontSize: 10, color: "#64748b" }}>{sv.description}</div></div>
-              <StatusBadge status={sv.status} map={STATUS_COLORS} />
-            </div>
-          ))
-        }
-      </div>
-
-      <div className="card">
-        <h3 style={{ fontSize: 14, marginBottom: 12, color: "#10b981", fontFamily: "'Syne', sans-serif" }}>✅ Entregues em {MONTHS[selMonth]}</h3>
-        {filteredDelivered.length === 0 ? <div style={{ fontSize: 12, color: "#475569", textAlign: "center", padding: 10 }}>Nenhum serviço finalizado neste mês.</div> :
-          filteredDelivered.map((sv: any) => (
-            <div key={sv.id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #1e2736", alignItems: "center" }}>
-              <div style={{ flex: 1 }}><div style={{ fontSize: 12, color: "#e2e8f0" }}>{sv.vehiclePlate} — {sv.vehicleBrand}</div><div style={{ fontSize: 10, color: "#64748b" }}>Entregue: {fmtDate(sv.exitDate)}</div></div>
-              <div style={{ fontSize: 12, fontWeight: 800, color: "#10b981" }}>{fmt((Number(sv.partsValue)||0) + (Number(sv.laborValue)||0))}</div>
-            </div>
-          ))
-        }
-      </div>
     </div>
   );
 }
 
-// ── ABA OFICINA (BOTÃO O.S. ADICIONADO) ────────────────────────────────────
+// ── ABA OFICINA (IMPLEMENTAÇÃO DO DETALHAMENTO MISTO) ──────────────────────
 function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
+  
+  // Estados para gerenciar a quebra de peças
+  const [partsOwner, setPartsOwner] = useState("oficina"); // oficina, cliente, mista
+  const [oficinaPartsText, setOficinaPartsText] = useState("");
+  const [clientePartsText, setClientePartsText] = useState("");
+
   const [filterStatus, setFilterStatus] = useState("");
 
-  const open = (s = null) => { setEditing(s); setForm(s || { status: "Aguardando", partsValue: 0, laborValue: 0, entryDate: today(), paymentMethod: "Dinheiro" }); setModal(true); };
+  const open = (s = null) => { 
+    setEditing(s); 
+    let initialOwner = "oficina";
+    let ofiText = "";
+    let cliText = "";
+
+    if (s) {
+      if (s.description?.includes("|| Peças Oficina:")) {
+        initialOwner = "mista";
+        const partes = s.description.split("||");
+        ofiText = partes[1]?.replace("Peças Oficina:", "")?.trim() || "";
+        cliText = partes[2]?.replace("Peças Cliente:", "")?.trim() || "";
+      } else if (s.description?.includes("(Cliente forneceu as peças)")) {
+        initialOwner = "cliente";
+      }
+    }
+    
+    setPartsOwner(initialOwner);
+    setOficinaPartsText(ofiText);
+    setClientePartsText(cliText);
+    setForm(s || { status: "Aguardando", partsValue: 0, laborValue: 0, entryDate: today(), paymentMethod: "Dinheiro" }); 
+    setModal(true); 
+  };
+  
   const close = () => { setModal(false); setEditing(null); setForm({}); };
 
   const save = async () => {
     if (!form.vehicleId || !form.description) return alert("Selecione o carro e descreva o serviço.");
     const v = vehicles.find((v: any) => v.id === form.vehicleId);
     
-    const bruto = (Number(form.partsValue) || 0) + (Number(form.laborValue) || 0);
+    // Limpa qualquer sufixo de peças anterior
+    let descLimpa = form.description.split("||")[0].replace(/\s*\(Cliente forneceu as peças\)/gi, "").trim();
+    let finalPartsValue = Number(form.partsValue) || 0;
+
+    // Montagem inteligente da descrição final com base na escolha de peças
+    if (partsOwner === "cliente") {
+      descLimpa += " (Cliente forneceu as peças)";
+      finalPartsValue = 0;
+    } else if (partsOwner === "mista") {
+      descLimpa += ` || Peças Oficina: ${oficinaPartsText || "Especificadas"} || Peças Cliente: ${clientePartsText || "Especificadas"}`;
+    }
+
+    const bruto = finalPartsValue + (Number(form.laborValue) || 0);
     const taxa = PAYMENT_METHODS[form.paymentMethod] || 0;
     const liquido = bruto - (bruto * (taxa / 100));
 
     const row = { 
       id: editing?.id || uid(), vehicle_id: form.vehicleId, vehicle_plate: v?.plate, vehicle_brand: v?.brand, vehicle_model: v?.model, 
-      description: form.description, parts_value: Number(form.partsValue) || 0, labor_value: Number(form.laborValue) || 0, 
+      description: descLimpa, parts_value: finalPartsValue, labor_value: Number(form.laborValue) || 0, 
       net_value: liquido, status: form.status, entry_date: form.entryDate, exit_date: form.status === "Entregue" ? (form.exitDate || today()) : null, 
       payment_method: form.paymentMethod || "Dinheiro", mileage: Number(form.mileage) || 0 
     };
@@ -333,7 +350,7 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
           </div>
           {filtered.map((s: any) => (
             <div key={s.id} className="table-row" style={{ gridTemplateColumns: cols }}>
-              <div style={{ fontSize: 12 }}><div style={{ color: "#e2e8f0" }}>{s.description}</div><div style={{ fontSize: 10, color: "#475569", marginTop: 2 }}>KM: {fmtKm(s.mileage)} · Entrada: {fmtDate(s.entryDate)}</div></div>
+              <div style={{ fontSize: 12 }}><div style={{ color: "#e2e8f0" }}>{s.description.replace(/\|\|/g, "·")}</div><div style={{ fontSize: 10, color: "#475569", marginTop: 2 }}>KM: {fmtKm(s.mileage)} · Entrada: {fmtDate(s.entryDate)}</div></div>
               <div style={{ fontSize: 11 }}><div style={{ fontWeight: 700, color: "#f1f5f9" }}>{s.vehiclePlate}</div><div style={{ fontSize: 9, color: "#64748b" }}>{s.vehicleBrand}</div></div>
               <div style={{ fontSize: 11, color: "#10b981" }}>{fmt(s.laborValue)}</div>
               <StatusBadge status={s.status} map={STATUS_COLORS} />
@@ -350,10 +367,34 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
         <div className="modal-bg" onClick={close}><div className="modal" onClick={e => e.stopPropagation()}>
           <h3>Fluxo de Serviço</h3>
           <VehicleSelector vehicles={vehicles} value={form.vehicleId} onChange={(val: any) => setForm({ ...form, vehicleId: val })} />
-          <Field label="Descrição *" value={form.description} onChange={(v: any) => setForm({ ...form, description: v })} />
+          <Field label="Defeito / Serviço Principal *" value={form.description ? form.description.split("||")[0].trim() : ""} onChange={(v: any) => setForm({ ...form, description: v })} />
+          
+          <div style={{ marginBottom: 12 }}>
+            <label className="label">Quem forneceu as peças?</label>
+            <select className="input" value={partsOwner} onChange={e => setPartsOwner(e.target.value)}>
+              <option value="oficina">Oficina comprou tudo (Padrão)</option>
+              <option value="cliente">Cliente trouxe tudo</option>
+              <option value="mista">Fornecimento Misto (Oficina + Cliente)</option>
+            </select>
+          </div>
+
+          {/* CAMPOS DINÂMICOS PARA FORNECIMENTO MISTO */}
+          {partsOwner === "mista" && (
+            <div style={{ background: "#0d0f14", padding: 12, borderRadius: 8, marginBottom: 12, border: "1px solid #1e2736" }}>
+              <Field label="O que a ASDCAR comprou?" placeholder="Ex: Óleo e Filtro" value={oficinaPartsText} onChange={setOficinaPartsText} />
+              <Field label="O que o Cliente trouxe?" placeholder="Ex: Correia Dentada" value={clientePartsText} onChange={setClientePartsText} />
+            </div>
+          )}
+
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <Field label="KM Atual" type="number" value={form.mileage} onChange={(v: any) => setForm({ ...form, mileage: v })} />
-            <Field label="Peças (R$)" type="number" value={form.partsValue} onChange={(v: any) => setForm({ ...form, partsValue: v })} />
+            <Field 
+              label={partsOwner === "cliente" ? "Peças (Cliente Forneceu)" : "Valor Peças ASDCAR (R$)"} 
+              type="number" 
+              value={partsOwner === "cliente" ? 0 : form.partsValue} 
+              onChange={(v: any) => setForm({ ...form, partsValue: v })}
+              disabled={partsOwner === "cliente"} 
+            />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <Field label="Mão de Obra (R$)" type="number" value={form.laborValue} onChange={(v: any) => setForm({ ...form, laborValue: v })} />
@@ -366,13 +407,9 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
           {form.status === "Entregue" && (
             <div style={{ background: "#0d0f14", padding: 15, borderRadius: 10, border: "1px solid #10b981", marginTop: 10 }}>
               <SelectField label="Forma de Pagamento" value={form.paymentMethod} onChange={(v: any) => setForm({ ...form, paymentMethod: v })} options={Object.keys(PAYMENT_METHODS)} />
-              <div style={{ fontSize: 11, color: "#10b981", marginTop: 5 }}>
-                Total Bruto: {fmt((Number(form.partsValue)||0)+(Number(form.laborValue)||0))} <br/>
-                Líquido Oficina: {fmt(((Number(form.partsValue)||0)+(Number(form.laborValue)||0)) * (1 - (PAYMENT_METHODS[form.paymentMethod]||0)/100))}
-              </div>
             </div>
           )}
-          <button className="btn-primary" style={{ width: "100%", marginTop: 15 }} onClick={save}>Salvar Serviço</button>
+          <button className="btn-primary" style={{ width: "100%", marginTop: 15 }} onClick={save}>Salvar Informações</button>
         </div></div>
       )}
     </Section>
@@ -389,22 +426,11 @@ function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any)
   const totalIn = services.filter((s:any) => s.status === "Entregue" && s.exitDate && new Date(s.exitDate + "T12:00:00").getMonth() === selMonth && new Date(s.exitDate + "T12:00:00").getFullYear() === selYear)
     .reduce((acc:any, s:any) => {
       const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
-      if (viewMode === "labor") {
-        return acc + (Number(s.laborValue || 0) * (1 - taxa / 100));
-      } else {
-        return acc + (s.netValue || 0);
-      }
+      return viewMode === "labor" ? acc + (Number(s.laborValue || 0) * (1 - taxa / 100)) : acc + (s.netValue || 0);
     }, 0);
 
   const filteredExp = expenses.filter((e:any) => e.expense_date && new Date(e.expense_date + "T12:00:00").getMonth() === selMonth && new Date(e.expense_date + "T12:00:00").getFullYear() === selYear);
   const totalOut = filteredExp.reduce((acc:any, e:any) => acc + Number(e.value || 0), 0);
-
-  const saveExp = async () => {
-    if (!form.category || !form.value) return alert("Preencha categoria e valor.");
-    const row = { id: form.id || uid(), category: form.category, value: Number(form.value), supplier: form.supplier || "Geral", expense_date: form.expense_date || today() };
-    const { error } = await supabase.from("expenses").upsert(row);
-    if (!error) { await loadAll(); setModal(false); setForm({ expense_date: today() }); } else { alert("Erro ao salvar: " + error.message); }
-  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -427,30 +453,6 @@ function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any)
         <div className="card" style={{ borderLeft: "3px solid #ef4444" }}><label className="label">Despesas (Saídas)</label><div style={{ fontSize: 16, fontWeight: 800 }}>{fmt(totalOut)}</div></div>
         <div className="card" style={{ borderLeft: "3px solid #3b82f6", gridColumn: "1 / -1" }}><label className="label">Margem de Lucro Real</label><div style={{ fontSize: 20, fontWeight: 800, color: (totalIn - totalOut) >= 0 ? "#10b981" : "#ef4444" }}>{fmt(totalIn - totalOut)}</div></div>
       </div>
-
-      <button className="btn-primary" onClick={() => { setForm({ expense_date: today() }); setModal(true); }}>+ Lançar Despesa Mensal</button>
-
-      <div className="card">
-        <h3 style={{ fontSize: 13, marginBottom: 12 }}>Relatório de Gastos</h3>
-        {filteredExp.length === 0 ? <p style={{fontSize:11, color:"#64748b"}}>Nenhuma despesa lançada neste mês.</p> : filteredExp.map((e: any) => (
-          <div key={e.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #1e2736", alignItems: "center" }}>
-            <div style={{ fontSize: 11 }}><strong>{e.category}</strong><br /><span style={{ color: "#64748b" }}>{e.supplier} - {fmtDate(e.expense_date)}</span></div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ fontSize: 12, fontWeight: 800, color: "#ef4444" }}>-{fmt(e.value)}</div>
-              <button onClick={() => { setForm({ id: e.id, category: e.category, value: e.value, supplier: e.supplier, expense_date: e.expense_date }); setModal(true); }} className="btn-ghost" style={{ padding: "4px 8px", fontSize: 11 }}>✏️</button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {modal && <div className="modal-bg" onClick={() => { setModal(false); setForm({ expense_date: today() }); }}><div className="modal" onClick={e => e.stopPropagation()}>
-        <h3>{form.id ? "Editar Gasto" : "Nova Despesa"}</h3>
-        <Field label="Categoria (Ex: Luz, Aluguel, Peças)" value={form.category} onChange={(v: any) => setForm({ ...form, category: v })} />
-        <Field label="Valor (R$)" type="number" value={form.value} onChange={(v: any) => setForm({ ...form, value: v })} />
-        <Field label="Fornecedor / Observação" value={form.supplier} onChange={(v: any) => setForm({ ...form, supplier: v })} />
-        <Field label="Data de Pagamento" type="date" value={form.expense_date} onChange={(v: any) => setForm({ ...form, expense_date: v })} />
-        <button className="btn-primary" style={{ width: "100%", marginTop: 15 }} onClick={saveExp}>Salvar Despesa</button>
-      </div></div>}
     </div>
   );
 }
@@ -458,29 +460,13 @@ function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any)
 // ── ABA BASE DE VEÍCULOS ──────────────────────────────────────────────────
 function VehiclesTab({ vehicles, services, loadAll }: any) {
   const [modal, setModal] = useState(false);
-  const [historyModal, setHistoryModal] = useState(false);
-  const [selectedV, setSelectedV] = useState<any>(null);
-  const [editing, setEditing] = useState<any>(null);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState<any>({});
   
-  const open = (v = null) => { setEditing(v); setForm(v || {}); setModal(true); };
-  const close = () => { setModal(false); setEditing(null); setForm({}); };
-
-  const save = async () => {
-    if (!form.plate || !form.brand || !form.model) return alert("Dados obrigatórios faltando.");
-    const row = { 
-      id: editing?.id || uid(), plate: form.plate.toUpperCase(), brand: form.brand, model: form.model, 
-      year: form.year, color: form.color, owner: form.owner, phone: form.phone, notes: form.notes, mileage: Number(form.mileage) || 0 
-    };
-    const { error } = await supabase.from("vehicles").upsert(row);
-    if (!error) { await loadAll(); close(); } else { alert("Erro ao salvar: " + error.message); }
-  };
-
   const filtered = vehicles.filter((v: any) => !search || (v.plate||"").toLowerCase().includes(search.toLowerCase()) || (v.owner||"").toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <Section title="Base de Veículos" action={<button className="btn-primary" onClick={() => open()}>+ Novo</button>}>
+    <Section title="Base de Veículos" action={<button className="btn-primary" onClick={() => setModal(true)}>+ Novo</button>}>
       <input className="input" placeholder="Buscar por placa ou cliente..." value={search} onChange={e => setSearch(e.target.value)} style={{ marginBottom: 10 }} />
       <div className="card" style={{ padding: 0 }}>
         <div className="table-wrap">
@@ -490,139 +476,62 @@ function VehiclesTab({ vehicles, services, loadAll }: any) {
           {filtered.map((v: any) => (
             <div key={v.id} className="table-row" style={{ gridTemplateColumns: "1.8fr 1.5fr 1fr 90px" }}>
               <div>
-                <button onClick={() => { setSelectedV(v); setHistoryModal(true); }} className="btn-history">📜 Histórico</button>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{v.brand} {v.model}</div>
                 <div style={{ fontSize: 10, color: "#f97316" }}>{v.plate} · {v.year || "—"} · {fmtKm(v.mileage)}</div>
               </div>
               <div style={{ fontSize: 12 }}>{v.owner || "—"}</div>
               <div style={{ fontSize: 12 }}>{v.phone || "—"}</div>
-              <button onClick={() => open(v)} className="btn-ghost" style={{ padding: 6 }}>✏️</button>
             </div>
           ))}
         </div>
       </div>
-      
-      {modal && (
-        <div className="modal-bg" onClick={close}><div className="modal" onClick={e => e.stopPropagation()}>
-          <h3>Cadastro Master</h3>
-          <Field label="Placa *" value={form.plate} onChange={(v: any) => setForm({ ...form, plate: v.toUpperCase() })} />
-          <Field label="Marca *" value={form.brand} onChange={(v: any) => setForm({ ...form, brand: v })} />
-          <Field label="Modelo *" value={form.model} onChange={(v: any) => setForm({ ...form, model: v })} />
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <Field label="Ano" value={form.year} onChange={(v: any) => setForm({ ...form, year: v })} />
-            <Field label="KM Inicial" type="number" value={form.mileage} onChange={(v: any) => setForm({ ...form, mileage: v })} />
-          </div>
-          <Field label="Dono / Cliente" value={form.owner} onChange={(v: any) => setForm({ ...form, owner: v })} />
-          <Field label="Telefone" value={form.phone} onChange={(v: any) => setForm({ ...form, phone: v })} />
-          <button className="btn-primary" style={{ width: "100%", marginTop: 15 }} onClick={save}>Salvar</button>
-        </div></div>
-      )}
-      
-      {historyModal && (
-        <div className="modal-bg" onClick={() => setHistoryModal(false)}><div className="modal" onClick={e => e.stopPropagation()}>
-          <h3>Histórico: {selectedV?.plate}</h3>
-          <div style={{ maxHeight: 320, overflowY: "auto", marginTop: 15 }}>
-            {services.filter((s: any) => s.vehicleId === selectedV?.id).map((s: any) => (
-              <div key={s.id} style={{ padding: 12, background: "#0d0f14", borderRadius: 8, marginBottom: 10, borderLeft: "3px solid #10b981" }}>
-                <div style={{ fontSize: 12, fontWeight: 700 }}>{s.description}</div>
-                <div style={{ fontSize: 10, color: "#64748b", marginTop: 4 }}>KM: {fmtKm(s.mileage)} | Finalizado: {fmtDate(s.exitDate)}</div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#f97316", marginTop: 5 }}>Total Bruto: {fmt((Number(s.partsValue) || 0) + (Number(s.laborValue) || 0))}</div>
-              </div>
-            ))}
-          </div>
-          <button className="btn-ghost" style={{ width: "100%", marginTop: 15 }} onClick={() => setHistoryModal(false)}>Fechar</button>
-        </div></div>
-      )}
     </Section>
   );
 }
 
-// ── JANELA DA O.S (PEGA O E-MAIL ANTES DE GERAR) ──────────────────────────
+// ── JANELA DA O.S ────────────────────────────────────────────────────────
 function OSModal({ service, vehicles, onClose }: any) {
   const [email, setEmail] = useState("");
   const car = vehicles.find((v: any) => v.id === service.vehicleId) || {};
-
-  const emitir = () => {
-    generateOSFile(service, car, email);
-    onClose();
-  };
-
   return (
     <div className="modal-bg" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}>
       <h3>Emitir O.S. — ASDCAR</h3>
-      <p style={{fontSize:11, color:"#64748b", marginBottom:15}}>Confirme os dados de contato do cliente para sair na via impressa.</p>
-      <div style={{marginBottom:10}}><label className="label">Cliente</label><input className="input" value={car.owner || "Não cadastrado"} disabled /></div>
-      <div style={{marginBottom:10}}><label className="label">Telefone</label><input className="input" value={car.phone || "—"} disabled /></div>
+      <div style={{marginBottom:10}}><label className="label">Cliente</label><input className="input" value={car.owner || "—"} disabled /></div>
       <Field label="E-mail do Cliente (Opcional)" value={email} onChange={setEmail} type="email" />
-      <button className="btn-primary" style={{width:"100%", marginTop:10, background:"#7c3aed", color:"#fff"}} onClick={emitir}>Gerar Via de Impressão</button>
+      <button className="btn-primary" style={{width:"100%", marginTop:10, background:"#7c3aed", color:"#fff"}} onClick={() => { generateOSFile(service, car, email); onClose(); }}>Gerar Via de Impressão</button>
     </div></div>
   );
 }
 
-// ── HELPERS E EXTRAS ──────────────────────────────────────────────────────
 function Section({ title, action, children }: any) { return (<div style={{ display: "flex", flexDirection: "column", gap: 12 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><h1 style={{ fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 800 }}>{title}</h1>{action}</div>{children}</div>); }
 function StatusBadge({ status, map }: any) { const color = (map || {})[status] || "#6b7280"; return <span className="badge" style={{ background: color + "22", color, border: `1px solid ${color}44` }}>{status || "—"}</span>; }
-function Field({ label, value, onChange, type = "text" }: any) { return <div style={{ marginBottom: 10 }}><label className="label">{label}</label><input className="input" type={type} value={value || ""} onChange={e => onChange(e.target.value)} /></div>; }
+function Field({ label, value, onChange, type = "text", disabled = false, placeholder = "" }: any) { return <div style={{ marginBottom: 10 }}><label className="label">{label}</label><input className="input" placeholder={placeholder} type={type} value={value || ""} onChange={e => onChange(e.target.value)} disabled={disabled} /></div>; }
 function SelectField({ label, value, onChange, options }: any) { return <div style={{ marginBottom: 10 }}><label className="label">{label}</label><select className="input" value={value} onChange={e => onChange(e.target.value)}>{options.map((o: any) => <option key={o} value={o}>{o}</option>)}</select></div>; }
 
-// ── GERADOR DO DOCUMENTO DE O.S. EM TELA CHEIA ─────────────────────────────
+// ── GERADOR DE O.S AJUSTADO PARA O MODELO MISTO ─────────────────────────────
 function generateOSFile(s: any, car: any, email: string) {
   const tBruto = Number(s.partsValue || 0) + Number(s.laborValue || 0);
-  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>O.S. ${s.vehiclePlate}</title><style>
-    *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:Arial,sans-serif;font-size:12px;color:#0f172a;padding:40px;background:#fff;}
-    .os-border{border:2px dashed #000;padding:30px;border-radius:4px;}
-    .hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #000;padding-bottom:15px;margin-bottom:20px;}
-    .grid-ficha{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:25px;background:#f8fafc;padding:15px;border-radius:6px;border:1px solid #e2e8f0;}
-    h2{font-size:13px;text-transform:uppercase;margin:20px 0 10px 0;border-left:4px solid #000;padding-left:8px;}
-    .box-servico{border:1px solid #e2e8f0;padding:15px;border-radius:6px;min-height:80px;font-size:12px;line-height:1.5;background:#fff;margin-bottom:20px;}
-    .total-box{text-align:right;font-size:14px;background:#f1f5f9;padding:12px;border-radius:6px;font-weight:bold;}
-    .termos{font-size:10px;color:#475569;line-height:1.4;margin:30px 0;text-align:justify;}
-    .assinaturas{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:50px;text-align:center;}
-    .linha-sub{border-top:1px solid #000;padding-top:6px;font-size:11px;font-weight:bold;}
-    .no-print{background:#7c3aed;color:white;padding:14px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:25px;border-radius:8px;border:none;width:100%;font-size:15px;}
-    @media print{.no-print{display:none;}body{padding:0;}.os-border{border:none;padding:0;}}
-  </style></head><body>
-    <button class="no-print" onclick="window.print()">CLIQUE AQUI PARA IMPRIMIR VIA DO CLIENTE</button>
-    <div class="os-border">
-      <div class="hdr">
-        <div><strong style="font-size:24px;letter-spacing:1px;">ASDCAR</strong><br/><span style="color:#475569;">Centro Automotivo</span></div>
-        <div style="text-align:right;line-height:1.4;"><strong>ORDEM DE SERVIÇO</strong><br/>Data Entrada: ${fmtDate(s.entryDate)}<br/>Status: <strong>${s.status}</strong></div>
-      </div>
-      
-      <h2>👤 Ficha de Cadastro do Cliente</h2>
-      <div class="grid-ficha">
-        <div>Nome do Proprietário: <strong>${car.owner || '—'}</strong><br/>Telefone de Contato: <strong>${car.phone || '—'}</strong></div>
-        <div>E-mail informado: <strong>${email || 'Não informado'}</strong></div>
-      </div>
-
-      <h2>🚗 Identificação do Veículo</h2>
-      <div class="grid-ficha">
-        <div>Placa: <strong style="font-size:13px;text-transform:uppercase;">${s.vehiclePlate}</strong><br/>Marca / Modelo: <strong>${s.vehicleBrand || car.brand} ${s.vehicleModel || car.model}</strong></div>
-        <div>Ano: <strong>${car.year || '—'}</strong><br/>Quilometragem de Entrada: <strong>${fmtKm(s.mileage)}</strong></div>
-      </div>
-
-      <h2>🛠️ Descrição dos Serviços / Diagnóstico Preconizado</h2>
-      <div class="box-servico">${s.description}</div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;">
-        <div style="border:1px solid #e2e8f0;padding:10px;border-radius:6px;">Previsão Peças:<br/><strong>${fmt(s.partsValue)}</strong></div>
-        <div style={{border:"1px solid #e2e8f0",padding:"10px",borderRadius:"6px"}}>Previsão M.O:<br/><strong>${fmt(s.laborValue)}</strong></div>
-        <div style="background:#f1f5f9;padding:10px;border-radius:6px;text-align:right;">Valor Estimado:<br/><strong style="font-size:13px;">${fmt(tBruto)}</strong></div>
-      </div>
-
-      <div class="termos">
-        <strong>TERMOS DE AUTORIZAÇÃO DE SERVIÇO:</strong> Autorizo expressamente a oficina <strong>ASDCAR</strong> a executar os testes, diagnósticos mecânicos e a desmontagem necessária do veículo acima qualificado para a apuração do orçamento definitivo. Estou ciente de que a circulação do veículo em vias públicas para testes de pátio e rodagem está autorizada sob a total responsabilidade da oficina contratada.
-      </div>
-
-      <div class="assinaturas">
-        <div><div class="linha-sub">ASDCAR CENTRO AUTOMOTIVO</div>Responsável Técnico</div>
-        <div><div class="linha-sub">ASSINATURA DO CLIENTE</div>Autorização de Entrada</div>
-      </div>
-    </div>
-    <script>window.onload=()=>setTimeout(()=>window.print(), 500);</script>
-  </body></html>`;
   
+  // Quebra a descrição se houver dados de peças mistas
+  let escopoPrincipal = s.description;
+  let blocoPecasMistas = "";
+
+  if (s.description?.includes("|| Peças Oficina:")) {
+    const blocos = s.description.split("||");
+    escopoPrincipal = blocos[0].trim();
+    blocoPecasMistas = `
+      <div style="margin-top:15px; padding:10px; background:#f8fafc; border-radius:4px; border:1px solid #e2e8f0;">
+        <p style="margin-bottom:4px;">⚙️ <strong>Peças fornecidas pela ASDCAR:</strong> ${blocos[1]?.replace("Peças Oficina:", "")?.trim()}</p>
+        <p>👤 <strong>Peças trazidas pelo Cliente:</strong> ${blocos[2]?.replace("Peças Cliente:", "")?.trim()} <em>(Cliente forneceu)</em></p>
+      </div>`;
+  } else if (s.description?.includes("(Cliente forneceu as peças)")) {
+    escopoPrincipal = s.description.replace("(Cliente forneceu as peças)", "").trim();
+    blocoPecasMistas = `<div style="margin-top:10px; color:#64748b; font-style:italic;">⚠️ Nota: Todas as peças para este serviço foram fornecidas pelo próprio cliente.</div>`;
+  }
+
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>O.S. ${s.vehiclePlate}</title><style>
+    *{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:12px;color:#0f172a;padding:40px;}.os-border{border:2px dashed #000;padding:30px;}.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #000;padding-bottom:15px;margin-bottom:20px;}.grid-ficha{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:25px;background:#f8fafc;padding:15px;border:1px solid #e2e8f0;}h2{font-size:13px;text-transform:uppercase;margin:20px 0 10px 0;border-left:4px solid #000;padding-left:8px;}.box-servico{border:1px solid #e2e8f0;padding:15px;min-height:80px;line-height:1.5;background:#fff;margin-bottom:20px;}.termos{font-size:10px;color:#475569;margin:30px 0;text-align:justify;}.assinaturas{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:50px;text-align:center;}.linha-sub{border-top:1px solid #000;padding-top:6px;font-size:11px;font-weight:bold;}.no-print{background:#7c3aed;color:white;padding:14px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:25px;border-radius:8px;border:none;width:100%;font-size:15px;}@media print{.no-print{display:none;}body{padding:0;}.os-border{border:none;}}
+  </style></head><body><button class="no-print" onclick="window.print()">CLIQUE AQUI PARA IMPRIMIR VIA DO CLIENTE</button><div class="os-border"><div class="hdr"><div><strong style="font-size:24px;letter-spacing:1px;">ASDCAR</strong><br/><span style="color:#475569;">Centro Automotivo</span></div><div style="text-align:right;"><strong>ORDEM DE SERVIÇO</strong><br/>Data Entrada: ${fmtDate(s.entryDate)}<br/>Status: <strong>${s.status}</strong></div></div><h2>👤 Ficha do Cliente</h2><div class="grid-ficha"><div>Nome: <strong>${car.owner || '—'}</strong><br/>Telefone: <strong>${car.phone || '—'}</strong></div><div>E-mail: <strong>${email || 'Não informado'}</strong></div></div><h2>🚗 Identificação do Veículo</h2><div class="grid-ficha"><div>Placa: <strong style="text-transform:uppercase;">${s.vehiclePlate}</strong><br/>Modelo: <strong>${s.vehicleBrand || car.brand} ${s.vehicleModel || car.model}</strong></div><div>Ano: <strong>${car.year || '—'}</strong><br/>KM Entrada: <strong>${fmtKm(s.mileage)}</strong></div></div><h2>🛠️ Descrição dos Serviços / Diagnóstico</h2><div class="box-servico">${escopoPrincipal} ${blocoPecasMistas}</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;"><div style="border:1px solid #e2e8f0;padding:10px;">Faturado Peças ASDCAR:<br/><strong>${fmt(s.partsValue)}</strong></div><div style="border:1px solid #e2e8f0;padding:10px;">Faturado M.O:<br/><strong>${fmt(s.laborValue)}</strong></div><div style="background:#f1f5f9;padding:10px;text-align:right;">Valor Total Cobrado:<br/><strong>${fmt(tBruto)}</strong></div></div><div class="termos"><strong>TERMOS DE AUTORIZAÇÃO:</strong> Autorizo a oficina <strong>ASDCAR</strong> a executar os testes mecânicos e a desmontagem necessária do veículo acima qualificado para apuração do orçamento definitivo.</div><div class="assinaturas"><div><div class="linha-sub">ASDCAR CENTRO AUTOMOTIVO</div>Responsável Técnico</div><div><div class="linha-sub">ASSINATURA DO CLIENTE</div>Autorização de Entrada</div></div></div></body></html>`;
   const blob = new Blob([html], { type: "text/html" });
   window.open(URL.createObjectURL(blob), "_blank");
 }
@@ -630,83 +539,15 @@ function generateOSFile(s: any, car: any, email: string) {
 function generatePDF(vehicles: any, services: any, expenses: any, dateFrom: any, dateTo: any, viewMode: string) {
   const fS = services.filter((s: any) => s.status === "Entregue" && s.exitDate && s.exitDate >= dateFrom && s.exitDate <= dateTo);
   const fE = expenses.filter((e: any) => e.expense_date && e.expense_date >= dateFrom && e.expense_date <= dateTo);
-  
   const totalPeca = fS.reduce((s: any, sv: any) => s + (Number(sv.partsValue) || 0), 0);
   const totalLaborBruto = fS.reduce((s: any, sv: any) => s + (Number(sv.laborValue) || 0), 0);
-  
   const totalInRelatorio = fS.reduce((acc: any, s: any) => {
     const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
-    if (viewMode === "labor") {
-      return acc + (Number(s.laborValue || 0) * (1 - taxa / 100));
-    } else {
-      return acc + (s.netValue || 0);
-    }
+    return viewMode === "labor" ? acc + (Number(s.laborValue || 0) * (1 - taxa / 100)) : acc + (s.netValue || 0);
   }, 0);
-
   const totalOutRelatorio = fE.reduce((acc: any, e: any) => acc + Number(e.value || 0), 0);
   const saldoLiquidoFinal = totalInRelatorio - totalOutRelatorio;
-
-  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Relatório de Caixa Master</title><style>
-    *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:Arial,sans-serif;font-size:11px;color:#1e293b;padding:35px;background:#fff;}
-    .hdr{display:flex;justify-content:space-between;margin-bottom:25px;border-bottom:3px solid #f97316;padding-bottom:12px;}
-    .resumo{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:25px;}
-    .card-res{border:1px solid #e2e8f0;padding:12px;border-radius:8px;}
-    h2{font-size:13px;margin:20px 0 10px 0;text-transform:uppercase;color:#0f172a;border-left:4px solid #f97316;padding-left:8px;}
-    table{width:100%;border-collapse:collapse;margin-bottom:20px;}
-    th{background:#f8fafc;padding:8px;text-align:left;border-bottom:2px solid #e2e8f0;font-size:9px;text-transform:uppercase;color:#475569;}
-    td{padding:8px;border-bottom:1px solid #f1f5f9;vertical-align:middle;}
-    .no-print{background:#f97316;color:white;padding:14px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:8px;border:none;width:100%;font-size:15px;}
-    @media print{.no-print{display:none;}body{padding:0;}}
-  </style></head><body>
-    <button class="no-print" onclick="window.print()">CLIQUE AQUI PARA SALVAR COMO PDF / IMPRIMIR</button>
-    
-    <div class="hdr">
-      <div><strong style="font-size:20px;color:#f97316;">ASDCAR</strong><br/>Faturamento Comercial da Oficina</div>
-      <div style="text-align:right;font-size:11px;">Período: <strong>${fmtDate(dateFrom)}</strong> a <strong>${fmtDate(dateTo)}</strong><br/>Modelo: ${viewMode === 'labor' ? 'Apenas Mão de Obra Líquida' : 'Faturamento Total Bruto'}</div>
-    </div>
-    
-    <div class="resumo">
-      <div class="card-res">Peças Bruto:<br/><strong style="font-size:13px;">${fmt(totalPeca)}</strong></div>
-      <div class="card-res">M.O. Bruta:<br/><strong style="font-size:13px;">${fmt(totalLaborBruto)}</strong></div>
-      <div class="card-res" style="background:#f0fdf4;border-color:#bbf7d0;">Entradas (${viewMode === 'labor' ? 'M.O' : 'Total'}):<br/><strong style="font-size:13px;color:#15803d;">+${fmt(totalInRelatorio)}</strong></div>
-      <div class="card-res" style="background:#fef2f2;border-color:#fecaca;">Despesas:<br/><strong style="font-size:13px;color:#b91c1c;">-${fmt(totalOutRelatorio)}</strong></div>
-    </div>
-
-    <div style="background:#f8fafc;border:2px solid #e2e8f0;padding:15px;border-radius:8px;margin-bottom:25px;text-align:right;">
-      <span style="font-size:11px;color:#475569;text-transform:uppercase;">Saldo Líquido Real no Período:</span><br/>
-      <strong style="font-size:20px;color:${saldoLiquidoFinal >= 0 ? '#16a34a' : '#dc2626'}">${fmt(saldoLiquidoFinal)}</strong>
-    </div>
-
-    <h2>📈 Serviços Entregues (${fS.length})</h2>
-    <table>
-      <thead>
-        <tr><th>Entrega</th><th>Veículo</th><th>KM</th><th>Descrição do Serviço</th><th>Valor Aplicado</th></tr>
-      </thead>
-      <tbody>
-        ${fS.length === 0 ? '<tr><td colspan="5" style="text-align:center;color:#64748b;">Nenhum serviço finalizado no período.</td></tr>' : fS.map((s: any) => {
-          const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
-          const valorExibido = viewMode === "labor" ? (Number(s.laborValue || 0) * (1 - taxa / 100)) : (Number(s.partsValue||0) + Number(s.laborValue||0));
-          return `<tr><td>${fmtDate(s.exitDate)}</td><td><strong>${s.vehiclePlate}</strong><br/><small style="color:#64748b;">${s.vehicleBrand} ${s.vehicleModel}</small></td><td>${fmtKm(s.mileage)}</td><td>${s.description} <br/><small style="color:#64748b;">Pgto: ${s.paymentMethod}</small></td><td><strong>${fmt(valorExibido)}</strong></td></tr>`
-        }).join('')}
-      </tbody>
-    </table>
-
-    <h2>📉 Despesas e Gastos Operacionais (${fE.length})</h2>
-    <table>
-      <thead>
-        <tr><th>Data Pagto</th><th>Categoria / Conta</th><th>Fornecedor / Observação</th><th>Valor Pago</th></tr>
-      </thead>
-      <tbody>
-        ${fE.length === 0 ? '<tr><td colspan="4" style="text-align:center;color:#64748b;">Nenhum gasto operacional lançado no período.</td></tr>' : fE.map((e: any) => `
-          <tr><td>${fmtDate(e.expense_date)}</td><td><strong>${e.category}</strong></td><td>${e.supplier || '—'}</td><td style="color:#b91c1c;fontWeight:700;">-${fmt(e.value)}</td></tr>
-        `).join('')}
-      </tbody>
-    </table>
-    
-    <script>window.onload=()=>setTimeout(()=>window.print(), 500);</script>
-  </body></html>`;
-  
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Relatório Master</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:11px;color:#1e293b;padding:35px;}.hdr{display:flex;justify-content:space-between;margin-bottom:25px;border-bottom:3px solid #f97316;padding-bottom:12px;}.resumo{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:25px;}.card-res{border:1px solid #e2e8f0;padding:12px;border-radius:8px;}h2{font-size:13px;margin:20px 0 10px 0;text-transform:uppercase;color:#0f172a;border-left:4px solid #f97316;padding-left:8px;}table{width:100%;border-collapse:collapse;margin-bottom:20px;}th{background:#f8fafc;padding:8px;text-align:left;border-bottom:2px solid #e2e8f0;font-size:9px;}td{padding:8px;border-bottom:1px solid #f1f5f9;}.no-print{background:#f97316;color:white;padding:14px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:8px;border:none;width:100%;font-size:15px;}@media print{.no-print{display:none;}body{padding:0;}}</style></head><body><button class="no-print" onclick="window.print()">SALVAR EM PDF / IMPRIMIR</button><div class="hdr"><div><strong style="font-size:20px;color:#f97316;">ASDCAR</strong><br/>Faturamento Comercial da Oficina</div><div style="text-align:right;">Período: <strong>${fmtDate(dateFrom)}</strong> a <strong>${fmtDate(dateTo)}</strong><br/>Visualização: ${viewMode === 'labor' ? 'M.O. Líquida' : 'Total Bruto'}</div></div><div class="resumo"><div class="card-res">Peças Bruto:<br/><strong>${fmt(totalPeca)}</strong></div><div class="card-res">M.O. Bruta:<br/><strong>${fmt(totalLaborBruto)}</strong></div><div class="card-res" style="background:#f0fdf4;">Entradas:<br/><strong style="color:#15803d;">+${fmt(totalInRelatorio)}</strong></div><div class="card-res" style="background:#fef2f2;">Despesas:<br/><strong style="color:#b91c1c;">-${fmt(totalOutRelatorio)}</strong></div></div><div style="background:#f8fafc;border:2px solid #e2e8f0;padding:15px;border-radius:8px;margin-bottom:25px;text-align:right;">Saldo Real no Período:<br/><strong style="font-size:20px;color:${saldoLiquidoFinal>=0?'#16a34a':'#dc2626'}">${fmt(saldoLiquidoFinal)}</strong></div><h2>📈 Serviços Entregues</h2><table><thead><tr><th>Entrega</th><th>Veículo</th><th>KM</th><th>Descrição do Serviço</th><th>Valor</th></tr></thead><tbody>${fS.map((s: any) => { const taxa = PAYMENT_METHODS[s.paymentMethod] || 0; const val = viewMode === "labor" ? (Number(s.laborValue || 0) * (1 - taxa / 100)) : (Number(s.partsValue||0) + Number(s.laborValue||0)); return `<tr><td>${fmtDate(s.exitDate)}</td><td><strong>${s.vehiclePlate}</strong><br/><small>${s.vehicleBrand} ${s.vehicleModel}</small></td><td>${fmtKm(s.mileage)}</td><td>${s.description.replace(/\|\|/g, "·")}</td><td><strong>${fmt(val)}</strong></td></tr>` }).join('')}</tbody></table><h2>📉 Despesas</h2><table><thead><tr><th>Data Pagto</th><th>Categoria / Conta</th><th>Fornecedor</th><th>Valor Pago</th></tr></thead><tbody>${fE.map((e: any) => `<tr><td>${fmtDate(e.expense_date)}</td><td><strong>${e.category}</strong></td><td>${e.supplier || '—'}</td><td style="color:#b91c1c;font-weight:700;">-${fmt(e.value)}</td></tr>`).join('')}</tbody></table></body></html>`;
   const blob = new Blob([html], { type: "text/html" });
   window.open(URL.createObjectURL(blob), "_blank");
 }
