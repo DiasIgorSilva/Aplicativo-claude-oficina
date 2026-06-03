@@ -44,7 +44,7 @@ const mapS = (r: any) => {
     exitDate: r.exit_date, paymentMethod: r.payment_method || "Dinheiro", 
     mileage: r.mileage || 0, createdAt: r.created_at,
     mixedCash: Number(r.mixed_cash) || 0, mixedCard: Number(r.mixed_card) || 0,
-    mixedCardMethod: r.mixed_card_method || "Débito" // CORRIGIDO PARA BATER COM O BANCO
+    mixedCardMethod: r.mixed_card_method || "Débito"
   };
 };
 
@@ -146,7 +146,7 @@ export default function App() {
         .btn-ghost{background:transparent;color:#94a3b8;border:1px solid #1e2736;border-radius:8px;padding:8px 12px;cursor:pointer;}
         .btn-history{background:rgba(59,130,246,0.1);color:#3b82f6;border:1px solid #3b82f6;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer;margin-bottom:6px;display:inline-block;}
         .input, .textarea{background:#0d0f14;border:1px solid #1e2736;border-radius:8px;padding:10px 12px;color:#e2e8f0;width:100%;font-family:inherit;font-size:13px;letter-spacing:0.3px;line-height:1.4;}
-        .textarea{resize:vertical;min-height:70px;white-space:pre-wrap;}
+        .textarea{resize:vertical;min-height:85px;white-space:pre-wrap;}
         .label{display:block;font-size:11px;color:#64748b;margin-bottom:5px;text-transform:uppercase;}
         .badge{display:inline-block;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:600;}
         .kpi-grid{display:grid;grid-template-columns: 1fr 1fr; gap:12px; width: 100%;}
@@ -162,9 +162,9 @@ export default function App() {
         .table-row{padding:14px; border-bottom:1px solid #1e2736;}
       `}</style>
 
-      <header style={{ padding: "14px 20px", borderBottom: "1px solid #1e2736", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0d0f14" }}>
+      <header style={{ padding: "14px 20px", borderBottom: "1px solid #1e2736", display: "flex", alignItems: "center", justify_content: "space-between", background: "#0d0f14" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 32, height: 32, background: "#f97316", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🚘</div>
+          <div style={{ width: 32, height: 32, background: "#f97316", borderRadius: 8, display: "flex", alignItems: "center", justify_content: "center", fontSize: 18 }}>🚘</div>
           <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 800 }}>ASDCAR</div>
         </div>
         <button className="btn-primary" style={{ background: "#7c3aed", color: "#fff", fontSize: 11 }} onClick={() => setShowReport(true)}>📄 PDF</button>
@@ -182,7 +182,7 @@ export default function App() {
       </main>
 
       <nav className="bottom-nav">
-        <div style={{ display: "flex", justifyContent: "space-around" }}>
+        <div style={{ display: "flex", justify_content: "space-around" }}>
           {tabs.map(t => (
             <button key={t.id} className={`nav-item ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>
               <span style={{ fontSize: 22 }}>{t.icon}</span>{t.label}
@@ -284,10 +284,10 @@ function Dashboard({ services, viewMode, setViewMode }: any) {
 
       <div className="card">
         <h3 style={{ fontSize: 14, marginBottom: 12, color: "#f97316", fontFamily: "'Syne', sans-serif" }}>🛠️ Carros na Oficina (Ativos)</h3>
-        {activeServices.length === 0 ? <div style={{ fontSize: 12, color: "#475569", textAlign: "center", padding: 10 }}>Pátio vazio no momento.</div> : 
+        {activeServices.length === 0 ? <div style={{ fontSize: 12, color: "#475569", text_align: "center", padding: 10 }}>Pátio vazio no momento.</div> : 
           activeServices.map((sv: any) => (
-            <div key={sv.id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #1e2736", alignItems: "center" }}>
-              <div style={{ flex: 1, paddingRight: 10 }}><div style={{ fontSize: 12, color: "#e2e8f0", fontWeight: 700 }}>{sv.vehiclePlate} — {sv.vehicleBrand}</div><div style={{ fontSize: 10, color: "#64748b" }}>{sv.description.replace(/\|\|/g, "·")}</div></div>
+            <div key={sv.id} style={{ display: "flex", justify_content: "space-between", padding: "10px 0", borderBottom: "1px solid #1e2736", alignItems: "center" }}>
+              <div style={{ flex: 1, paddingRight: 10 }}><div style={{ fontSize: 12, color: "#e2e8f0", fontWeight: 700 }}>{sv.vehiclePlate} — {sv.vehicleBrand}</div><div style={{ fontSize: 10, color: "#64748b" }}>{sv.description.replace(/\|\|/g, " · ")}</div></div>
               <StatusBadge status={sv.status} map={STATUS_COLORS} />
             </div>
           ))
@@ -296,9 +296,9 @@ function Dashboard({ services, viewMode, setViewMode }: any) {
 
       <div className="card">
         <h3 style={{ fontSize: 14, marginBottom: 12, color: "#10b981", fontFamily: "'Syne', sans-serif" }}>✅ Entregues em {MONTHS[selMonth]}</h3>
-        {filteredDelivered.length === 0 ? <div style={{ fontSize: 12, color: "#475569", textAlign: "center", padding: 10 }}>Nenhum serviço finalizado neste mês.</div> :
+        {filteredDelivered.length === 0 ? <div style={{ fontSize: 12, color: "#475569", text_align: "center", padding: 10 }}>Nenhum serviço finalizado neste mês.</div> :
           filteredDelivered.map((sv: any) => (
-            <div key={sv.id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #1e2736", alignItems: "center" }}>
+            <div key={sv.id} style={{ display: "flex", justify_content: "space-between", padding: "10px 0", borderBottom: "1px solid #1e2736", alignItems: "center" }}>
               <div style={{ flex: 1 }}><div style={{ fontSize: 12, color: "#e2e8f0" }}>{sv.vehiclePlate} — {sv.vehicleBrand}</div><div style={{ fontSize: 10, color: "#64748b" }}>Entregue: {fmtDate(sv.exitDate)}</div></div>
               <div style={{ fontSize: 12, fontWeight: 800, color: "#10b981" }}>{fmt((Number(sv.partsValue)||0) + (Number(sv.laborValue)||0))}</div>
             </div>
@@ -309,7 +309,7 @@ function Dashboard({ services, viewMode, setViewMode }: any) {
   );
 }
 
-// ── ABA OFICINA ────────────────────────────────────────────────────────────
+// ── ABA OFICINA (CAMPO TEXTAREA CORRIGIDO CONTRA TRAVAMENTO DE TECLADO) ───
 function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -338,8 +338,7 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
     setPartsOwner(initialOwner);
     setOficinaPartsText(ofiText);
     setClientePartsText(cliText);
-    // CORREÇÃO FINAL DA CHAVE DO BANCO AQUI (mixedCardMethod -> mixed_card_method)
-    setForm(s || { status: "Aguardando", partsValue: 0, laborValue: 0, entryDate: today(), paymentMethod: "Dinheiro", mixedCash: 0, mixedCard: 0, mixed_card_method: "Débito" }); 
+    setForm(s || { status: "Aguardando", description: "", partsValue: 0, laborValue: 0, entryDate: today(), paymentMethod: "Dinheiro", mixedCash: 0, mixedCard: 0, mixedCardMethod: "Débito" }); 
     setModal(true); 
   };
   const close = () => { setModal(false); setEditing(null); setForm({}); };
@@ -359,8 +358,6 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
 
     let liquido = 0;
     const bruto = finalPartsValue + (Number(form.laborValue) || 0);
-
-    // UNIFICAÇÃO DO SISTEMA DE CONTROLO DE CHAVES DO SUPABASE
     const metodoCartaoMisto = form.mixed_card_method || form.mixedCardMethod || "Débito";
 
     if (form.paymentMethod === "Múltiplo / Misto") {
@@ -414,7 +411,7 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
           </div>
           {filtered.map((s: any) => (
             <div key={s.id} className="table-row" style={{ gridTemplateColumns: cols }}>
-              <div style={{ fontSize: 12 }}><div style={{ color: "#e2e8f0" }}>{s.description.replace(/\|\|/g, "·")}</div><div style={{ fontSize: 10, color: "#475569", marginTop: 2 }}>KM: {fmtKm(s.mileage)} · Entrada: {fmtDate(s.entryDate)}</div></div>
+              <div style={{ fontSize: 12 }}><div style={{ color: "#e2e8f0" }}>{s.description.replace(/\|\|/g, " · ")}</div><div style={{ fontSize: 10, color: "#475569", marginTop: 2 }}>KM: {fmtKm(s.mileage)} · Entrada: {fmtDate(s.entryDate)}</div></div>
               <div style={{ fontSize: 11 }}><div style={{ fontWeight: 700, color: "#f1f5f9" }}>{s.vehiclePlate}</div><div style={{ fontSize: 9, color: "#64748b" }}>{s.vehicleBrand}</div></div>
               <div style={{ fontSize: 11, color: "#10b981" }}>{fmt(s.laborValue)}</div>
               <StatusBadge status={s.status} map={STATUS_COLORS} />
@@ -434,11 +431,15 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
           
           <div style={{ marginBottom: 10 }}>
             <label className="label">Defeito / Serviço Principal *</label>
+            {/* CORREÇÃO DO BLOQUEIO DE ESPAÇO: Usando o type nativo puro e desativando auto-correções agressivas que travam teclados mobile */}
             <textarea 
-              className="textarea" 
-              placeholder="Digite o serviço feito..." 
-              value={form.description ? form.description.split("||")[0].trim() : ""} 
+              className="textarea"
+              placeholder="Digite o serviço feito aqui..."
+              value={form.description ? form.description.split("||")[0].trim() : ""}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
+              autoCapitalize="sentences"
+              autoComplete="on"
+              spellCheck={true}
             />
           </div>
 
@@ -452,8 +453,8 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
           </div>
           {partsOwner === "mista" && (
             <div style={{ background: "#0d0f14", padding: 12, borderRadius: 8, marginBottom: 12, border: "1px solid #1e2736" }}>
-              <Field label="O que a ASDCAR comprou?" placeholder="Ex: Óleo e Filtro" value={oficinaPartsText} onChange={setOficinaPartsText} />
-              <Field label="O que o Cliente trouxe?" placeholder="Ex: Correia Dentada" value={clientePartsText} onChange={setClientePartsText} />
+              <Field label="O que a ASDCAR comprou?" placeholder="Ex: Óleo e Filtro" value={oficinaPartsText} onChange={oficinaPartsText} />
+              <Field label="O que o Cliente trouxe?" placeholder="Ex: Correia Dentada" value={clientePartsText} onChange={clientePartsText} />
             </div>
           )}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -561,7 +562,7 @@ function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any)
       <div className="card">
         <h3 style={{ fontSize: 13, marginBottom: 12 }}>Relatório de Gastos</h3>
         {filteredExp.length === 0 ? <p style={{fontSize:11, color:"#64748b"}}>Nenhuma despesa lançada neste mês.</p> : filteredExp.map((e: any) => (
-          <div key={e.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #1e2736", alignItems: "center" }}>
+          <div key={e.id} style={{ display: "flex", justify_content: "space-between", padding: "8px 0", borderBottom: "1px solid #1e2736", alignItems: "center" }}>
             <div style={{ fontSize: 11 }}><strong>{e.category}</strong><br /><span style={{ color: "#64748b" }}>{e.supplier} - {fmtDate(e.expense_date)}</span></div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ fontSize: 12, fontWeight: 800, color: "#ef4444" }}>-{fmt(e.value)}</div>
@@ -654,7 +655,7 @@ function VehiclesTab({ vehicles, services, loadAll }: any) {
           <div style={{ maxHeight: 320, overflowY: "auto", marginTop: 15 }}>
             {services.filter((s: any) => s.vehicleId === selectedV?.id).map((s: any) => (
               <div key={s.id} style={{ padding: 12, background: "#0d0f14", borderRadius: 8, marginBottom: 10, borderLeft: "3px solid #10b981" }}>
-                <div style={{ fontSize: 12, fontWeight: 700 }}>{s.description.replace(/\|\|/g, "·")}</div>
+                <div style={{ fontSize: 12, fontWeight: 700 }}>{s.description.replace(/\|\|/g, " · ")}</div>
                 <div style={{ fontSize: 10, color: "#64748b", marginTop: 4 }}>KM: {fmtKm(s.mileage)} | Finalizado: {fmtDate(s.exitDate)}</div>
                 <div style={{ fontSize: 12, fontWeight: 800, color: "#f97316", marginTop: 5 }}>Total Bruto: {fmt((Number(s.partsValue) || 0) + (Number(s.laborValue) || 0))}</div>
               </div>
@@ -695,7 +696,7 @@ function OSModal({ service, vehicles, onClose }: any) {
   );
 }
 
-function Section({ title, action, children }: any) { return (<div style={{ display: "flex", flexDirection: "column", gap: 12 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><h1 style={{ fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 800 }}>{title}</h1>{action}</div>{children}</div>); }
+function Section({ title, action, children }: any) { return (<div style={{ display: "flex", flexDirection: "column", gap: 12 }}><div style={{ display: "flex", justify_content: "space-between", alignItems: "center" }}><h1 style={{ fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 800 }}>{title}</h1>{action}</div>{children}</div>); }
 function StatusBadge({ status, map }: any) { const color = (map || {})[status] || "#6b7280"; return <span className="badge" style={{ background: color + "22", color, border: `1px solid ${color}44` }}>{status || "—"}</span>; }
 function Field({ label, value, onChange, type = "text", disabled = false, placeholder = "" }: any) { return <div style={{ marginBottom: 10 }}><label className="label">{label}</label><input className="input" placeholder={placeholder} type={type} value={value || ""} onChange={e => onChange(e.target.value)} disabled={disabled} /></div>; }
 function SelectField({ label, value, onChange, options }: any) { return <div style={{ marginBottom: 10 }}><label className="label">{label}</label><select className="input" value={value} onChange={e => onChange(e.target.value)}>{options.map((o: any) => <option key={o} value={o}>{o}</option>)}</select></div>; }
@@ -759,7 +760,7 @@ function generatePDF(vehicles: any, services: any, expenses: any, dateFrom: any,
       const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
       val = viewMode === "labor" ? (Number(s.laborValue || 0) * (1 - taxa / 100)) : (Number(s.partsValue||0) + Number(s.laborValue||0));
     }
-    return `<tr><td>${fmtDate(s.exitDate)}</td><td><strong>${s.vehiclePlate}</strong><br/><small>${s.vehicleBrand} ${s.vehicleModel}</small></td><td>${fmtKm(s.mileage)}</td><td style="white-space: pre-wrap;">${s.description.replace(/\|\|/g, "·")}</td><td><strong>${fmt(val)}</strong></td></tr>` 
+    return `<tr><td>${fmtDate(s.exitDate)}</td><td><strong>${s.vehiclePlate}</strong><br/><small>${s.vehicleBrand} ${s.vehicleModel}</small></td><td>${fmtKm(s.mileage)}</td><td style="white-space: pre-wrap;">${s.description.replace(/\|\|/g, " · ")}</td><td><strong>${fmt(val)}</strong></td></tr>` 
   }).join('')}</tbody></table><h2>📉 Despesas</h2><table><thead><tr><th>Data Pagto</th><th>Categoria / Conta</th><th>Fornecedor</th><th>Valor Pago</th></tr></thead><tbody>${fE.map((e: any) => `<tr><td>${fmtDate(e.expense_date)}</td><td><strong>${e.category}</strong></td><td>${e.supplier || '—'}</td><td style="color:#b91c1c;font-weight:700;">-${fmt(e.value)}</td></tr>`).join('')}</tbody></table></body></html>`;
   const blob = new Blob([html], { type: "text/html" });
   window.open(URL.createObjectURL(blob), "_blank");
