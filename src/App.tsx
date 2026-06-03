@@ -44,7 +44,7 @@ const mapS = (r: any) => {
     exitDate: r.exit_date, paymentMethod: r.payment_method || "Dinheiro", 
     mileage: r.mileage || 0, createdAt: r.created_at,
     mixedCash: Number(r.mixed_cash) || 0, mixedCard: Number(r.mixed_card) || 0,
-    mixedCardMethod: r.mixed_card_method || "Débito"
+    mixedCardMethod: r.mixed_card_method || "Débito" // CORRIGIDO PARA BATER COM O BANCO
   };
 };
 
@@ -338,7 +338,8 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
     setPartsOwner(initialOwner);
     setOficinaPartsText(ofiText);
     setClientePartsText(cliText);
-    setForm(s || { status: "Aguardando", partsValue: 0, laborValue: 0, entryDate: today(), paymentMethod: "Dinheiro", mixedCash: 0, mixedCard: 0, mixedCardMethod: "Débito" }); 
+    // CORREÇÃO FINAL DA CHAVE DO BANCO AQUI (mixedCardMethod -> mixed_card_method)
+    setForm(s || { status: "Aguardando", partsValue: 0, laborValue: 0, entryDate: today(), paymentMethod: "Dinheiro", mixedCash: 0, mixedCard: 0, mixed_card_method: "Débito" }); 
     setModal(true); 
   };
   const close = () => { setModal(false); setEditing(null); setForm({}); };
@@ -359,8 +360,11 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
     let liquido = 0;
     const bruto = finalPartsValue + (Number(form.laborValue) || 0);
 
+    // UNIFICAÇÃO DO SISTEMA DE CONTROLO DE CHAVES DO SUPABASE
+    const metodoCartaoMisto = form.mixed_card_method || form.mixedCardMethod || "Débito";
+
     if (form.paymentMethod === "Múltiplo / Misto") {
-      const taxaCard = PAYMENT_METHODS[form.mixedCardMethod] || 0;
+      const taxaCard = PAYMENT_METHODS[metodoCartaoMisto] || 0;
       const parteCash = Number(form.mixedCash) || 0;
       const parteCard = Number(form.mixedCard) || 0;
       liquido = parteCash + (parteCard * (1 - taxaCard / 100));
@@ -386,7 +390,7 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
       mileage: Number(form.mileage) || 0,
       mixed_cash: form.paymentMethod === "Múltiplo / Misto" ? Number(form.mixedCash) : 0,
       mixed_card: form.paymentMethod === "Múltiplo / Misto" ? Number(form.mixedCard) : 0,
-      mixed_card_method: form.paymentMethod === "Múltiplo / Misto" ? form.mixedCardMethod : null
+      mixed_card_method: form.paymentMethod === "Múltiplo / Misto" ? metodoCartaoMisto : null
     };
     
     const { error } = await supabase.from("services").upsert(row);
@@ -480,7 +484,7 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
                     <Field label="Parte Cartão (R$)" type="number" value={form.mixedCard} onChange={v => setForm({ ...form, mixedCard: v })} />
                   </div>
                   <label className="label">Plano do Cartão (Para calcular a taxa)</label>
-                  <select className="input" value={form.mixedCardMethod} onChange={e => setForm({ ...form, mixedCardMethod: e.target.value })}>
+                  <select className="input" value={form.mixed_card_method || form.mixedCardMethod || "Débito"} onChange={e => setForm({ ...form, mixed_card_method: e.target.value, mixedCardMethod: e.target.value })}>
                     {Object.keys(PAYMENT_METHODS).filter(m => m !== "Dinheiro" && m !== "Pix").map(m => (
                       <option key={m} value={m}>{m}</option>
                     ))}
@@ -506,7 +510,7 @@ function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any)
   const totalIn = services.filter((s:any) => s.status === "Entregue" && s.exitDate && new Date(s.exitDate + "T12:00:00").getMonth() === selMonth && new Date(s.exitDate + "T12:00:00").getFullYear() === selYear)
     .reduce((acc:any, s:any) => {
       if (s.paymentMethod === "Múltiplo / Misto") {
-        const taxaCard = PAYMENT_METHODS[s.mixedCardMethod] || 0;
+        const taxaCard = PAYMENT_METHODS[s.mixed_card_method || s.mixedCardMethod || "Débito"] || 0;
         const dinheiroPixLivre = Number(s.mixedCash || 0);
         if (viewMode === "labor") {
           const totalBrutoServico = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
@@ -566,6 +570,17 @@ function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any)
           </div>
         ))}
       </div>
+
+      {modal && (
+        <div className="modal-bg" onClick={() => setModal(false)}><div className="modal" onClick={e => e.stopPropagation()}>
+          <h3>Gasto Interno ASDCAR</h3>
+          <Field label="Categoria de Gasto *" value={form.category} onChange={(v:any)=>setForm({...form, category:v})} />
+          <Field label="Valor Pago (R$) *" type="number" value={form.value} onChange={(v:any)=>setForm({...form, value:v})} />
+          <Field label="Fornecedor / Destino" value={form.supplier} onChange={(v:any)=>setForm({...form, supplier:v})} />
+          <Field label="Data do Pagamento" type="date" value={form.expense_date} onChange={(v:any)=>setForm({...form, expense_date:v})} />
+          <button className="btn-primary" style={{width:"100%", marginTop:15}} onClick={saveExp}>Salvar Lançamento</button>
+        </div></div>
+      )}
     </div>
   );
 }
@@ -652,6 +667,20 @@ function VehiclesTab({ vehicles, services, loadAll }: any) {
   );
 }
 
+// ── MODAL GERADOR DE PDF ──────────────────────────────────────────────────
+function ReportModal({ onClose, onGenerate }: any) {
+  const [from, setFrom] = useState(today().slice(0, 8) + "01");
+  const [to, setTo] = useState(today());
+  return (
+    <div className="modal-bg" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}>
+      <h3>Gerar Fechamento Comercial</h3>
+      <Field label="Data Início" type="date" value={from} onChange={setFrom} />
+      <Field label="Data Fim" type="date" value={to} onChange={setTo} />
+      <button className="btn-primary" style={{width:"100%", marginTop:10}} onClick={() => onGenerate(from, to)}>Compilar Relatório Master</button>
+    </div></div>
+  );
+}
+
 // ── JANELA DA O.S ────────────────────────────────────────────────────────
 function OSModal({ service, vehicles, onClose }: any) {
   const [email, setEmail] = useState("");
@@ -697,7 +726,7 @@ function generatePDF(vehicles: any, services: any, expenses: any, dateFrom: any,
   
   const totalInRelatorio = fS.reduce((acc: any, s: any) => {
     if (s.paymentMethod === "Múltiplo / Misto") {
-      const taxaCard = PAYMENT_METHODS[s.mixedCardMethod] || 0;
+      const taxaCard = PAYMENT_METHODS[s.mixed_card_method || s.mixedCardMethod || "Débito"] || 0;
       const dinheiroPixLivre = Number(s.mixedCash || 0);
       if (viewMode === "labor") {
         const totalBrutoServico = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
@@ -717,7 +746,7 @@ function generatePDF(vehicles: any, services: any, expenses: any, dateFrom: any,
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Relatório Master</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:11px;color:#1e293b;padding:35px;}.hdr{display:flex;justify-content:space-between;margin-bottom:25px;border-bottom:3px solid #f97316;padding-bottom:12px;}.resumo{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:25px;}.card-res{border:1px solid #e2e8f0;padding:12px;border-radius:8px;}h2{font-size:13px;margin:20px 0 10px 0;text-transform:uppercase;color:#0f172a;border-left:4px solid #f97316;padding-left:8px;}table{width:100%;border-collapse:collapse;margin-bottom:20px;}th{background:#f8fafc;padding:8px;text-align:left;border-bottom:2px solid #e2e8f0;font-size:9px;}td{padding:8px;border-bottom:1px solid #f1f5f9;vertical-align:middle;}.no-print{background:#f97316;color:white;padding:14px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:8px;border:none;width:100%;font-size:15px;}@media print{.no-print{display:none;}body{padding:0;}.os-border{border:none;}}</style></head><body><button class="no-print" onclick="window.print()">SALVAR EM PDF / IMPRIMIR</button><div class="hdr"><div><strong style="font-size:20px;color:#f97316;">ASDCAR</strong><br/>Faturamento Comercial da Oficina</div><div style="text-align:right;">Período: <strong>${fmtDate(dateFrom)}</strong> a <strong>${fmtDate(dateTo)}</strong><br/>Visualização: ${viewMode === 'labor' ? 'M.O. Líquida' : 'Total Bruto'}</div></div><div class="resumo"><div class="card-res">Peças Bruto:<br/><strong>${fmt(totalPeca)}</strong></div><div class="card-res">M.O. Bruta:<br/><strong>${fmt(totalLaborBruto)}</strong></div><div class="card-res" style="background:#f0fdf4;">Entradas:<br/><strong style="color:#15803d;">+${fmt(totalInRelatorio)}</strong></div><div class="card-res" style="background:#fef2f2;">Despesas:<br/><strong style="color:#b91c1c;">-${fmt(totalOutRelatorio)}</strong></div></div><div style="background:#f8fafc;border:2px solid #e2e8f0;padding:15px;border-radius:8px;margin-bottom:25px;text-align:right;">Saldo Real no Período:<br/><strong style="font-size:20px;color:${saldoLiquidoFinal>=0?'#16a34a':'#dc2626'}">${fmt(saldoLiquidoFinal)}</strong></div><h2>📈 Serviços Entregues</h2><table><thead><tr><th>Entrega</th><th>Veículo</th><th>KM</th><th>Descrição do Serviço</th><th>Valor</th></tr></thead><tbody>${fS.map((s: any) => { 
     let val = 0;
     if (s.paymentMethod === "Múltiplo / Misto") {
-      const taxaCard = PAYMENT_METHODS[s.mixedCardMethod] || 0;
+      const taxaCard = PAYMENT_METHODS[s.mixed_card_method || s.mixedCardMethod || "Débito"] || 0;
       const dinheiroPixLivre = Number(s.mixedCash || 0);
       if (viewMode === "labor") {
         const totalBrutoServico = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
