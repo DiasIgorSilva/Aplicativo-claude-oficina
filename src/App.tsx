@@ -42,7 +42,9 @@ const mapS = (r: any) => {
     description: r.description, partsValue: parts, laborValue: labor, 
     netValue: net, status: r.status, entryDate: r.entry_date, 
     exitDate: r.exit_date, paymentMethod: r.payment_method || "Dinheiro", 
-    mileage: r.mileage || 0, createdAt: r.created_at
+    mileage: r.mileage || 0, createdAt: r.created_at,
+    mixedCash: Number(r.mixed_cash) || 0, mixedCard: Number(r.mixed_card) || 0,
+    mixedCardMethod: r.mixed_card_method || "Débito"
   };
 };
 
@@ -136,14 +138,15 @@ export default function App() {
   return (
     <div style={{ minHeight: "100vh", background: "#0d0f14", color: "#e2e8f0", fontFamily: "'DM Mono', monospace", display: "flex", flexDirection: "column", paddingBottom: 80, width: "100%" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght=300;400;500&family=Syne:wght=700;800&display=swap');
         *{box-sizing:border-box;margin:0;padding:0;}
         body, html { overflow-x: hidden; width: 100%; position: relative; }
         .card{background:#161b26;border:1px solid #1e2736;border-radius:12px;padding:16px;width:100%;}
         .btn-primary{background:#f97316;color:#0d0f14;border:none;border-radius:8px;padding:10px 18px;font-weight:800;cursor:pointer;font-size:13px;}
         .btn-ghost{background:transparent;color:#94a3b8;border:1px solid #1e2736;border-radius:8px;padding:8px 12px;cursor:pointer;}
         .btn-history{background:rgba(59,130,246,0.1);color:#3b82f6;border:1px solid #3b82f6;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer;margin-bottom:6px;display:inline-block;}
-        .input{background:#0d0f14;border:1px solid #1e2736;border-radius:8px;padding:10px 12px;color:#e2e8f0;width:100%;font-family:inherit;font-size:13px;}
+        .input, .textarea{background:#0d0f14;border:1px solid #1e2736;border-radius:8px;padding:10px 12px;color:#e2e8f0;width:100%;font-family:inherit;font-size:13px;letter-spacing:0.3px;line-height:1.4;}
+        .textarea{resize:vertical;min-height:70px;white-space:pre-wrap;}
         .label{display:block;font-size:11px;color:#64748b;margin-bottom:5px;text-transform:uppercase;}
         .badge{display:inline-block;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:600;}
         .kpi-grid{display:grid;grid-template-columns: 1fr 1fr; gap:12px; width: 100%;}
@@ -194,7 +197,7 @@ export default function App() {
   );
 }
 
-// ── ABA INÍCIO (DASHBOARD FIXADO COM AS LISTAS) ───────────────────────────
+// ── ABA INÍCIO ─────────────────────────────────────────────────────────────
 function Dashboard({ services, viewMode, setViewMode }: any) {
   const [selMonth, setSelMonth] = useState(new Date().getMonth());
   const [selYear, setSelYear] = useState(new Date().getFullYear());
@@ -210,11 +213,32 @@ function Dashboard({ services, viewMode, setViewMode }: any) {
   const tL = filteredDelivered.reduce((acc: any, s: any) => acc + (Number(s.laborValue) || 0), 0);
 
   const receitaCalculada = filteredDelivered.reduce((acc: any, s: any) => {
+    if (s.paymentMethod === "Múltiplo / Misto") {
+      const taxaCard = PAYMENT_METHODS[s.mixedCardMethod] || 0;
+      const dinheiroPixLivre = Number(s.mixedCash || 0);
+      
+      if (viewMode === "labor") {
+        // Mão de Obra proporcional no misto
+        const totalBrutoServico = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
+        if (totalBrutoServico <= 0) return acc;
+        const percentualLabor = Number(s.laborValue) / totalBrutoServico;
+        
+        const cashProporcional = dinheiroPixLivre * percentualLabor;
+        const cardProporcionalBruto = Number(s.mixedCard || 0) * percentualLabor;
+        const cardProporcionalLiquido = cardProporcionalBruto * (1 - taxaCard / 100);
+        
+        return acc + cashProporcional + cardProporcionalLiquido;
+      } else {
+        const cardLiquido = Number(s.mixedCard || 0) * (1 - taxaCard / 100);
+        return acc + dinheiroPixLivre + cardLiquido;
+      }
+    }
+
     const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
     if (viewMode === "labor") {
       return acc + (Number(s.laborValue || 0) * (1 - taxa / 100));
     } else {
-      return acc + (Number(s.partsValue || 0) + Number(s.laborValue || 0));
+      return acc + (s.netValue || 0);
     }
   }, 0);
 
@@ -286,7 +310,7 @@ function Dashboard({ services, viewMode, setViewMode }: any) {
   );
 }
 
-// ── ABA OFICINA ────────────────────────────────────────────────────────────
+// ── ABA OFICINA (ATUALIZADA COM ENTRADA MISTA DE PAGAMENTO) ────────────────
 function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -315,7 +339,7 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
     setPartsOwner(initialOwner);
     setOficinaPartsText(ofiText);
     setClientePartsText(cliText);
-    setForm(s || { status: "Aguardando", partsValue: 0, laborValue: 0, entryDate: today(), paymentMethod: "Dinheiro" }); 
+    setForm(s || { status: "Aguardando", partsValue: 0, laborValue: 0, entryDate: today(), paymentMethod: "Dinheiro", mixedCash: 0, mixedCard: 0, mixedCardMethod: "Débito" }); 
     setModal(true); 
   };
   const close = () => { setModal(false); setEditing(null); setForm({}); };
@@ -333,15 +357,28 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
       descLimpa += ` || Peças Oficina: ${oficinaPartsText || "Especificadas"} || Peças Cliente: ${clientePartsText || "Especificadas"}`;
     }
 
+    // Lógica de cálculo do Líquido Real (Separando o misto se houver)
+    let liquido = 0;
     const bruto = finalPartsValue + (Number(form.laborValue) || 0);
-    const taxa = PAYMENT_METHODS[form.paymentMethod] || 0;
-    const liquido = bruto - (bruto * (taxa / 100));
+
+    if (form.paymentMethod === "Múltiplo / Misto") {
+      const taxaCard = PAYMENT_METHODS[form.mixedCardMethod] || 0;
+      const parteCash = Number(form.mixedCash) || 0;
+      const parteCard = Number(form.mixedCard) || 0;
+      liquido = parteCash + (parteCard * (1 - taxaCard / 100));
+    } else {
+      const taxa = PAYMENT_METHODS[form.paymentMethod] || 0;
+      liquido = bruto - (bruto * (taxa / 100));
+    }
 
     const row = { 
       id: editing?.id || uid(), vehicle_id: form.vehicleId, vehicle_plate: v?.plate, vehicle_brand: v?.brand, vehicle_model: v?.model, 
       description: descLimpa, parts_value: finalPartsValue, labor_value: Number(form.laborValue) || 0, 
       net_value: liquido, status: form.status, entry_date: form.entryDate, exit_date: form.status === "Entregue" ? (form.exitDate || today()) : null, 
-      payment_method: form.paymentMethod || "Dinheiro", mileage: Number(form.mileage) || 0 
+      payment_method: form.paymentMethod || "Dinheiro", mileage: Number(form.mileage) || 0,
+      mixed_cash: form.paymentMethod === "Múltiplo / Misto" ? Number(form.mixedCash) : 0,
+      mixed_card: form.paymentMethod === "Múltiplo / Misto" ? Number(form.mixedCard) : 0,
+      mixed_card_method: form.paymentMethod === "Múltiplo / Misto" ? form.mixedCardMethod : null
     };
     
     const { error } = await supabase.from("services").upsert(row);
@@ -382,7 +419,17 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
         <div className="modal-bg" onClick={close}><div className="modal" onClick={e => e.stopPropagation()}>
           <h3>Fluxo de Serviço</h3>
           <VehicleSelector vehicles={vehicles} value={form.vehicleId} onChange={(val: any) => setForm({ ...form, vehicleId: val })} />
-          <Field label="Defeito / Serviço Principal *" value={form.description ? form.description.split("||")[0].trim() : ""} onChange={(v: any) => setForm({ ...form, description: v })} />
+          
+          <div style={{ marginBottom: 10 }}>
+            <label className="label">Defeito / Serviço Principal *</label>
+            <textarea 
+              className="textarea" 
+              placeholder="Digite o serviço feito..." 
+              value={form.description ? form.description.split("||")[0].trim() : ""} 
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+            />
+          </div>
+
           <div style={{ marginBottom: 12 }}>
             <label className="label">Quem forneceu as peças?</label>
             <select className="input" value={partsOwner} onChange={e => setPartsOwner(e.target.value)}>
@@ -409,9 +456,31 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
             <Field label="Entrada" type="date" value={form.entryDate} onChange={(v: any) => setForm({ ...form, entryDate: v })} />
             {form.status === "Entregue" && <Field label="Entrega" type="date" value={form.exitDate || today()} onChange={(v: any) => setForm({ ...form, exitDate: v })} />}
           </div>
+
+          {/* FLUXO DE SAÍDA / PAGAMENTO */}
           {form.status === "Entregue" && (
             <div style={{ background: "#0d0f14", padding: 15, borderRadius: 10, border: "1px solid #10b981", marginTop: 10 }}>
-              <SelectField label="Forma de Pagamento" value={form.paymentMethod} onChange={(v: any) => setForm({ ...form, paymentMethod: v })} options={Object.keys(PAYMENT_METHODS)} />
+              <label className="label">Forma de Pagamento</label>
+              <select className="input" value={form.paymentMethod} onChange={e => setForm({ ...form, paymentMethod: e.target.value })}>
+                {Object.keys(PAYMENT_METHODS).map(m => <option key={m} value={m}>{m}</option>)}
+                <option value="Múltiplo / Misto">Múltiplo / Misto (Cartão + Pix/Dinheiro)</option>
+              </select>
+
+              {/* CAMPOS SE SELECIONADO O MODO MISTO */}
+              {form.paymentMethod === "Múltiplo / Misto" && (
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #1e2736" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <Field label="Parte Pix / Dinheiro (R$)" type="number" value={form.mixedCash} onChange={v => setForm({ ...form, mixedCash: v })} />
+                    <Field label="Parte Cartão (R$)" type="number" value={form.mixedCard} onChange={v => setForm({ ...form, mixedCard: v })} />
+                  </div>
+                  <label className="label">Plano do Cartão (Para calcular a taxa)</label>
+                  <select className="input" value={form.mixedCardMethod} onChange={e => setForm({ ...form, mixedCard_method: e.target.value })}>
+                    {Object.keys(PAYMENT_METHODS).filter(m => m !== "Dinheiro" && m !== "Pix").map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           )}
           <button className="btn-primary" style={{ width: "100%", marginTop: 15 }} onClick={save}>Salvar Informações</button>
@@ -421,7 +490,7 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
   );
 }
 
-// ── ABA FINANCEIRO (COM EDIÇÃO EM LÁPIS ✏️ COMPLETA) ──────────────────────
+// ── ABA FINANCEIRO (ATUALIZADA COM O CÁLCULO MISTO) ───────────────────────
 function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any) {
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState<any>({ expense_date: today() });
@@ -430,6 +499,26 @@ function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any)
 
   const totalIn = services.filter((s:any) => s.status === "Entregue" && s.exitDate && new Date(s.exitDate + "T12:00:00").getMonth() === selMonth && new Date(s.exitDate + "T12:00:00").getFullYear() === selYear)
     .reduce((acc:any, s:any) => {
+      if (s.paymentMethod === "Múltiplo / Misto") {
+        const taxaCard = PAYMENT_METHODS[s.mixedCardMethod] || 0;
+        const dinheiroPixLivre = Number(s.mixedCash || 0);
+        
+        if (viewMode === "labor") {
+          const totalBrutoServico = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
+          if (totalBrutoServico <= 0) return acc;
+          const percentualLabor = Number(s.laborValue) / totalBrutoServico;
+          
+          const cashProporcional = dinheiroPixLivre * percentualLabor;
+          const cardProporcionalBruto = Number(s.mixedCard || 0) * percentualLabor;
+          const cardProporcionalLiquido = cardProporcionalBruto * (1 - taxaCard / 100);
+          
+          return acc + cashProporcional + cardProporcionalLiquido;
+        } else {
+          const cardLiquido = Number(s.mixedCard || 0) * (1 - taxaCard / 100);
+          return acc + dinheiroPixLivre + cardLiquido;
+        }
+      }
+
       const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
       return viewMode === "labor" ? acc + (Number(s.laborValue || 0) * (1 - taxa / 100)) : acc + (s.netValue || 0);
     }, 0);
@@ -479,20 +568,11 @@ function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any)
           </div>
         ))}
       </div>
-
-      {modal && <div className="modal-bg" onClick={() => { setModal(false); setForm({ expense_date: today() }); }}><div className="modal" onClick={e => e.stopPropagation()}>
-        <h3>{form.id ? "Editar Gasto" : "Nova Despesa"}</h3>
-        <Field label="Categoria (Ex: Luz, Aluguel, Peças)" value={form.category} onChange={(v: any) => setForm({ ...form, category: v })} />
-        <Field label="Valor (R$)" type="number" value={form.value} onChange={(v: any) => setForm({ ...form, value: v })} />
-        <Field label="Fornecedor / Observação" value={form.supplier} onChange={(v: any) => setForm({ ...form, supplier: v })} />
-        <Field label="Data de Pagamento" type="date" value={form.expense_date} onChange={(v: any) => setForm({ ...form, expense_date: v })} />
-        <button className="btn-primary" style={{ width: "100%", marginTop: 15 }} onClick={saveExp}>Salvar Despesa</button>
-      </div></div>}
     </div>
   );
 }
 
-// ── ABA BASE DE VEÍCULOS (RESTAURADO COM PRONTUÁRIO MASTER) ───────────────
+// ── ABA BASE DE VEÍCULOS ──────────────────────────────────────────────────
 function VehiclesTab({ vehicles, services, loadAll }: any) {
   const [modal, setModal] = useState(false);
   const [historyModal, setHistoryModal] = useState(false);
@@ -593,7 +673,7 @@ function StatusBadge({ status, map }: any) { const color = (map || {})[status] |
 function Field({ label, value, onChange, type = "text", disabled = false, placeholder = "" }: any) { return <div style={{ marginBottom: 10 }}><label className="label">{label}</label><input className="input" placeholder={placeholder} type={type} value={value || ""} onChange={e => onChange(e.target.value)} disabled={disabled} /></div>; }
 function SelectField({ label, value, onChange, options }: any) { return <div style={{ marginBottom: 10 }}><label className="label">{label}</label><select className="input" value={value} onChange={e => onChange(e.target.value)}>{options.map((o: any) => <option key={o} value={o}>{o}</option>)}</select></div>; }
 
-// ── GERADORES DE DOCUMENTOS COMPLETOS (O.S & FINANCEIRO COM DESPESAS) ─────
+// ── GERADORES DE DOCUMENTOS COMPLETOS ─────────────────────────────────────
 function generateOSFile(s: any, car: any, email: string) {
   const tBruto = Number(s.partsValue || 0) + Number(s.laborValue || 0);
   let escopoPrincipal = s.description;
@@ -606,7 +686,7 @@ function generateOSFile(s: any, car: any, email: string) {
     escopoPrincipal = s.description.replace("(Cliente forneceu as peças)", "").trim();
     blocoPecasMistas = `<div style="margin-top:10px; color:#64748b; font-style:italic;">⚠️ Nota: Todas as peças para este serviço foram fornecidas pelo próprio cliente.</div>`;
   }
-  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>O.S. ${s.vehiclePlate}</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:12px;color:#0f172a;padding:40px;}.os-border{border:2px dashed #000;padding:30px;}.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #000;padding-bottom:15px;margin-bottom:20px;}.grid-ficha{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:25px;background:#f8fafc;padding:15px;border:1px solid #e2e8f0;}h2{font-size:13px;text-transform:uppercase;margin:20px 0 10px 0;border-left:4px solid #000;padding-left:8px;}.box-servico{border:1px solid #e2e8f0;padding:15px;min-height:80px;line-height:1.5;background:#fff;margin-bottom:20px;}.termos{font-size:10px;color:#475569;margin:30px 0;text-align:justify;}.assinaturas{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:50px;text-align:center;}.linha-sub{border-top:1px solid #000;padding-top:6px;font-size:11px;font-weight:bold;}.no-print{background:#7c3aed;color:white;padding:14px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:25px;border-radius:8px;border:none;width:100%;font-size:15px;}@media print{.no-print{display:none;}body{padding:0;}.os-border{border:none;}}</style></head><body><button class="no-print" onclick="window.print()">CLIQUE AQUI PARA IMPRIMIR VIA DO CLIENTE</button><div class="os-border"><div class="hdr"><div><strong style="font-size:24px;letter-spacing:1px;">ASDCAR</strong><br/><span style="color:#475569;">Centro Automotivo</span></div><div style="text-align:right;"><strong>ORDEM DE SERVIÇO</strong><br/>Data Entrada: ${fmtDate(s.entryDate)}<br/>Status: <strong>${s.status}</strong></div></div><h2>👤 Ficha do Cliente</h2><div class="grid-ficha"><div>Nome: <strong>${car.owner || '—'}</strong><br/>Telefone: <strong>${car.phone || '—'}</strong></div><div>E-mail: <strong>${email || 'Não informado'}</strong></div></div><h2>🚗 Identificação do Veículo</h2><div class="grid-ficha"><div>Placa: <strong style="text-transform:uppercase;">${s.vehiclePlate}</strong><br/>Modelo: <strong>${s.vehicleBrand || car.brand} ${s.vehicleModel || car.model}</strong></div><div>Ano: <strong>${car.year || '—'}</strong><br/>KM Entrada: <strong>${fmtKm(s.mileage)}</strong></div></div><h2>🛠️ Descrição dos Serviços / Diagnóstico</h2><div class="box-servico">${escopoPrincipal} ${blocoPecasMistas}</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;"><div style="border:1px solid #e2e8f0;padding:10px;">Faturado Peças ASDCAR:<br/><strong>${fmt(s.partsValue)}</strong></div><div style="border:1px solid #e2e8f0;padding:10px;">Faturado M.O:<br/><strong>${fmt(s.laborValue)}</strong></div><div style="background:#f1f5f9;padding:10px;text-align:right;">Valor Total Cobrado:<br/><strong>${fmt(tBruto)}</strong></div></div><div class="termos"><strong>TERMOS DE AUTORIZAÇÃO:</strong> Autorizo a oficina <strong>ASDCAR</strong> a executar os testes mecânicos e a desmontagem necessária do veículo acima qualificado para apuração do orçamento definitivo.</div><div class="assinaturas"><div><div class="linha-sub">ASDCAR CENTRO AUTOMOTIVO</div>Responsável Técnico</div><div><div class="linha-sub">ASSINATURA DO CLIENTE</div>Autorização de Entrada</div></div></div></body></html>`;
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>O.S. ${s.vehiclePlate}</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:12px;color:#0f172a;padding:40px;}.os-border{border:2px dashed #000;padding:30px;}.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #000;padding-bottom:15px;margin-bottom:20px;}.grid-ficha{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:25px;background:#f8fafc;padding:15px;border:1px solid #e2e8f0;}h2{font-size:13px;text-transform:uppercase;margin:20px 0 10px 0;border-left:4px solid #000;padding-left:8px;}.box-servico{border:1px solid #e2e8f0;padding:15px;min-height:80px;line-height:1.5;background:#fff;margin-bottom:20px;}.termos{font-size:10px;color:#475569;margin:30px 0;text-align:justify;}.assinaturas{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:50px;text-align:center;}.linha-sub{border-top:1px solid #000;padding-top:6px;font-size:11px;font-weight:bold;}.no-print{background:#7c3aed;color:white;padding:14px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:25px;border-radius:8px;border:none;width:100%;font-size:15px;}@media print{.no-print{display:none;}body{padding:0;}.os-border{border:none;}}</style></head><body><button class="no-print" onclick="window.print()">CLIQUE AQUI PARA IMPRIMIR VIA DO CLIENTE</button><div class="os-border"><div class="hdr"><div><strong style="font-size:24px;letter-spacing:1px;">ASDCAR</strong><br/><span style="color:#475569;">Centro Automotivo</span></div><div style="text-align:right;"><strong>ORDEM DE SERVIÇO</strong><br/>Data Entrada: ${fmtDate(s.entryDate)}<br/>Status: <strong>${s.status}</strong></div></div><h2>👤 Ficha do Cliente</h2><div class="grid-ficha"><div>Nome: <strong>${car.owner || '—'}</strong><br/>Telefone: <strong>${car.phone || '—'}</strong></div><div>E-mail: <strong>${email || 'Não informado'}</strong></div></div><h2>🚗 Identificação do Veículo</h2><div class="grid-ficha"><div>Placa: <strong style="text-transform:uppercase;">${s.vehiclePlate}</strong><br/>Modelo: <strong>${s.vehicleBrand || car.brand} ${s.vehicleModel || car.model}</strong></div><div>Ano: <strong>${car.year || '—'}</strong><br/>KM Entrada: <strong>${fmtKm(s.mileage)}</strong></div></div><h2>🛠️ Descrição dos Serviços / Diagnóstico</h2><div class="box-servico" style="white-space: pre-wrap;">${escopoPrincipal} ${blocoPecasMistas}</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;"><div style="border:1px solid #e2e8f0;padding:10px;">Faturado Peças ASDCAR:<br/><strong>${fmt(s.partsValue)}</strong></div><div style="border:1px solid #e2e8f0;padding:10px;">Faturado M.O:<br/><strong>${fmt(s.laborValue)}</strong></div><div style="background:#f1f5f9;padding:10px;text-align:right;">Valor Total Cobrado:<br/><strong>${fmt(tBruto)}</strong></div></div><div class="termos"><strong>TERMOS DE AUTORIZAÇÃO:</strong> Autorizo a oficina <strong>ASDCAR</strong> a executar os testes mecânicos e a desmontagem necessária do veículo acima qualificado para apuração do orçamento definitivo.</div><div class="assinaturas"><div><div class="linha-sub">ASDCAR CENTRO AUTOMOTIVO</div>Responsável Técnico</div><div><div class="linha-sub">ASSINATURA DO CLIENTE</div>Autorização de Entrada</div></div></div></body></html>`;
   const blob = new Blob([html], { type: "text/html" });
   window.open(URL.createObjectURL(blob), "_blank");
 }
@@ -616,13 +696,45 @@ function generatePDF(vehicles: any, services: any, expenses: any, dateFrom: any,
   const fE = expenses.filter((e: any) => e.expense_date && e.expense_date >= dateFrom && e.expense_date <= dateTo);
   const totalPeca = fS.reduce((s: any, sv: any) => s + (Number(sv.partsValue) || 0), 0);
   const totalLaborBruto = fS.reduce((s: any, sv: any) => s + (Number(sv.laborValue) || 0), 0);
+  
   const totalInRelatorio = fS.reduce((acc: any, s: any) => {
+    if (s.paymentMethod === "Múltiplo / Misto") {
+      const taxaCard = PAYMENT_METHODS[s.mixedCardMethod] || 0;
+      const dinheiroPixLivre = Number(s.mixedCash || 0);
+      if (viewMode === "labor") {
+        const totalBrutoServico = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
+        if (totalBrutoServico <= 0) return acc;
+        const percentualLabor = Number(s.laborValue) / totalBrutoServico;
+        return acc + (dinheiroPixLivre * percentualLabor) + ((Number(s.mixedCard || 0) * percentualLabor) * (1 - taxaCard / 100));
+      } else {
+        return acc + dinheiroPixLivre + (Number(s.mixedCard || 0) * (1 - taxaCard / 100));
+      }
+    }
     const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
     return viewMode === "labor" ? acc + (Number(s.laborValue || 0) * (1 - taxa / 100)) : acc + (s.netValue || 0);
   }, 0);
+
   const totalOutRelatorio = fE.reduce((acc: any, e: any) => acc + Number(e.value || 0), 0);
   const saldoLiquidoFinal = totalInRelatorio - totalOutRelatorio;
-  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Relatório Master</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:11px;color:#1e293b;padding:35px;}.hdr{display:flex;justify-content:space-between;margin-bottom:25px;border-bottom:3px solid #f97316;padding-bottom:12px;}.resumo{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:25px;}.card-res{border:1px solid #e2e8f0;padding:12px;border-radius:8px;}h2{font-size:13px;margin:20px 0 10px 0;text-transform:uppercase;color:#0f172a;border-left:4px solid #f97316;padding-left:8px;}table{width:100%;border-collapse:collapse;margin-bottom:20px;}th{background:#f8fafc;padding:8px;text-align:left;border-bottom:2px solid #e2e8f0;font-size:9px;}td{padding:8px;border-bottom:1px solid #f1f5f9;}.no-print{background:#f97316;color:white;padding:14px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:8px;border:none;width:100%;font-size:15px;}@media print{.no-print{display:none;}body{padding:0;}}</style></head><body><button class="no-print" onclick="window.print()">SALVAR EM PDF / IMPRIMIR</button><div class="hdr"><div><strong style="font-size:20px;color:#f97316;">ASDCAR</strong><br/>Faturamento Comercial da Oficina</div><div style="text-align:right;">Período: <strong>${fmtDate(dateFrom)}</strong> a <strong>${fmtDate(dateTo)}</strong><br/>Visualização: ${viewMode === 'labor' ? 'M.O. Líquida' : 'Total Bruto'}</div></div><div class="resumo"><div class="card-res">Peças Bruto:<br/><strong>${fmt(totalPeca)}</strong></div><div class="card-res">M.O. Bruta:<br/><strong>${fmt(totalLaborBruto)}</strong></div><div class="card-res" style="background:#f0fdf4;">Entradas:<br/><strong style="color:#15803d;">+${fmt(totalInRelatorio)}</strong></div><div class="card-res" style="background:#fef2f2;">Despesas:<br/><strong style="color:#b91c1c;">-${fmt(totalOutRelatorio)}</strong></div></div><div style="background:#f8fafc;border:2px solid #e2e8f0;padding:15px;border-radius:8px;margin-bottom:25px;text-align:right;">Saldo Real no Período:<br/><strong style="font-size:20px;color:${saldoLiquidoFinal>=0?'#16a34a':'#dc2626'}">${fmt(saldoLiquidoFinal)}</strong></div><h2>📈 Serviços Entregues</h2><table><thead><tr><th>Entrega</th><th>Veículo</th><th>KM</th><th>Descrição do Serviço</th><th>Valor</th></tr></thead><tbody>${fS.map((s: any) => { const taxa = PAYMENT_METHODS[s.paymentMethod] || 0; const val = viewMode === "labor" ? (Number(s.laborValue || 0) * (1 - taxa / 100)) : (Number(s.partsValue||0) + Number(s.laborValue||0)); return `<tr><td>${fmtDate(s.exitDate)}</td><td><strong>${s.vehiclePlate}</strong><br/><small>${s.vehicleBrand} ${s.vehicleModel}</small></td><td>${fmtKm(s.mileage)}</td><td>${s.description.replace(/\|\|/g, "·")}</td><td><strong>${fmt(val)}</strong></td></tr>` }).join('')}</tbody></table><h2>📉 Despesas</h2><table><thead><tr><th>Data Pagto</th><th>Categoria / Conta</th><th>Fornecedor</th><th>Valor Pago</th></tr></thead><tbody>${fE.map((e: any) => `<tr><td>${fmtDate(e.expense_date)}</td><td><strong>${e.category}</strong></td><td>${e.supplier || '—'}</td><td style="color:#b91c1c;font-weight:700;">-${fmt(e.value)}</td></tr>`).join('')}</tbody></table></body></html>`;
+  
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Relatório Master</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:11px;color:#1e293b;padding:35px;}.hdr{display:flex;justify-content:space-between;margin-bottom:25px;border-bottom:3px solid #f97316;padding-bottom:12px;}.resumo{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:25px;}.card-res{border:1px solid #e2e8f0;padding:12px;border-radius:8px;}h2{font-size:13px;margin:20px 0 10px 0;text-transform:uppercase;color:#0f172a;border-left:4px solid #f97316;padding-left:8px;}table{width:100%;border-collapse:collapse;margin-bottom:20px;}th{background:#f8fafc;padding:8px;text-align:left;border-bottom:2px solid #e2e8f0;font-size:9px;}td{padding:8px;border-bottom:1px solid #f1f5f9;vertical-align:middle;}.no-print{background:#f97316;color:white;padding:14px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:8px;border:none;width:100%;font-size:15px;}@media print{.no-print{display:none;}body{padding:0;}.os-border{border:none;}}</style></head><body><button class="no-print" onclick="window.print()">SALVAR EM PDF / IMPRIMIR</button><div class="hdr"><div><strong style="font-size:20px;color:#f97316;">ASDCAR</strong><br/>Faturamento Comercial da Oficina</div><div style="text-align:right;">Período: <strong>${fmtDate(dateFrom)}</strong> a <strong>${fmtDate(dateTo)}</strong><br/>Visualização: ${viewMode === 'labor' ? 'M.O. Líquida' : 'Total Bruto'}</div></div><div class="resumo"><div class="card-res">Peças Bruto:<br/><strong>${fmt(totalPeca)}</strong></div><div class="card-res">M.O. Bruta:<br/><strong>${fmt(totalLaborBruto)}</strong></div><div class="card-res" style="background:#f0fdf4;">Entradas:<br/><strong style="color:#15803d;">+${fmt(totalInRelatorio)}</strong></div><div class="card-res" style="background:#fef2f2;">Despesas:<br/><strong style="color:#b91c1c;">-${fmt(totalOutRelatorio)}</strong></div></div><div style="background:#f8fafc;border:2px solid #e2e8f0;padding:15px;border-radius:8px;margin-bottom:25px;text-align:right;">Saldo Real no Período:<br/><strong style="font-size:20px;color:${saldoLiquidoFinal>=0?'#16a34a':'#dc2626'}">${fmt(saldoLiquidoFinal)}</strong></div><h2>📈 Serviços Entregues</h2><table><thead><tr><th>Entrega</th><th>Veículo</th><th>KM</th><th>Descrição do Serviço</th><th>Valor</th></tr></thead><tbody>${fS.map((s: any) => { 
+    let val = 0;
+    if (s.paymentMethod === "Múltiplo / Misto") {
+      const taxaCard = PAYMENT_METHODS[s.mixedCardMethod] || 0;
+      const dinheiroPixLivre = Number(s.mixedCash || 0);
+      if (viewMode === "labor") {
+        const totalBrutoServico = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
+        const percentualLabor = totalBrutoServico > 0 ? Number(s.laborValue) / totalBrutoServico : 0;
+        val = (dinheiroPixLivre * percentualLabor) + ((Number(s.mixedCard || 0) * percentualLabor) * (1 - taxaCard / 100));
+      } else {
+        val = dinheiroPixLivre + (Number(s.mixedCard || 0) * (1 - taxaCard / 100));
+      }
+    } else {
+      const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
+      val = viewMode === "labor" ? (Number(s.laborValue || 0) * (1 - taxa / 100)) : (Number(s.partsValue||0) + Number(s.laborValue||0));
+    }
+    return `<tr><td>${fmtDate(s.exitDate)}</td><td><strong>${s.vehiclePlate}</strong><br/><small>${s.vehicleBrand} ${s.vehicleModel}</small></td><td>${fmtKm(s.mileage)}</td><td style="white-space: pre-wrap;">${s.description.replace(/\|\|/g, "·")}</td><td><strong>${fmt(val)}</strong></td></tr>` 
+  }).join('')}</tbody></table><h2>📉 Despesas</h2><table><thead><tr><th>Data Pagto</th><th>Categoria / Conta</th><th>Fornecedor</th><th>Valor Pago</th></tr></thead><tbody>${fE.map((e: any) => `<tr><td>${fmtDate(e.expense_date)}</td><td><strong>${e.category}</strong></td><td>${e.supplier || '—'}</td><td style="color:#b91c1c;font-weight:700;">-${fmt(e.value)}</td></tr>`).join('')}</tbody></table></body></html>`;
   const blob = new Blob([html], { type: "text/html" });
   window.open(URL.createObjectURL(blob), "_blank");
 }
