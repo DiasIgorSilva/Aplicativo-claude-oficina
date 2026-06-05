@@ -162,7 +162,6 @@ export default function App() {
         .table-row{padding:14px; border-bottom:1px solid #1e2736;}
       `}</style>
 
-      {/* CORREGIDO: Alinhamento justifyContent para jogar o botão PDF no canto direito */}
       <header style={{ padding: "14px 20px", borderBottom: "1px solid #1e2736", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0d0f14" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 32, height: 32, background: "#f97316", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🚘</div>
@@ -399,7 +398,6 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
   const cols = "1.8fr 1.3fr 0.8fr 1fr 110px";
 
   return (
-    /* CORREGIDO: Alinhamento justifyContent para jogar o botão "+ Entrada" na extrema direita */
     <Section title="Fluxo Oficina" action={<button className="btn-primary" onClick={() => open()}>+ Entrada</button>}>
       <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
         {["", ...Object.keys(STATUS_COLORS)].map(s => (
@@ -433,7 +431,6 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
           
           <div style={{ marginBottom: 10 }}>
             <label className="label">Defeito / Serviço Principal *</label>
-            {/* CORREGIDO: Permite espaços e pula linhas perfeitamente sem o bug do .trim() */}
             <textarea 
               className="textarea"
               placeholder="Digite o serviço feito aqui..."
@@ -540,7 +537,7 @@ function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any)
       <div className="card" style={{ display: "flex", gap: 10, alignItems: "center", background: "#1a2030" }}>
         <div style={{ flex: 1 }}>
           <label className="label">Mês Financeiro</label>
-          <select className="input" value={selMonth} onChange={(e) => setSelMonth(Number(e.target.value))}>{MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}</select>
+          <select className="input" value={selMonth} onChange={(e) => setSelMonth(Number(e.target.value))}>{MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}</select>
         </div>
         <div style={{ width: 100 }}>
           <label className="label">Ano</label>
@@ -610,7 +607,6 @@ function VehiclesTab({ vehicles, services, loadAll }: any) {
   const filtered = vehicles.filter((v: any) => !search || (v.plate||"").toLowerCase().includes(search.toLowerCase()) || (v.owner||"").toLowerCase().includes(search.toLowerCase()));
 
   return (
-    /* CORREGIDO: Alinhamento justifyContent para jogar o botão "+ Novo" na extrema direita */
     <Section title="Base de Veículos" action={<button className="btn-primary" onClick={() => open()}>+ Novo</button>}>
       <input className="input" placeholder="Buscar por placa ou cliente..." value={search} onChange={e => setSearch(e.target.value)} style={{ marginBottom: 10 }} />
       <div className="card" style={{ padding: 0 }}>
@@ -696,7 +692,6 @@ function OSModal({ service, vehicles, onClose }: any) {
   );
 }
 
-/* CORREGIDO GLOBALMENTE: Alterado o justify_content_ para justifyContent padrão do React para isolar os botões do título */
 function Section({ title, action, children }: any) { return (<div style={{ display: "flex", flexDirection: "column", gap: 12 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><h1 style={{ fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 800 }}>{title}</h1>{action}</div>{children}</div>); }
 function StatusBadge({ status, map }: any) { const color = (map || {})[status] || "#6b7280"; return <span className="badge" style={{ background: color + "22", color, border: `1px solid ${color}44` }}>{status || "—"}</span>; }
 function Field({ label, value, onChange, type = "text", disabled = false, placeholder = "" }: any) { return <div style={{ marginBottom: 10 }}><label className="label">{label}</label><input className="input" placeholder={placeholder} type={type} value={value || ""} onChange={e => onChange(e.target.value)} disabled={disabled} /></div>; }
@@ -752,4 +747,17 @@ function generatePDF(vehicles: any, services: any, expenses: any, dateFrom: any,
       const dinheiroPixLivre = Number(s.mixedCash || 0);
       if (viewMode === "labor") {
         const totalBrutoServico = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
-        const percentualLabor = totalBrutoServico > 0 ? Number(
+        const percentualLabor = totalBrutoServico > 0 ? Number(s.laborValue) / totalBrutoServico : 0;
+        val = (dinheiroPixLivre * percentualLabor) + ((Number(s.mixedCard || 0) * percentualLabor) * (1 - taxaCard / 100));
+      } else {
+        val = dinheiroPixLivre + (Number(s.mixedCard || 0) * (1 - taxaCard / 100));
+      }
+    } else {
+      const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
+      val = viewMode === "labor" ? (Number(s.laborValue || 0) * (1 - taxa / 100)) : (Number(s.partsValue||0) + Number(s.laborValue||0));
+    }
+    return `<tr><td>${fmtDate(s.exitDate)}</td><td><strong>${s.vehiclePlate}</strong><br/><small>${s.vehicleBrand} ${s.vehicleModel}</small></td><td>${fmtKm(s.mileage)}</td><td style="white-space: pre-wrap;">${s.description.replace(/\|\|/g, " · ")}</td><td><strong>${fmt(val)}</strong></td></tr>` 
+  }).join('')}</tbody></table><h2>📉 Despesas</h2><table><thead><tr><th>Data Pagto</th><th>Categoria / Conta</th><th>Fornecedor</th><th>Valor Pago</th></tr></thead><tbody>${fE.map((e: any) => `<tr><td>${fmtDate(e.expense_date)}</td><td><strong>${e.category}</strong></td><td>${e.supplier || '—'}</td><td style="color:#b91c1c;font-weight:700;">-${fmt(e.value)}</td></tr>`).join('')}</tbody></table></body></html>`;
+  const blob = new Blob([html], { type: "text/html" });
+  window.open(URL.createObjectURL(blob), "_blank");
+}
