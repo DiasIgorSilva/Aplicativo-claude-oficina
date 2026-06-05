@@ -296,7 +296,7 @@ function Dashboard({ services, viewMode, setViewMode }: any) {
 
       <div className="card">
         <h3 style={{ fontSize: 14, marginBottom: 12, color: "#10b981", fontFamily: "'Syne', sans-serif" }}>✅ Entregues em {MONTHS[selMonth]}</h3>
-        {filteredDelivered.length === 0 ? <div style={{ fontSize: 12, color: "#475569", text_align: "center", padding: 10 }}>Nenhum serviço finalizado neste mês.</div> :
+        {filteredDelivered.length === 0 ? <div style={{ fontSize: 12, color: "#475569", text_align: "center", padding: 10 }}>Nenhhum serviço finalizado neste mês.</div> :
           filteredDelivered.map((sv: any) => (
             <div key={sv.id} style={{ display: "flex", justify_content: "space-between", padding: "10px 0", borderBottom: "1px solid #1e2736", alignItems: "center" }}>
               <div style={{ flex: 1 }}><div style={{ fontSize: 12, color: "#e2e8f0" }}>{sv.vehiclePlate} — {sv.vehicleBrand}</div><div style={{ fontSize: 10, color: "#64748b" }}>Entregue: {fmtDate(sv.exitDate)}</div></div>
@@ -309,7 +309,7 @@ function Dashboard({ services, viewMode, setViewMode }: any) {
   );
 }
 
-// ── ABA OFICINA (CAMPO TEXTAREA CORRIGIDO CONTRA TRAVAMENTO DE TECLADO) ───
+// ── ABA OFICINA (REMOVIDO COMPORTAMENTO DE CORREÇÃO .TRIM() DO VALOR) ─────
 function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -431,15 +431,12 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
           
           <div style={{ marginBottom: 10 }}>
             <label className="label">Defeito / Serviço Principal *</label>
-            {/* CORREÇÃO DO BLOQUEIO DE ESPAÇO: Usando o type nativo puro e desativando auto-correções agressivas que travam teclados mobile */}
+            {/* CORREÇÃO DEFINITIVA: Removido o .trim() do value para permitir que a barra de espaço funcione livremente no Fox */}
             <textarea 
               className="textarea"
               placeholder="Digite o serviço feito aqui..."
-              value={form.description ? form.description.split("||")[0].trim() : ""}
+              value={form.description ? form.description.split("||")[0] : ""}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              autoCapitalize="sentences"
-              autoComplete="on"
-              spellCheck={true}
             />
           </div>
 
@@ -571,17 +568,6 @@ function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any)
           </div>
         ))}
       </div>
-
-      {modal && (
-        <div className="modal-bg" onClick={() => setModal(false)}><div className="modal" onClick={e => e.stopPropagation()}>
-          <h3>Gasto Interno ASDCAR</h3>
-          <Field label="Categoria de Gasto *" value={form.category} onChange={(v:any)=>setForm({...form, category:v})} />
-          <Field label="Valor Pago (R$) *" type="number" value={form.value} onChange={(v:any)=>setForm({...form, value:v})} />
-          <Field label="Fornecedor / Destino" value={form.supplier} onChange={(v:any)=>setForm({...form, supplier:v})} />
-          <Field label="Data do Pagamento" type="date" value={form.expense_date} onChange={(v:any)=>setForm({...form, expense_date:v})} />
-          <button className="btn-primary" style={{width:"100%", marginTop:15}} onClick={saveExp}>Salvar Lançamento</button>
-        </div></div>
-      )}
     </div>
   );
 }
