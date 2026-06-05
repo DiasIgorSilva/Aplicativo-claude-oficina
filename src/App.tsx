@@ -162,9 +162,10 @@ export default function App() {
         .table-row{padding:14px; border-bottom:1px solid #1e2736;}
       `}</style>
 
-      <header style={{ padding: "14px 20px", borderBottom: "1px solid #1e2736", display: "flex", alignItems: "center", justify_content: "space-between", background: "#0d0f14" }}>
+      {/* CORREGIDO: Alinhamento justifyContent para jogar o botão PDF no canto direito */}
+      <header style={{ padding: "14px 20px", borderBottom: "1px solid #1e2736", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0d0f14" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 32, height: 32, background: "#f97316", borderRadius: 8, display: "flex", alignItems: "center", justify_content: "center", fontSize: 18 }}>🚘</div>
+          <div style={{ width: 32, height: 32, background: "#f97316", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🚘</div>
           <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 800 }}>ASDCAR</div>
         </div>
         <button className="btn-primary" style={{ background: "#7c3aed", color: "#fff", fontSize: 11 }} onClick={() => setShowReport(true)}>📄 PDF</button>
@@ -182,7 +183,7 @@ export default function App() {
       </main>
 
       <nav className="bottom-nav">
-        <div style={{ display: "flex", justify_content: "space-around" }}>
+        <div style={{ display: "flex", justifyContent: "space-around" }}>
           {tabs.map(t => (
             <button key={t.id} className={`nav-item ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>
               <span style={{ fontSize: 22 }}>{t.icon}</span>{t.label}
@@ -284,9 +285,9 @@ function Dashboard({ services, viewMode, setViewMode }: any) {
 
       <div className="card">
         <h3 style={{ fontSize: 14, marginBottom: 12, color: "#f97316", fontFamily: "'Syne', sans-serif" }}>🛠️ Carros na Oficina (Ativos)</h3>
-        {activeServices.length === 0 ? <div style={{ fontSize: 12, color: "#475569", text_align: "center", padding: 10 }}>Pátio vazio no momento.</div> : 
+        {activeServices.length === 0 ? <div style={{ fontSize: 12, color: "#475569", textAlign: "center", padding: 10 }}>Pátio vazio no momento.</div> : 
           activeServices.map((sv: any) => (
-            <div key={sv.id} style={{ display: "flex", justify_content: "space-between", padding: "10px 0", borderBottom: "1px solid #1e2736", alignItems: "center" }}>
+            <div key={sv.id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #1e2736", alignItems: "center" }}>
               <div style={{ flex: 1, paddingRight: 10 }}><div style={{ fontSize: 12, color: "#e2e8f0", fontWeight: 700 }}>{sv.vehiclePlate} — {sv.vehicleBrand}</div><div style={{ fontSize: 10, color: "#64748b" }}>{sv.description.replace(/\|\|/g, " · ")}</div></div>
               <StatusBadge status={sv.status} map={STATUS_COLORS} />
             </div>
@@ -296,9 +297,9 @@ function Dashboard({ services, viewMode, setViewMode }: any) {
 
       <div className="card">
         <h3 style={{ fontSize: 14, marginBottom: 12, color: "#10b981", fontFamily: "'Syne', sans-serif" }}>✅ Entregues em {MONTHS[selMonth]}</h3>
-        {filteredDelivered.length === 0 ? <div style={{ fontSize: 12, color: "#475569", text_align: "center", padding: 10 }}>Nenhhum serviço finalizado neste mês.</div> :
+        {filteredDelivered.length === 0 ? <div style={{ fontSize: 12, color: "#475569", textAlign: "center", padding: 10 }}>Nenhum serviço finalizado neste mês.</div> :
           filteredDelivered.map((sv: any) => (
-            <div key={sv.id} style={{ display: "flex", justify_content: "space-between", padding: "10px 0", borderBottom: "1px solid #1e2736", alignItems: "center" }}>
+            <div key={sv.id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #1e2736", alignItems: "center" }}>
               <div style={{ flex: 1 }}><div style={{ fontSize: 12, color: "#e2e8f0" }}>{sv.vehiclePlate} — {sv.vehicleBrand}</div><div style={{ fontSize: 10, color: "#64748b" }}>Entregue: {fmtDate(sv.exitDate)}</div></div>
               <div style={{ fontSize: 12, fontWeight: 800, color: "#10b981" }}>{fmt((Number(sv.partsValue)||0) + (Number(sv.laborValue)||0))}</div>
             </div>
@@ -309,7 +310,7 @@ function Dashboard({ services, viewMode, setViewMode }: any) {
   );
 }
 
-// ── ABA OFICINA (REMOVIDO COMPORTAMENTO DE CORREÇÃO .TRIM() DO VALOR) ─────
+// ── ABA OFICINA ────────────────────────────────────────────────────────────
 function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -398,6 +399,7 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
   const cols = "1.8fr 1.3fr 0.8fr 1fr 110px";
 
   return (
+    /* CORREGIDO: Alinhamento justifyContent para jogar o botão "+ Entrada" na extrema direita */
     <Section title="Fluxo Oficina" action={<button className="btn-primary" onClick={() => open()}>+ Entrada</button>}>
       <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
         {["", ...Object.keys(STATUS_COLORS)].map(s => (
@@ -431,7 +433,7 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
           
           <div style={{ marginBottom: 10 }}>
             <label className="label">Defeito / Serviço Principal *</label>
-            {/* CORREÇÃO DEFINITIVA: Removido o .trim() do value para permitir que a barra de espaço funcione livremente no Fox */}
+            {/* CORREGIDO: Permite espaços e pula linhas perfeitamente sem o bug do .trim() */}
             <textarea 
               className="textarea"
               placeholder="Digite o serviço feito aqui..."
@@ -538,7 +540,7 @@ function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any)
       <div className="card" style={{ display: "flex", gap: 10, alignItems: "center", background: "#1a2030" }}>
         <div style={{ flex: 1 }}>
           <label className="label">Mês Financeiro</label>
-          <select className="input" value={selMonth} onChange={(e) => setSelMonth(Number(e.target.value))}>{MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}</select>
+          <select className="input" value={selMonth} onChange={(e) => setSelMonth(Number(e.target.value))}>{MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}</select>
         </div>
         <div style={{ width: 100 }}>
           <label className="label">Ano</label>
@@ -559,7 +561,7 @@ function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any)
       <div className="card">
         <h3 style={{ fontSize: 13, marginBottom: 12 }}>Relatório de Gastos</h3>
         {filteredExp.length === 0 ? <p style={{fontSize:11, color:"#64748b"}}>Nenhuma despesa lançada neste mês.</p> : filteredExp.map((e: any) => (
-          <div key={e.id} style={{ display: "flex", justify_content: "space-between", padding: "8px 0", borderBottom: "1px solid #1e2736", alignItems: "center" }}>
+          <div key={e.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #1e2736", alignItems: "center" }}>
             <div style={{ fontSize: 11 }}><strong>{e.category}</strong><br /><span style={{ color: "#64748b" }}>{e.supplier} - {fmtDate(e.expense_date)}</span></div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ fontSize: 12, fontWeight: 800, color: "#ef4444" }}>-{fmt(e.value)}</div>
@@ -568,6 +570,17 @@ function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any)
           </div>
         ))}
       </div>
+
+      {modal && (
+        <div className="modal-bg" onClick={() => setModal(false)}><div className="modal" onClick={e => e.stopPropagation()}>
+          <h3>Gasto Interno ASDCAR</h3>
+          <Field label="Categoria de Gasto *" value={form.category} onChange={(v:any)=>setForm({...form, category:v})} />
+          <Field label="Valor Pago (R$) *" type="number" value={form.value} onChange={(v:any)=>setForm({...form, value:v})} />
+          <Field label="Fornecedor / Destino" value={form.supplier} onChange={(v:any)=>setForm({...form, supplier:v})} />
+          <Field label="Data do Pagamento" type="date" value={form.expense_date} onChange={(v:any)=>setForm({...form, expense_date:v})} />
+          <button className="btn-primary" style={{width:"100%", marginTop:15}} onClick={saveExp}>Salvar Lançamento</button>
+        </div></div>
+      )}
     </div>
   );
 }
@@ -597,6 +610,7 @@ function VehiclesTab({ vehicles, services, loadAll }: any) {
   const filtered = vehicles.filter((v: any) => !search || (v.plate||"").toLowerCase().includes(search.toLowerCase()) || (v.owner||"").toLowerCase().includes(search.toLowerCase()));
 
   return (
+    /* CORREGIDO: Alinhamento justifyContent para jogar o botão "+ Novo" na extrema direita */
     <Section title="Base de Veículos" action={<button className="btn-primary" onClick={() => open()}>+ Novo</button>}>
       <input className="input" placeholder="Buscar por placa ou cliente..." value={search} onChange={e => setSearch(e.target.value)} style={{ marginBottom: 10 }} />
       <div className="card" style={{ padding: 0 }}>
@@ -682,7 +696,8 @@ function OSModal({ service, vehicles, onClose }: any) {
   );
 }
 
-function Section({ title, action, children }: any) { return (<div style={{ display: "flex", flexDirection: "column", gap: 12 }}><div style={{ display: "flex", justify_content: "space-between", alignItems: "center" }}><h1 style={{ fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 800 }}>{title}</h1>{action}</div>{children}</div>); }
+/* CORREGIDO GLOBALMENTE: Alterado o justify_content_ para justifyContent padrão do React para isolar os botões do título */
+function Section({ title, action, children }: any) { return (<div style={{ display: "flex", flexDirection: "column", gap: 12 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><h1 style={{ fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 800 }}>{title}</h1>{action}</div>{children}</div>); }
 function StatusBadge({ status, map }: any) { const color = (map || {})[status] || "#6b7280"; return <span className="badge" style={{ background: color + "22", color, border: `1px solid ${color}44` }}>{status || "—"}</span>; }
 function Field({ label, value, onChange, type = "text", disabled = false, placeholder = "" }: any) { return <div style={{ marginBottom: 10 }}><label className="label">{label}</label><input className="input" placeholder={placeholder} type={type} value={value || ""} onChange={e => onChange(e.target.value)} disabled={disabled} /></div>; }
 function SelectField({ label, value, onChange, options }: any) { return <div style={{ marginBottom: 10 }}><label className="label">{label}</label><select className="input" value={value} onChange={e => onChange(e.target.value)}>{options.map((o: any) => <option key={o} value={o}>{o}</option>)}</select></div>; }
@@ -737,17 +752,4 @@ function generatePDF(vehicles: any, services: any, expenses: any, dateFrom: any,
       const dinheiroPixLivre = Number(s.mixedCash || 0);
       if (viewMode === "labor") {
         const totalBrutoServico = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
-        const percentualLabor = totalBrutoServico > 0 ? Number(s.laborValue) / totalBrutoServico : 0;
-        val = (dinheiroPixLivre * percentualLabor) + ((Number(s.mixedCard || 0) * percentualLabor) * (1 - taxaCard / 100));
-      } else {
-        val = dinheiroPixLivre + (Number(s.mixedCard || 0) * (1 - taxaCard / 100));
-      }
-    } else {
-      const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
-      val = viewMode === "labor" ? (Number(s.laborValue || 0) * (1 - taxa / 100)) : (Number(s.partsValue||0) + Number(s.laborValue||0));
-    }
-    return `<tr><td>${fmtDate(s.exitDate)}</td><td><strong>${s.vehiclePlate}</strong><br/><small>${s.vehicleBrand} ${s.vehicleModel}</small></td><td>${fmtKm(s.mileage)}</td><td style="white-space: pre-wrap;">${s.description.replace(/\|\|/g, " · ")}</td><td><strong>${fmt(val)}</strong></td></tr>` 
-  }).join('')}</tbody></table><h2>📉 Despesas</h2><table><thead><tr><th>Data Pagto</th><th>Categoria / Conta</th><th>Fornecedor</th><th>Valor Pago</th></tr></thead><tbody>${fE.map((e: any) => `<tr><td>${fmtDate(e.expense_date)}</td><td><strong>${e.category}</strong></td><td>${e.supplier || '—'}</td><td style="color:#b91c1c;font-weight:700;">-${fmt(e.value)}</td></tr>`).join('')}</tbody></table></body></html>`;
-  const blob = new Blob([html], { type: "text/html" });
-  window.open(URL.createObjectURL(blob), "_blank");
-}
+        const percentualLabor = totalBrutoServico > 0 ? Number(
