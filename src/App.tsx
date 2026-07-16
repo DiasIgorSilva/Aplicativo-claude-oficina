@@ -215,7 +215,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
         return (
           <div>
             <style>{`
-    /* ── SISTEMA DE DESIGN GERAL ─────────────────────────────────────────── */
+/* ── SISTEMA DE DESIGN GERAL ─────────────────────────────────────────── */
     :root {
       --bg: #090b11;
       --surface: #131722;
@@ -988,8 +988,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
         const [selMonth, setSelMonth] = useState(new Date().getMonth());
         const [selYear, setSelYear] = useState(new Date().getFullYear());
 
-        const activeServices = services.filter((s: any) => s.status !== "Entregue");
-        const filteredDelivered = services.filter((s: any) => {
+        const activeServices = services.filter(s => s.status !== "Entregue");
+        const filteredDelivered = services.filter(s => {
           if (s.status !== "Entregue" || !s.exitDate) return false;
           const d = new Date(s.exitDate + "T12:00:00");
           return d.getMonth() === selMonth && d.getFullYear() === selYear;
@@ -1142,15 +1142,15 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
       function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
         const [modal, setModal] = useState(false);
-        const [editing, setEditing] = useState<any>(null);
-        const [form, setForm] = useState<any>({});
+        const [editing, setEditing] = useState(null);
+        const [form, setForm] = useState({});
         const [search, setSearch] = useState("");
         const [partsOwner, setPartsOwner] = useState("oficina"); 
         const [oficinaPartsText, setOficinaPartsText] = useState("");
         const [clientePartsText, setClientePartsText] = useState("");
         const [filterStatus, setFilterStatus] = useState("");
 
-        const open = (s: any = null) => { 
+        const open = (s = null) => { 
           setEditing(s); 
           let initialOwner = "oficina";
           let ofiText = "";
@@ -1176,7 +1176,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
         const save = async () => {
           if (!form.vehicleId || !form.description) return alert("Selecione o carro e descreva o serviço.");
-          const v = vehicles.find((v: any) => v.id === form.vehicleId);
+          const v = vehicles.find(v => v.id === form.vehicleId);
           let descLimpa = form.description.split("||")[0].replace(/\s*\(Cliente forneceu as peças\)/gi, "").trim();
           let finalPartsValue = Number(form.partsValue) || 0;
 
@@ -1329,7 +1329,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
                     <button className="modal-close" onClick={close}><Icon name="x" size={18} /></button>
                   </div>
 
-                  <VehicleSelector vehicles={vehicles} value={form.vehicleId} onChange={(val: any) => setForm({ ...form, vehicleId: val })} />
+                  <VehicleSelector vehicles={vehicles} value={form.vehicleId} onChange={(val) => setForm({ ...form, vehicleId: val })} />
                   
                   <div className="form-group">
                     <label className="label">Defeito / Serviço Principal *</label>
@@ -1453,12 +1453,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
       function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any) {
         const [modal, setModal] = useState(false);
-        const [form, setForm] = useState<any>({ expense_date: today() });
+        const [form, setForm] = useState({ expense_date: today() });
         const [selMonth, setSelMonth] = useState(new Date().getMonth());
         const [selYear, setSelYear] = useState(new Date().getFullYear());
 
-        const totalIn = services.filter((s: any) => s.status === "Entregue" && s.exitDate && new Date(s.exitDate + "T12:00:00").getMonth() === selMonth && new Date(s.exitDate + "T12:00:00").getFullYear() === selYear)
-          .reduce((acc: number, s: any) => {
+        const totalIn = services.filter(s => s.status === "Entregue" && s.exitDate && new Date(s.exitDate + "T12:00:00").getMonth() === selMonth && new Date(s.exitDate + "T12:00:00").getFullYear() === selYear)
+          .reduce((acc, s) => {
             if (s.paymentMethod === "Múltiplo / Misto") {
               const taxaCard = PAYMENT_METHODS[s.mixedCardMethod || "Débito"] || 0;
               const dinheiroPixLivre = Number(s.mixedCash || 0);
@@ -1475,8 +1475,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
             return viewMode === "labor" ? acc + (Number(s.laborValue || 0) * (1 - taxa / 100)) : acc + (s.netValue || 0);
           }, 0);
 
-        const filteredExp = expenses.filter((e: any) => e.expense_date && new Date(e.expense_date + "T12:00:00").getMonth() === selMonth && new Date(e.expense_date + "T12:00:00").getFullYear() === selYear);
-        const totalOut = filteredExp.reduce((acc: number, e: any) => acc + Number(e.value || 0), 0);
+        const filteredExp = expenses.filter(e => e.expense_date && new Date(e.expense_date + "T12:00:00").getMonth() === selMonth && new Date(e.expense_date + "T12:00:00").getFullYear() === selYear);
+        const totalOut = filteredExp.reduce((acc, e) => acc + Number(e.value || 0), 0);
 
         const saveExp = async () => {
           if (!form.category || !form.value) return alert("Preencha categoria e valor.");
@@ -1485,7 +1485,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
           if (!error) { await loadAll(); setModal(false); setForm({ expense_date: today() }); } else { alert("Erro ao salvar: " + error.message); }
         };
 
-        const deleteExp = async (id: any) => {
+        const deleteExp = async (id) => {
           if (!confirm("Deseja realmente excluir esta despesa?")) return;
           const { error } = await supabase.from("expenses").delete().eq("id", id);
           if (!error) { await loadAll(); } else { alert("Erro ao deletar: " + error.message); }
@@ -1542,7 +1542,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
                 <div className="empty-state">Nenhuma despesa registrada neste mês de referência.</div>
               ) : (
                 <div className="list-container">
-                  {filteredExp.map((e: any) => (
+                  {filteredExp.map(e => (
                     <div key={e.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid var(--border)" }}>
                       <div>
                         <div style={{ fontSize: "14px", fontWeight: 700 }}>{e.category}</div>
@@ -1615,12 +1615,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
       function VehiclesTab({ vehicles, services, loadAll }: any) {
         const [modal, setModal] = useState(false);
         const [historyModal, setHistoryModal] = useState(false);
-        const [selectedV, setSelectedV] = useState<any>(null);
-        const [editing, setEditing] = useState<any>(null);
+        const [selectedV, setSelectedV] = useState(null);
+        const [editing, setEditing] = useState(null);
         const [search, setSearch] = useState("");
-        const [form, setForm] = useState<any>({});
+        const [form, setForm] = useState({});
         
-        const open = (v: any = null) => { setEditing(v); setForm(v || {}); setModal(true); };
+        const open = (v = null) => { setEditing(v); setForm(v || {}); setModal(true); };
         const close = () => { setModal(false); setEditing(null); setForm({}); };
 
         const save = async () => {
@@ -1675,7 +1675,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
                 <div className="card empty-state">Nenhum veículo registrado ou encontrado.</div>
               ) : (
                 filtered.map(v => {
-                  const count = services.filter((s: any) => s.vehicleId === v.id).length;
+                  const count = services.filter(s => s.vehicleId === v.id).length;
                   return (
                     <div key={v.id} className="item-card">
                       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -1729,7 +1729,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
                     <input className="input" placeholder="Ex: ABC1D23" value={form.plate || ""} onChange={e => setForm({ ...form, plate: e.target.value.toUpperCase() })} />
                   </div>
 
-                  <BrandSelector value={form.brand || ""} onChange={(val: any) => setForm({ ...form, brand: val })} />
+                  <BrandSelector value={form.brand || ""} onChange={(val) => setForm({ ...form, brand: val })} />
 
                   <div className="form-group">
                     <label className="label">Modelo *</label>
@@ -1778,10 +1778,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
                   </div>
 
                   <div style={{ maxHeight: "350px", overflowY: "auto" }}>
-                    {services.filter((s: any) => s.vehicleId === selectedV?.id).length === 0 ? (
+                    {services.filter(s => s.vehicleId === selectedV?.id).length === 0 ? (
                       <div className="empty-state">Este veículo ainda não possui serviços registrados no banco.</div>
                     ) : (
-                      services.filter((s: any) => s.vehicleId === selectedV?.id).map((s: any) => (
+                      services.filter(s => s.vehicleId === selectedV?.id).map(s => (
                         <div key={s.id} style={{ padding: "14px", background: "var(--surface)", borderRadius: "10px", marginBottom: "10px", borderLeft: `3px solid ${STATUS_COLORS[s.status] || "var(--border)"}` }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                             <span style={{ fontSize: "13px", fontWeight: 700 }}>{s.description.replace(/\|\|/g, " · ")}</span>
@@ -1840,7 +1840,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
       function OSModal({ service, vehicles, onClose }: any) {
         const [email, setEmail] = useState("");
-        const car = vehicles.find((v: any) => v.id === service.vehicleId) || {};
+        const car = vehicles.find(v => v.id === service.vehicleId) || {};
         return (
           <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
@@ -1877,8 +1877,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
           escopoPrincipal = blocos[0].trim();
           blocoPecasMistas = `
             <div style="margin-top:15px; padding:12px; background:#f8fafc; border-radius:6px; border:1px solid #e2e8f0;">
-              <p style="margin-bottom:6px; font-size:11px;">⚙️ <strong>Peças fornecidas pela Oficina (ASDCAR):</strong> \${blocos[1]?.replace("Peças Oficina:", "")?.trim()}</p>
-              <p style="font-size:11px;">👤 <strong>Peças trazidas pelo Cliente:</strong> \${blocos[2]?.replace("Peças Cliente:", "")?.trim()} (Sem ônus)</p>
+              <p style="margin-bottom:6px; font-size:11px;">⚙️ <strong>Peças fornecidas pela Oficina (ASDCAR):</strong> ${blocos[1]?.replace("Peças Oficina:", "")?.trim()}</p>
+              <p style="font-size:11px;">👤 <strong>Peças trazidas pelo Cliente:</strong> ${blocos[2]?.replace("Peças Cliente:", "")?.trim()} (Sem ônus)</p>
             </div>`;
         } else if (s.description?.includes("(Cliente forneceu as peças)")) {
           escopoPrincipal = s.description.replace("(Cliente forneceu as peças)", "").trim();
@@ -1890,7 +1890,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
         <html lang="pt-BR">
         <head>
           <meta charset="UTF-8"/>
-          <title>Ordem de Serviço - ASDCAR #\${s.id.toUpperCase()}</title>
+          <title>Ordem de Serviço - ASDCAR #${s.id.toUpperCase()}</title>
           <style>
             * { box-sizing: border-box; margin: 0; padding: 0; }
             body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1e293b; padding: 30px; line-height: 1.5; }
@@ -1930,31 +1930,31 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
               </div>
               <div class="hdr-meta">
                 <strong>ORDEM DE SERVIÇO</strong><br/>
-                O.S. ID: <strong>#\${s.id.toUpperCase()}</strong><br/>
-                Status: <strong>\${s.status.toUpperCase()}</strong><br/>
-                Data de Entrada: \${fmtDate(s.entryDate)}
+                O.S. ID: <strong>#${s.id.toUpperCase()}</strong><br/>
+                Status: <strong>${s.status.toUpperCase()}</strong><br/>
+                Data de Entrada: ${fmtDate(s.entryDate)}
               </div>
             </div>
 
             <div class="grid-info">
               <div class="section-block">
                 <h2>👤 DADOS DO CLIENTE</h2>
-                <p>Nome: <strong>\${car.owner || '—'}</strong></p>
-                <p>Telefone: <strong>\${car.phone || '—'}</strong></p>
-                <p>E-mail: <strong>\${email || 'Não informado'}</strong></p>
+                <p>Nome: <strong>${car.owner || '—'}</strong></p>
+                <p>Telefone: <strong>${car.phone || '—'}</strong></p>
+                <p>E-mail: <strong>${email || 'Não informado'}</strong></p>
               </div>
               <div class="section-block">
                 <h2>🚗 FICHA DO VEÍCULO</h2>
-                <p>Modelo: <strong>\${car.brand || s.vehicleBrand} \${car.model || s.vehicleModel}</strong></p>
-                <p>Placa: <strong style="text-transform: uppercase;">\${s.vehiclePlate}</strong></p>
-                <p>KM do Registro: <strong>\${fmtKm(s.mileage)}</strong></p>
+                <p>Modelo: <strong>${car.brand || s.vehicleBrand} ${car.model || s.vehicleModel}</strong></p>
+                <p>Placa: <strong style="text-transform: uppercase;">${s.vehiclePlate}</strong></p>
+                <p>KM do Registro: <strong>${fmtKm(s.mileage)}</strong></p>
               </div>
             </div>
 
             <div class="service-details">
               <h2>🛠️ DESCRIÇÃO DO DIAGNÓSTICO E SERVIÇO</h2>
-              <div class="desc-box">\${escopoPrincipal}</div>
-              \${blocoPecasMistas}
+              <div class="desc-box">${escopoPrincipal}</div>
+              ${blocoPecasMistas}
             </div>
 
             <div>
@@ -1969,27 +1969,27 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
                 <tbody>
                   <tr>
                     <td>Serviço de Mão de Obra Mecânica</td>
-                    <td style="text-align: right; font-weight: 600;">\${fmt(s.laborValue)}</td>
+                    <td style="text-align: right; font-weight: 600;">${fmt(s.laborValue)}</td>
                   </tr>
                   <tr>
                     <td>Peças e Componentes Aplicados</td>
-                    <td style="text-align: right; font-weight: 600;">\${fmt(s.partsValue)}</td>
+                    <td style="text-align: right; font-weight: 600;">${fmt(s.partsValue)}</td>
                   </tr>
                   <tr class="total-row">
                     <td>Valor Total do Orçamento</td>
-                    <td style="text-align: right; color:#16a34a;">\${fmt(tBruto)}</td>
+                    <td style="text-align: right; color:#16a34a;">${fmt(tBruto)}</td>
                   </tr>
                 </tbody>
               </table>
-              \${s.status === "Entregue" ? `
+              ${s.status === "Entregue" ? `
                 <div style="margin-top:12px; font-size:11px; color:#475569;">
-                  Método de liquidação: <strong>\${s.paymentMethod}</strong> \${s.exitDate ? ` | Pago em: <strong>\${fmtDate(s.exitDate)}</strong>` : ""}
+                  Método de liquidação: <strong>${s.paymentMethod}</strong> ${s.exitDate ? ` | Pago em: <strong>${fmtDate(s.exitDate)}</strong>` : ""}
                 </div>
               ` : ""}
             </div>
 
             <div class="termos">
-              <strong>TERMO E GARANTIA:</strong> Oferecemos garantia legal de 90 dias a partir da data de entrega do serviço para serviços mecânicos de mão de obra e peças faturadas diretamente pela oficina. Peças fornecidas pelo próprio cliente não possuem cobertura de garantia civil ou responsabilidade mecânica da ASDCAR. A assinatura deste termo expressa plena aprovação e autorização das manutenções acima descritas.
+              <strong>TERMOS E GARANTIA:</strong> Oferecemos garantia legal de 90 dias a partir da data de entrega do serviço para serviços mecânicos de mão de obra e peças faturadas diretamente pela oficina. Peças fornecidas pelo próprio cliente não possuem cobertura de garantia civil ou responsabilidade mecânica da ASDCAR. A assinatura deste termo expressa plena aprovação e autorização das manutenções acima descritas.
             </div>
 
             <div class="assinaturas">
@@ -2008,21 +2008,19 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
         `;
 
         const win = window.open("", "_blank");
-        if (win) {
-          win.document.write(html);
-          win.document.close();
-        }
+        win.document.write(html);
+        win.document.close();
       }
 
       function generatePDF(vehicles: any, services: any, expenses: any, from: any, to: any, viewMode: any) {
-        const filteredServices = services.filter((s: any) => 
+        const filteredServices = services.filter(s => 
           s.status === "Entregue" && 
           s.exitDate && 
           s.exitDate >= from && 
           s.exitDate <= to
         );
 
-        const filteredExpenses = expenses.filter((e: any) => 
+        const filteredExpenses = expenses.filter(e => 
           e.expense_date && 
           e.expense_date >= from && 
           e.expense_date <= to
@@ -2091,31 +2089,31 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
                 <p>Fechamento Comercial de Caixa</p>
               </div>
               <div style="text-align: right;">
-                <p>Período: <strong>\${fmtDate(from)} a \${fmtDate(to)}</strong></p>
-                <p>Modelo de Filtro: <strong>\${viewMode === "labor" ? "Apenas M.O. Líquida" : "Faturamento Bruto Líquido"}</strong></p>
+                <p>Período: <strong>${fmtDate(from)} a ${fmtDate(to)}</strong></p>
+                <p>Modelo de Filtro: <strong>${viewMode === "labor" ? "Apenas M.O. Líquida" : "Faturamento Bruto Líquido"}</strong></p>
               </div>
             </div>
 
             <div class="grid-summary">
               <div class="kpi">
                 <span>Peças Bruto</span>
-                <strong>\${fmt(totalPecas)}</strong>
+                <strong>${fmt(totalPecas)}</strong>
               </div>
               <div class="kpi">
                 <span>Mão de Obra Bruta</span>
-                <strong>\${fmt(totalMO)}</strong>
+                <strong>${fmt(totalMO)}</strong>
               </div>
               <div class="kpi">
-                <span>Entradas Líquidas (\${viewMode === "labor" ? "M.O." : "Total"})</span>
-                <strong style="color: #16a34a;">\${fmt(faturamentoTotal)}</strong>
+                <span>Entradas Líquidas (${viewMode === "labor" ? "M.O." : "Total"})</span>
+                <strong style="color: #16a34a;">${fmt(faturamentoTotal)}</strong>
               </div>
-              <div class="kpi" style="border-color: \${\(saldoFinal\) >= 0 ? '#bbf7d0' : '#fecaca'};">
+              <div class="kpi" style="border-color: ${(saldoFinal) >= 0 ? '#bbf7d0' : '#fecaca'};">
                 <span>Resultado Caixa (Líquido)</span>
-                <strong style="color: \${\(saldoFinal\) >= 0 ? '#16a34a' : '#dc2626'};">\${fmt(saldoFinal)}</strong>
+                <strong style="color: ${(saldoFinal) >= 0 ? '#16a34a' : '#dc2626'};">${fmt(saldoFinal)}</strong>
               </div>
             </div>
 
-            <h2>🛠️ Serviços Entregues (\${filteredServices.length})</h2>
+            <h2>🛠️ Serviços Entregues (${filteredServices.length})</h2>
             <table>
               <thead>
                 <tr>
@@ -2128,20 +2126,20 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
                 </tr>
               </thead>
               <tbody>
-                \${filteredServices.map(s => `
+                ${filteredServices.map(s => `
                   <tr>
-                    <td>\${fmtDate(s.exitDate)}</td>
-                    <td><strong style="text-transform: uppercase;">\${s.vehiclePlate}</strong><br/><span style="color:#64748b; font-size:9px;">\${s.vehicleBrand}</span></td>
-                    <td>\${s.description.replace(/\\|\\|/g, " · ")}</td>
-                    <td>\${s.paymentMethod}</td>
-                    <td style="text-align: right; font-weight: 500;">\${fmt(s.laborValue)}</td>
-                    <td style="text-align: right;" class="value-in">\${fmt(viewMode === "labor" ? (s.laborValue * (1 - (PAYMENT_METHODS[s.paymentMethod] || 0) / 100)) : s.netValue)}</td>
+                    <td>${fmtDate(s.exitDate)}</td>
+                    <td><strong style="text-transform: uppercase;">${s.vehiclePlate}</strong><br/><span style="color:#64748b; font-size:9px;">${s.vehicleBrand}</span></td>
+                    <td>${s.description.replace(/\|\|/g, " · ")}</td>
+                    <td>${s.paymentMethod}</td>
+                    <td style="text-align: right; font-weight: 500;">${fmt(s.laborValue)}</td>
+                    <td style="text-align: right;" class="value-in">${fmt(viewMode === "labor" ? (s.laborValue * (1 - (PAYMENT_METHODS[s.paymentMethod] || 0) / 100)) : s.netValue)}</td>
                   </tr>
                 `).join("")}
               </tbody>
             </table>
 
-            <h2>💸 Despesas Lançadas (\${filteredExpenses.length})</h2>
+            <h2>💸 Despesas Lançadas (${filteredExpenses.length})</h2>
             <table>
               <thead>
                 <tr>
@@ -2152,19 +2150,19 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
                 </tr>
               </thead>
               <tbody>
-                \${filteredExpenses.map(e => `
+                ${filteredExpenses.map(e => `
                   <tr>
-                    <td>\${fmtDate(e.expense_date)}</td>
-                    <td><strong>\${e.category}</strong></td>
-                    <td>\${e.supplier || 'Geral'}</td>
-                    <td style="text-align: right;" class="value-out">-\${fmt(e.value)}</td>
+                    <td>${fmtDate(e.expense_date)}</td>
+                    <td><strong>${e.category}</strong></td>
+                    <td>${e.supplier || 'Geral'}</td>
+                    <td style="text-align: right;" class="value-out">-${fmt(e.value)}</td>
                   </tr>
                 `).join("")}
               </tbody>
             </table>
 
             <div class="footer-meta">
-              Relatório gerado em \${new Date().toLocaleDateString("pt-BR")} às \${new Date().toLocaleTimeString("pt-BR")} · ASDCAR AutoGestão
+              Relatório gerado em ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR")} · ASDCAR AutoGestão
             </div>
           </div>
           </body>
@@ -2172,8 +2170,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
         `;
 
         const win = window.open("", "_blank");
-        if (win) {
-          win.document.write(html);
-          win.document.close();
-        }
+        win.document.write(html);
+        win.document.close();
       }
