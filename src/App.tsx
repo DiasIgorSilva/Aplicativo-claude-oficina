@@ -1,96 +1,220 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ASDCAR - AutoGestão Oficina</title>
+import { useState, useEffect, useRef } from "react";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-  <!-- Capturador e Painel de Diagnóstico de Erros -->
-  <script>
-    window.capturedLogs = [];
-    var origLog = console.log;
-    console.log = function() {
-      window.capturedLogs.push({type: 'log', args: Array.from(arguments)});
-      origLog.apply(console, arguments);
-    };
-    var origError = console.error;
-    console.error = function() {
-      var args = Array.from(arguments).map(String).join(' ');
-      document.title = "DIAG_CON_ERR:" + args.slice(0, 150);
-      window.capturedLogs.push({type: 'error', args: Array.from(arguments)});
-      origError.apply(console, arguments);
-      showErrorOverlay();
-    };
-    window.onerror = function(msg, url, line, col, error) {
-      document.title = "DIAG_ERR:" + msg + " | " + url + ":" + line;
-      window.capturedLogs.push({
-        type: 'onerror', 
-        msg: msg, 
-        url: url, 
-        line: line, 
-        col: col, 
-        stack: error ? error.stack : ''
+// Inicialização do cliente Supabase
+      const supabase = createClient(
+        "https://bofhihxpqmqimkanwkyw.supabase.co",
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJvZmhpaHhwcW1xaW1rYW53a3l3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODQ3OTMsImV4cCI6MjA5MDY2MDc5M30.fOOD-FweGID1x2mlJ3LWImtw7B6m6Pc-8auXLIuCqbw"
+      );
+
+      // CONSTANTES
+      const PAYMENT_METHODS = {
+        "Dinheiro": 0, "Pix": 0, "Débito": 1.9,
+        "Crédito 1x": 0.79, "Crédito 2x": 1.58, "Crédito 3x": 2.37, "Crédito 4x": 3.16,
+        "Crédito 5x": 3.95, "Crédito 6x": 4.74, "Crédito 7x": 5.53, "Crédito 8x": 6.32,
+        "Crédito 9x": 7.11, "Crédito 10x": 7.90, "Crédito 11x": 8.69, "Crédito 12x": 9.48
+      };
+
+      const STATUS_COLORS = { 
+        "Aguardando": "#f59e0b", 
+        "Em andamento": "#3b82f6", 
+        "Pronto": "#10b981", 
+        "Entregue": "#64748b" 
+      };
+
+      const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+      const CAR_BRANDS = ["Audi", "BMW", "BYD", "Chevrolet", "Citroën", "Ferrari", "Fiat", "Ford", "GWM", "Honda", "Hyundai", "JAC", "Jaguar", "Jeep", "Kia", "Land Rover", "Mercedes-Benz", "Mitsubishi", "Nissan", "Peugeot", "Porsche", "RAM", "Renault", "Toyota", "Volkswagen", "Volvo"].sort();
+
+      // Ícones
+      function Icon({ name, size = 18, color = "currentColor", className = "" }: any) {
+        const paths = {
+          home: <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>,
+          wrench: <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9L6.7 20.3a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/>,
+          finance: <g><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/></g>,
+          car: <g><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18.4 6c-.3-.6-.9-1-1.6-1H7.2c-.7 0-1.3.4-1.6 1l-2.1 5.1C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></g>,
+          plus: <path d="M5 12h14M12 5v14"/>,
+          edit: <path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>,
+          history: <g><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/></g>,
+          file: <g><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></g>,
+          x: <path d="M18 6 6 18M6 6l12 12"/>,
+          search: <g><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></g>,
+          trash: <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+        };
+
+        const pathElem = paths[name];
+        if (!pathElem) return null;
+
+        return (
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            width={size} 
+            height={size} 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke={color} 
+            strokeWidth="2.2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+            className={className}
+          >
+            {pathElem}
+          </svg>
+        );
+      }
+
+      // FORMATAÇÕES
+      const uid = () => Math.random().toString(36).slice(2, 10);
+      const fmt = (n: any) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n || 0);
+      const fmtKm = (n: any) => n ? Number(n).toLocaleString("pt-BR") + " km" : "—";
+      const today = () => new Date().toISOString().slice(0, 10);
+      const fmtDate = (d: any) => d ? new Date(d + "T12:00:00").toLocaleDateString("pt-BR") : "—";
+
+      const mapV = (r: any) => ({
+        id: r.id, plate: r.plate, brand: r.brand, model: r.model, year: r.year, 
+        color: r.color, owner: r.owner, phone: r.phone, notes: r.notes, 
+        mileage: r.mileage || 0, createdAt: r.created_at
       });
-      showErrorOverlay();
-      return false;
-    };
-    
-    function showErrorOverlay() {
-      setTimeout(function() {
-        var div = document.getElementById('error-diagnostic-overlay');
-        if (!div) {
-          div = document.createElement('div');
-          div.id = 'error-diagnostic-overlay';
-          div.style.position = 'fixed';
-          div.style.inset = '0';
-          div.style.background = '#1e1b4b';
-          div.style.color = '#e0e7ff';
-          div.style.padding = '24px';
-          div.style.zIndex = '999999';
-          div.style.fontFamily = 'monospace';
-          div.style.fontSize = '13px';
-          div.style.overflow = 'auto';
-          div.style.lineHeight = '1.5';
-          document.body.appendChild(div);
-        }
-        var logHTML = '<h2>🚨 Painel de Diagnóstico de Erros (ASDCAR):</h2>';
-        logHTML += '<p style="margin-bottom:15px; color:#a5b4fc;">Se você ver este painel, envie o texto abaixo para corrigirmos o problema!</p>';
-        window.capturedLogs.forEach(function(item) {
-          if (item.type === 'onerror') {
-            logHTML += '<div style="background:#7f1d1d; color:#fecaca; padding:12px; margin-top:10px; border-radius:6px; border:1px solid #f87171;">' +
-                       '<strong>ERRO GLOBAL:</strong> ' + item.msg + '<br/>' +
-                       'Arquivo: ' + item.url + ' (Linha ' + item.line + ', Coluna ' + item.col + ')<br/>' +
-                       '<pre style="margin-top:5px; background:#450a0a; padding:8px; border-radius:4px; overflow:auto;">' + item.stack + '</pre></div>';
-          } else {
-            var color = item.type === 'error' ? '#fda4af' : '#c7d2fe';
-            var bg = item.type === 'error' ? '#881337' : '#312e81';
-            var border = item.type === 'error' ? '1px solid #f43f5e' : '1px solid #4338ca';
-            logHTML += '<div style="background:' + bg + '; color:' + color + '; border:' + border + '; padding:8px; margin-top:5px; border-radius:4px;">' +
-                       '<strong>' + item.type.toUpperCase() + ':</strong> ' +
-                       item.args.map(function(a) { 
-                         try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch(e) { return String(a); }
-                       }).join(' ') + '</div>';
-          }
-        });
-        div.innerHTML = logHTML;
-      }, 200);
-    }
-  </script>
-  
-  <!-- Fontes do Google -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&family=DM+Mono:wght@400;500;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
-  
-  <!-- React & Supabase UMD -->
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/@supabase/supabase-js@2" crossorigin></script>
-  
-  <!-- Babel para rodar JSX no navegador -->
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
 
-  <style>
+      const mapS = (r: any) => {
+        const parts = Number(r.parts_value) || 0;
+        const labor = Number(r.labor_value) || 0;
+        const net = r.net_value != null ? Number(r.net_value) : (parts + labor);
+        return {
+          id: r.id, vehicleId: r.vehicle_id, vehiclePlate: r.vehicle_plate, 
+          vehicleBrand: r.vehicle_brand, vehicleModel: r.vehicle_model, 
+          description: r.description, partsValue: parts, laborValue: labor, 
+          netValue: net, status: r.status, entryDate: r.entry_date, 
+          exitDate: r.exit_date, paymentMethod: r.payment_method || "Dinheiro", 
+          mileage: r.mileage || 0, createdAt: r.created_at,
+          mixedCash: Number(r.mixed_cash) || 0, mixedCard: Number(r.mixed_card) || 0,
+          mixedCardMethod: r.mixed_card_method || "Débito"
+        };
+      };
+
+      function BrandSelector({ value, onChange }: any) {
+        const [query, setQuery] = useState(value || "");
+        const [open, setOpen] = useState(false);
+        const ref = useRef(null);
+        const filtered = CAR_BRANDS.filter(b => b.toLowerCase().includes(query.toLowerCase()));
+        
+        useEffect(() => { setQuery(value || ""); }, [value]);
+        useEffect(() => {
+          function handleClick(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+          document.addEventListener("mousedown", handleClick); 
+          return () => document.removeEventListener("mousedown", handleClick);
+        }, []);
+
+        return (
+          <div ref={ref} style={{ position: "relative" }} className="form-group">
+            <label className="label">Marca *</label>
+            <input 
+              className="input" 
+              placeholder="Digite ou escolha a marca..." 
+              value={query} 
+              onFocus={() => setOpen(true)} 
+              onChange={e => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }} 
+              autoComplete="off" 
+            />
+            {open && filtered.length > 0 && (
+              <div className="dropdown-suggest">
+                {filtered.map(b => (
+                  <div 
+                    key={b} 
+                    onClick={() => { onChange(b); setQuery(b); setOpen(false); }} 
+                    className="suggest-item"
+                    style={{ color: value === b ? "var(--primary)" : "var(--text)" }}
+                  >
+                    {b}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      function VehicleSelector({ vehicles, value, onChange }: any) {
+        const [query, setQuery] = useState("");
+        const [open, setOpen] = useState(false);
+        const ref = useRef(null);
+        const selected = vehicles.find(v => v.id === value);
+        const displayValue = selected ? `${selected.plate} — ${selected.brand} ${selected.model}` : query;
+        const filtered = vehicles.filter(v => 
+          (v.plate || "").toLowerCase().includes(query.toLowerCase()) || 
+          (v.model || "").toLowerCase().includes(query.toLowerCase())
+        ).slice(0, 10);
+
+        useEffect(() => {
+          function handleClick(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+          document.addEventListener("mousedown", handleClick); 
+          return () => document.removeEventListener("mousedown", handleClick);
+        }, []);
+
+        return (
+          <div ref={ref} style={{ position: "relative" }} className="form-group">
+            <label className="label">Carro *</label>
+            <input 
+              className="input" 
+              placeholder="Busque placa ou modelo..." 
+              value={open ? query : displayValue} 
+              onFocus={() => { setOpen(true); setQuery(""); }} 
+              onChange={e => setQuery(e.target.value)} 
+              autoComplete="off" 
+            />
+            {open && (
+              <div className="dropdown-suggest">
+                {filtered.map(v => (
+                  <div 
+                    key={v.id} 
+                    onClick={() => { onChange(v.id); setOpen(false); }} 
+                    className="suggest-item"
+                  >
+                    <div style={{ fontWeight: 700, fontSize: "13px" }}>{v.plate}</div>
+                    <div className="suggest-item-sub">{v.brand} {v.model} {v.owner ? `· ${v.owner}` : ""}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      export default function App() {
+        const [tab, setTab] = useState("dashboard");
+        const [vehicles, setVehicles] = useState<any[]>([]);
+        const [services, setServices] = useState<any[]>([]);
+        const [expenses, setExpenses] = useState<any[]>([]);
+        const [loading, setLoading] = useState(true);
+        const [showReport, setShowReport] = useState(false);
+        const [showOSModal, setShowOSModal] = useState<any>(null);
+        const [globalViewMode, setGlobalViewMode] = useState("labor");
+
+        async function loadAll() {
+          setLoading(true);
+          const vRes = await supabase.from("vehicles").select("*").order("created_at", { ascending: false });
+          if (vRes.data) setVehicles(vRes.data.map(mapV));
+
+          const sRes = await supabase.from("services").select("*").order("created_at", { ascending: false });
+          if (sRes.data) setServices(sRes.data.map(mapS));
+
+          const eRes = await supabase.from("expenses").select("*").order("expense_date", { ascending: false });
+          if (eRes.data) setExpenses(eRes.data);
+          
+          setLoading(false);
+        }
+
+        useEffect(() => { loadAll(); }, []);
+
+        const tabs = [
+          { id: "dashboard", label: "Início", icon: "home" }, 
+          { id: "services", label: "Oficina", icon: "wrench" }, 
+          { id: "finance", label: "Financeiro", icon: "finance" }, 
+          { id: "vehicles", label: "Carros", icon: "car" }
+        ];
+
+        return (
+          <div>
+            <style>{`
     /* ── SISTEMA DE DESIGN GERAL ─────────────────────────────────────────── */
     :root {
       --bg: #090b11;
@@ -784,232 +908,7 @@
       color: var(--text-muted);
       font-size: 13px;
     }
-  </style>
-</head>
-<body>
-
-  <!-- App root container -->
-  <div id="root"></div>
-
-  <!-- Script da aplicação React -->
-  <script type="text/babel">
-    try {
-      const { useState, useEffect, useRef } = React;
-      const { createClient } = supabase;
-
-      // Inicialização do cliente Supabase
-      const supabaseClient = createClient(
-        "https://bofhihxpqmqimkanwkyw.supabase.co",
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJvZmhpaHhwcW1xaW1rYW53a3l3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODQ3OTMsImV4cCI6MjA5MDY2MDc5M30.fOOD-FweGID1x2mlJ3LWImtw7B6m6Pc-8auXLIuCqbw"
-      );
-
-      // CONSTANTES
-      const PAYMENT_METHODS = {
-        "Dinheiro": 0, "Pix": 0, "Débito": 1.9,
-        "Crédito 1x": 0.79, "Crédito 2x": 1.58, "Crédito 3x": 2.37, "Crédito 4x": 3.16,
-        "Crédito 5x": 3.95, "Crédito 6x": 4.74, "Crédito 7x": 5.53, "Crédito 8x": 6.32,
-        "Crédito 9x": 7.11, "Crédito 10x": 7.90, "Crédito 11x": 8.69, "Crédito 12x": 9.48
-      };
-
-      const STATUS_COLORS = { 
-        "Aguardando": "#f59e0b", 
-        "Em andamento": "#3b82f6", 
-        "Pronto": "#10b981", 
-        "Entregue": "#64748b" 
-      };
-
-      const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-      const CAR_BRANDS = ["Audi", "BMW", "BYD", "Chevrolet", "Citroën", "Ferrari", "Fiat", "Ford", "GWM", "Honda", "Hyundai", "JAC", "Jaguar", "Jeep", "Kia", "Land Rover", "Mercedes-Benz", "Mitsubishi", "Nissan", "Peugeot", "Porsche", "RAM", "Renault", "Toyota", "Volkswagen", "Volvo"].sort();
-
-      // Ícones
-      function Icon({ name, size = 18, color = "currentColor", className = "" }) {
-        const paths = {
-          home: <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>,
-          wrench: <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9L6.7 20.3a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/>,
-          finance: <g><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/></g>,
-          car: <g><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9L18.4 6c-.3-.6-.9-1-1.6-1H7.2c-.7 0-1.3.4-1.6 1l-2.1 5.1C2.7 11.3 2 12.1 2 13v3c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></g>,
-          plus: <path d="M5 12h14M12 5v14"/>,
-          edit: <path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>,
-          history: <g><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/></g>,
-          file: <g><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></g>,
-          x: <path d="M18 6 6 18M6 6l12 12"/>,
-          search: <g><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></g>,
-          trash: <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-        };
-
-        const pathElem = paths[name];
-        if (!pathElem) return null;
-
-        return (
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            width={size} 
-            height={size} 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke={color} 
-            strokeWidth="2.2" 
-            strokeLinecap="round" 
-            strokeLinejoin="round"
-            className={className}
-          >
-            {pathElem}
-          </svg>
-        );
-      }
-
-      // FORMATAÇÕES
-      const uid = () => Math.random().toString(36).slice(2, 10);
-      const fmt = (n) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n || 0);
-      const fmtKm = (n) => n ? Number(n).toLocaleString("pt-BR") + " km" : "—";
-      const today = () => new Date().toISOString().slice(0, 10);
-      const fmtDate = (d) => d ? new Date(d + "T12:00:00").toLocaleDateString("pt-BR") : "—";
-
-      const mapV = (r) => ({
-        id: r.id, plate: r.plate, brand: r.brand, model: r.model, year: r.year, 
-        color: r.color, owner: r.owner, phone: r.phone, notes: r.notes, 
-        mileage: r.mileage || 0, createdAt: r.created_at
-      });
-
-      const mapS = (r) => {
-        const parts = Number(r.parts_value) || 0;
-        const labor = Number(r.labor_value) || 0;
-        const net = r.net_value != null ? Number(r.net_value) : (parts + labor);
-        return {
-          id: r.id, vehicleId: r.vehicle_id, vehiclePlate: r.vehicle_plate, 
-          vehicleBrand: r.vehicle_brand, vehicleModel: r.vehicle_model, 
-          description: r.description, partsValue: parts, laborValue: labor, 
-          netValue: net, status: r.status, entryDate: r.entry_date, 
-          exitDate: r.exit_date, paymentMethod: r.payment_method || "Dinheiro", 
-          mileage: r.mileage || 0, createdAt: r.created_at,
-          mixedCash: Number(r.mixed_cash) || 0, mixedCard: Number(r.mixed_card) || 0,
-          mixedCardMethod: r.mixed_card_method || "Débito"
-        };
-      };
-
-      function BrandSelector({ value, onChange }) {
-        const [query, setQuery] = useState(value || "");
-        const [open, setOpen] = useState(false);
-        const ref = useRef(null);
-        const filtered = CAR_BRANDS.filter(b => b.toLowerCase().includes(query.toLowerCase()));
-        
-        useEffect(() => { setQuery(value || ""); }, [value]);
-        useEffect(() => {
-          function handleClick(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
-          document.addEventListener("mousedown", handleClick); 
-          return () => document.removeEventListener("mousedown", handleClick);
-        }, []);
-
-        return (
-          <div ref={ref} style={{ position: "relative" }} className="form-group">
-            <label className="label">Marca *</label>
-            <input 
-              className="input" 
-              placeholder="Digite ou escolha a marca..." 
-              value={query} 
-              onFocus={() => setOpen(true)} 
-              onChange={e => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }} 
-              autoComplete="off" 
-            />
-            {open && filtered.length > 0 && (
-              <div className="dropdown-suggest">
-                {filtered.map(b => (
-                  <div 
-                    key={b} 
-                    onClick={() => { onChange(b); setQuery(b); setOpen(false); }} 
-                    className="suggest-item"
-                    style={{ color: value === b ? "var(--primary)" : "var(--text)" }}
-                  >
-                    {b}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      }
-
-      function VehicleSelector({ vehicles, value, onChange }) {
-        const [query, setQuery] = useState("");
-        const [open, setOpen] = useState(false);
-        const ref = useRef(null);
-        const selected = vehicles.find(v => v.id === value);
-        const displayValue = selected ? `${selected.plate} — ${selected.brand} ${selected.model}` : query;
-        const filtered = vehicles.filter(v => 
-          (v.plate || "").toLowerCase().includes(query.toLowerCase()) || 
-          (v.model || "").toLowerCase().includes(query.toLowerCase())
-        ).slice(0, 10);
-
-        useEffect(() => {
-          function handleClick(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
-          document.addEventListener("mousedown", handleClick); 
-          return () => document.removeEventListener("mousedown", handleClick);
-        }, []);
-
-        return (
-          <div ref={ref} style={{ position: "relative" }} className="form-group">
-            <label className="label">Carro *</label>
-            <input 
-              className="input" 
-              placeholder="Busque placa ou modelo..." 
-              value={open ? query : displayValue} 
-              onFocus={() => { setOpen(true); setQuery(""); }} 
-              onChange={e => setQuery(e.target.value)} 
-              autoComplete="off" 
-            />
-            {open && (
-              <div className="dropdown-suggest">
-                {filtered.map(v => (
-                  <div 
-                    key={v.id} 
-                    onClick={() => { onChange(v.id); setOpen(false); }} 
-                    className="suggest-item"
-                  >
-                    <div style={{ fontWeight: 700, fontSize: "13px" }}>{v.plate}</div>
-                    <div className="suggest-item-sub">{v.brand} {v.model} {v.owner ? `· ${v.owner}` : ""}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      }
-
-      function App() {
-        const [tab, setTab] = useState("dashboard");
-        const [vehicles, setVehicles] = useState([]);
-        const [services, setServices] = useState([]);
-        const [expenses, setExpenses] = useState([]);
-        const [loading, setLoading] = useState(true);
-        const [showReport, setShowReport] = useState(false);
-        const [showOSModal, setShowOSModal] = useState(null);
-        const [globalViewMode, setGlobalViewMode] = useState("labor");
-
-        async function loadAll() {
-          setLoading(true);
-          const vRes = await supabaseClient.from("vehicles").select("*").order("created_at", { ascending: false });
-          if (vRes.data) setVehicles(vRes.data.map(mapV));
-
-          const sRes = await supabaseClient.from("services").select("*").order("created_at", { ascending: false });
-          if (sRes.data) setServices(sRes.data.map(mapS));
-
-          const eRes = await supabaseClient.from("expenses").select("*").order("expense_date", { ascending: false });
-          if (eRes.data) setExpenses(eRes.data);
-          
-          setLoading(false);
-        }
-
-        useEffect(() => { loadAll(); }, []);
-
-        const tabs = [
-          { id: "dashboard", label: "Início", icon: "home" }, 
-          { id: "services", label: "Oficina", icon: "wrench" }, 
-          { id: "finance", label: "Financeiro", icon: "finance" }, 
-          { id: "vehicles", label: "Carros", icon: "car" }
-        ];
-
-        return (
-          <div>
+            `}</style>
             <header>
               <div className="logo-area">
                 <div className="logo-icon">🚗</div>
@@ -1085,12 +984,12 @@
         );
       }
 
-      function Dashboard({ services, viewMode, setViewMode }) {
+      function Dashboard({ services, viewMode, setViewMode }: any) {
         const [selMonth, setSelMonth] = useState(new Date().getMonth());
         const [selYear, setSelYear] = useState(new Date().getFullYear());
 
-        const activeServices = services.filter(s => s.status !== "Entregue");
-        const filteredDelivered = services.filter(s => {
+        const activeServices = services.filter((s: any) => s.status !== "Entregue");
+        const filteredDelivered = services.filter((s: any) => {
           if (s.status !== "Entregue" || !s.exitDate) return false;
           const d = new Date(s.exitDate + "T12:00:00");
           return d.getMonth() === selMonth && d.getFullYear() === selYear;
@@ -1234,24 +1133,24 @@
         );
       }
 
-      function statusClass(status) {
+      function statusClass(status: any) {
         if (status === "Aguardando") return "aguardando";
         if (status === "Em andamento") return "andamento";
         if (status === "Pronto") return "pronto";
         return "entregue";
       }
 
-      function ServicesTab({ services, vehicles, loadAll, onOpenOS }) {
+      function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
         const [modal, setModal] = useState(false);
-        const [editing, setEditing] = useState(null);
-        const [form, setForm] = useState({});
+        const [editing, setEditing] = useState<any>(null);
+        const [form, setForm] = useState<any>({});
         const [search, setSearch] = useState("");
         const [partsOwner, setPartsOwner] = useState("oficina"); 
         const [oficinaPartsText, setOficinaPartsText] = useState("");
         const [clientePartsText, setClientePartsText] = useState("");
         const [filterStatus, setFilterStatus] = useState("");
 
-        const open = (s = null) => { 
+        const open = (s: any = null) => { 
           setEditing(s); 
           let initialOwner = "oficina";
           let ofiText = "";
@@ -1277,7 +1176,7 @@
 
         const save = async () => {
           if (!form.vehicleId || !form.description) return alert("Selecione o carro e descreva o serviço.");
-          const v = vehicles.find(v => v.id === form.vehicleId);
+          const v = vehicles.find((v: any) => v.id === form.vehicleId);
           let descLimpa = form.description.split("||")[0].replace(/\s*\(Cliente forneceu as peças\)/gi, "").trim();
           let finalPartsValue = Number(form.partsValue) || 0;
 
@@ -1322,7 +1221,7 @@
             mixed_card_method: form.paymentMethod === "Múltiplo / Misto" ? metodoCartaoMisto : null
           };
           
-          const { error } = await supabaseClient.from("services").upsert(row);
+          const { error } = await supabase.from("services").upsert(row);
           if (!error) { await loadAll(); close(); } else { alert("Erro ao salvar: " + error.message); }
         };
 
@@ -1430,7 +1329,7 @@
                     <button className="modal-close" onClick={close}><Icon name="x" size={18} /></button>
                   </div>
 
-                  <VehicleSelector vehicles={vehicles} value={form.vehicleId} onChange={(val) => setForm({ ...form, vehicleId: val })} />
+                  <VehicleSelector vehicles={vehicles} value={form.vehicleId} onChange={(val: any) => setForm({ ...form, vehicleId: val })} />
                   
                   <div className="form-group">
                     <label className="label">Defeito / Serviço Principal *</label>
@@ -1552,14 +1451,14 @@
         );
       }
 
-      function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }) {
+      function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any) {
         const [modal, setModal] = useState(false);
-        const [form, setForm] = useState({ expense_date: today() });
+        const [form, setForm] = useState<any>({ expense_date: today() });
         const [selMonth, setSelMonth] = useState(new Date().getMonth());
         const [selYear, setSelYear] = useState(new Date().getFullYear());
 
-        const totalIn = services.filter(s => s.status === "Entregue" && s.exitDate && new Date(s.exitDate + "T12:00:00").getMonth() === selMonth && new Date(s.exitDate + "T12:00:00").getFullYear() === selYear)
-          .reduce((acc, s) => {
+        const totalIn = services.filter((s: any) => s.status === "Entregue" && s.exitDate && new Date(s.exitDate + "T12:00:00").getMonth() === selMonth && new Date(s.exitDate + "T12:00:00").getFullYear() === selYear)
+          .reduce((acc: number, s: any) => {
             if (s.paymentMethod === "Múltiplo / Misto") {
               const taxaCard = PAYMENT_METHODS[s.mixedCardMethod || "Débito"] || 0;
               const dinheiroPixLivre = Number(s.mixedCash || 0);
@@ -1576,19 +1475,19 @@
             return viewMode === "labor" ? acc + (Number(s.laborValue || 0) * (1 - taxa / 100)) : acc + (s.netValue || 0);
           }, 0);
 
-        const filteredExp = expenses.filter(e => e.expense_date && new Date(e.expense_date + "T12:00:00").getMonth() === selMonth && new Date(e.expense_date + "T12:00:00").getFullYear() === selYear);
-        const totalOut = filteredExp.reduce((acc, e) => acc + Number(e.value || 0), 0);
+        const filteredExp = expenses.filter((e: any) => e.expense_date && new Date(e.expense_date + "T12:00:00").getMonth() === selMonth && new Date(e.expense_date + "T12:00:00").getFullYear() === selYear);
+        const totalOut = filteredExp.reduce((acc: number, e: any) => acc + Number(e.value || 0), 0);
 
         const saveExp = async () => {
           if (!form.category || !form.value) return alert("Preencha categoria e valor.");
           const row = { id: form.id || uid(), category: form.category, value: Number(form.value), supplier: form.supplier || "Geral", expense_date: form.expense_date || today() };
-          const { error } = await supabaseClient.from("expenses").upsert(row);
+          const { error } = await supabase.from("expenses").upsert(row);
           if (!error) { await loadAll(); setModal(false); setForm({ expense_date: today() }); } else { alert("Erro ao salvar: " + error.message); }
         };
 
-        const deleteExp = async (id) => {
+        const deleteExp = async (id: any) => {
           if (!confirm("Deseja realmente excluir esta despesa?")) return;
-          const { error } = await supabaseClient.from("expenses").delete().eq("id", id);
+          const { error } = await supabase.from("expenses").delete().eq("id", id);
           if (!error) { await loadAll(); } else { alert("Erro ao deletar: " + error.message); }
         };
 
@@ -1643,7 +1542,7 @@
                 <div className="empty-state">Nenhuma despesa registrada neste mês de referência.</div>
               ) : (
                 <div className="list-container">
-                  {filteredExp.map(e => (
+                  {filteredExp.map((e: any) => (
                     <div key={e.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid var(--border)" }}>
                       <div>
                         <div style={{ fontSize: "14px", fontWeight: 700 }}>{e.category}</div>
@@ -1713,15 +1612,15 @@
         );
       }
 
-      function VehiclesTab({ vehicles, services, loadAll }) {
+      function VehiclesTab({ vehicles, services, loadAll }: any) {
         const [modal, setModal] = useState(false);
         const [historyModal, setHistoryModal] = useState(false);
-        const [selectedV, setSelectedV] = useState(null);
-        const [editing, setEditing] = useState(null);
+        const [selectedV, setSelectedV] = useState<any>(null);
+        const [editing, setEditing] = useState<any>(null);
         const [search, setSearch] = useState("");
-        const [form, setForm] = useState({});
+        const [form, setForm] = useState<any>({});
         
-        const open = (v = null) => { setEditing(v); setForm(v || {}); setModal(true); };
+        const open = (v: any = null) => { setEditing(v); setForm(v || {}); setModal(true); };
         const close = () => { setModal(false); setEditing(null); setForm({}); };
 
         const save = async () => {
@@ -1738,7 +1637,7 @@
             notes: form.notes, 
             mileage: Number(form.mileage) || 0 
           };
-          const { error } = await supabaseClient.from("vehicles").upsert(row);
+          const { error } = await supabase.from("vehicles").upsert(row);
           if (!error) { await loadAll(); close(); } else { alert("Erro ao salvar: " + error.message); }
         };
 
@@ -1776,7 +1675,7 @@
                 <div className="card empty-state">Nenhum veículo registrado ou encontrado.</div>
               ) : (
                 filtered.map(v => {
-                  const count = services.filter(s => s.vehicleId === v.id).length;
+                  const count = services.filter((s: any) => s.vehicleId === v.id).length;
                   return (
                     <div key={v.id} className="item-card">
                       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
@@ -1830,7 +1729,7 @@
                     <input className="input" placeholder="Ex: ABC1D23" value={form.plate || ""} onChange={e => setForm({ ...form, plate: e.target.value.toUpperCase() })} />
                   </div>
 
-                  <BrandSelector value={form.brand || ""} onChange={(val) => setForm({ ...form, brand: val })} />
+                  <BrandSelector value={form.brand || ""} onChange={(val: any) => setForm({ ...form, brand: val })} />
 
                   <div className="form-group">
                     <label className="label">Modelo *</label>
@@ -1879,10 +1778,10 @@
                   </div>
 
                   <div style={{ maxHeight: "350px", overflowY: "auto" }}>
-                    {services.filter(s => s.vehicleId === selectedV?.id).length === 0 ? (
+                    {services.filter((s: any) => s.vehicleId === selectedV?.id).length === 0 ? (
                       <div className="empty-state">Este veículo ainda não possui serviços registrados no banco.</div>
                     ) : (
-                      services.filter(s => s.vehicleId === selectedV?.id).map(s => (
+                      services.filter((s: any) => s.vehicleId === selectedV?.id).map((s: any) => (
                         <div key={s.id} style={{ padding: "14px", background: "var(--surface)", borderRadius: "10px", marginBottom: "10px", borderLeft: `3px solid ${STATUS_COLORS[s.status] || "var(--border)"}` }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                             <span style={{ fontSize: "13px", fontWeight: 700 }}>{s.description.replace(/\|\|/g, " · ")}</span>
@@ -1910,7 +1809,7 @@
         );
       }
 
-      function ReportModal({ onClose, onGenerate }) {
+      function ReportModal({ onClose, onGenerate }: any) {
         const [from, setFrom] = useState(today().slice(0, 8) + "01");
         const [to, setTo] = useState(today());
         return (
@@ -1939,9 +1838,9 @@
         );
       }
 
-      function OSModal({ service, vehicles, onClose }) {
+      function OSModal({ service, vehicles, onClose }: any) {
         const [email, setEmail] = useState("");
-        const car = vehicles.find(v => v.id === service.vehicleId) || {};
+        const car = vehicles.find((v: any) => v.id === service.vehicleId) || {};
         return (
           <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
@@ -1968,7 +1867,7 @@
         );
       }
 
-      function generateOSFile(s, car, email) {
+      function generateOSFile(s: any, car: any, email: any) {
         const tBruto = Number(s.partsValue || 0) + Number(s.laborValue || 0);
         let escopoPrincipal = s.description;
         let blocoPecasMistas = "";
@@ -1978,8 +1877,8 @@
           escopoPrincipal = blocos[0].trim();
           blocoPecasMistas = `
             <div style="margin-top:15px; padding:12px; background:#f8fafc; border-radius:6px; border:1px solid #e2e8f0;">
-              <p style="margin-bottom:6px; font-size:11px;">⚙️ <strong>Peças fornecidas pela Oficina (ASDCAR):</strong> ${blocos[1]?.replace("Peças Oficina:", "")?.trim()}</p>
-              <p style="font-size:11px;">👤 <strong>Peças trazidas pelo Cliente:</strong> ${blocos[2]?.replace("Peças Cliente:", "")?.trim()} (Sem ônus)</p>
+              <p style="margin-bottom:6px; font-size:11px;">⚙️ <strong>Peças fornecidas pela Oficina (ASDCAR):</strong> \${blocos[1]?.replace("Peças Oficina:", "")?.trim()}</p>
+              <p style="font-size:11px;">👤 <strong>Peças trazidas pelo Cliente:</strong> \${blocos[2]?.replace("Peças Cliente:", "")?.trim()} (Sem ônus)</p>
             </div>`;
         } else if (s.description?.includes("(Cliente forneceu as peças)")) {
           escopoPrincipal = s.description.replace("(Cliente forneceu as peças)", "").trim();
@@ -1991,7 +1890,7 @@
         <html lang="pt-BR">
         <head>
           <meta charset="UTF-8"/>
-          <title>Ordem de Serviço - ASDCAR #${s.id.toUpperCase()}</title>
+          <title>Ordem de Serviço - ASDCAR #\${s.id.toUpperCase()}</title>
           <style>
             * { box-sizing: border-box; margin: 0; padding: 0; }
             body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1e293b; padding: 30px; line-height: 1.5; }
@@ -2031,31 +1930,31 @@
               </div>
               <div class="hdr-meta">
                 <strong>ORDEM DE SERVIÇO</strong><br/>
-                O.S. ID: <strong>#${s.id.toUpperCase()}</strong><br/>
-                Status: <strong>${s.status.toUpperCase()}</strong><br/>
-                Data de Entrada: ${fmtDate(s.entryDate)}
+                O.S. ID: <strong>#\${s.id.toUpperCase()}</strong><br/>
+                Status: <strong>\${s.status.toUpperCase()}</strong><br/>
+                Data de Entrada: \${fmtDate(s.entryDate)}
               </div>
             </div>
 
             <div class="grid-info">
               <div class="section-block">
                 <h2>👤 DADOS DO CLIENTE</h2>
-                <p>Nome: <strong>${car.owner || '—'}</strong></p>
-                <p>Telefone: <strong>${car.phone || '—'}</strong></p>
-                <p>E-mail: <strong>${email || 'Não informado'}</strong></p>
+                <p>Nome: <strong>\${car.owner || '—'}</strong></p>
+                <p>Telefone: <strong>\${car.phone || '—'}</strong></p>
+                <p>E-mail: <strong>\${email || 'Não informado'}</strong></p>
               </div>
               <div class="section-block">
                 <h2>🚗 FICHA DO VEÍCULO</h2>
-                <p>Modelo: <strong>${car.brand || s.vehicleBrand} ${car.model || s.vehicleModel}</strong></p>
-                <p>Placa: <strong style="text-transform: uppercase;">${s.vehiclePlate}</strong></p>
-                <p>KM do Registro: <strong>${fmtKm(s.mileage)}</strong></p>
+                <p>Modelo: <strong>\${car.brand || s.vehicleBrand} \${car.model || s.vehicleModel}</strong></p>
+                <p>Placa: <strong style="text-transform: uppercase;">\${s.vehiclePlate}</strong></p>
+                <p>KM do Registro: <strong>\${fmtKm(s.mileage)}</strong></p>
               </div>
             </div>
 
             <div class="service-details">
               <h2>🛠️ DESCRIÇÃO DO DIAGNÓSTICO E SERVIÇO</h2>
-              <div class="desc-box">${escopoPrincipal}</div>
-              ${blocoPecasMistas}
+              <div class="desc-box">\${escopoPrincipal}</div>
+              \${blocoPecasMistas}
             </div>
 
             <div>
@@ -2070,27 +1969,27 @@
                 <tbody>
                   <tr>
                     <td>Serviço de Mão de Obra Mecânica</td>
-                    <td style="text-align: right; font-weight: 600;">${fmt(s.laborValue)}</td>
+                    <td style="text-align: right; font-weight: 600;">\${fmt(s.laborValue)}</td>
                   </tr>
                   <tr>
                     <td>Peças e Componentes Aplicados</td>
-                    <td style="text-align: right; font-weight: 600;">${fmt(s.partsValue)}</td>
+                    <td style="text-align: right; font-weight: 600;">\${fmt(s.partsValue)}</td>
                   </tr>
                   <tr class="total-row">
                     <td>Valor Total do Orçamento</td>
-                    <td style="text-align: right; color:#16a34a;">${fmt(tBruto)}</td>
+                    <td style="text-align: right; color:#16a34a;">\${fmt(tBruto)}</td>
                   </tr>
                 </tbody>
               </table>
-              ${s.status === "Entregue" ? `
+              \${s.status === "Entregue" ? `
                 <div style="margin-top:12px; font-size:11px; color:#475569;">
-                  Método de liquidação: <strong>${s.paymentMethod}</strong> ${s.exitDate ? ` | Pago em: <strong>${fmtDate(s.exitDate)}</strong>` : ""}
+                  Método de liquidação: <strong>\${s.paymentMethod}</strong> \${s.exitDate ? ` | Pago em: <strong>\${fmtDate(s.exitDate)}</strong>` : ""}
                 </div>
               ` : ""}
             </div>
 
             <div class="termos">
-              <strong>TERMOS E GARANTIA:</strong> Oferecemos garantia legal de 90 dias a partir da data de entrega do serviço para serviços mecânicos de mão de obra e peças faturadas diretamente pela oficina. Peças fornecidas pelo próprio cliente não possuem cobertura de garantia civil ou responsabilidade mecânica da ASDCAR. A assinatura deste termo expressa plena aprovação e autorização das manutenções acima descritas.
+              <strong>TERMO E GARANTIA:</strong> Oferecemos garantia legal de 90 dias a partir da data de entrega do serviço para serviços mecânicos de mão de obra e peças faturadas diretamente pela oficina. Peças fornecidas pelo próprio cliente não possuem cobertura de garantia civil ou responsabilidade mecânica da ASDCAR. A assinatura deste termo expressa plena aprovação e autorização das manutenções acima descritas.
             </div>
 
             <div class="assinaturas">
@@ -2109,19 +2008,21 @@
         `;
 
         const win = window.open("", "_blank");
-        win.document.write(html);
-        win.document.close();
+        if (win) {
+          win.document.write(html);
+          win.document.close();
+        }
       }
 
-      function generatePDF(vehicles, services, expenses, from, to, viewMode) {
-        const filteredServices = services.filter(s => 
+      function generatePDF(vehicles: any, services: any, expenses: any, from: any, to: any, viewMode: any) {
+        const filteredServices = services.filter((s: any) => 
           s.status === "Entregue" && 
           s.exitDate && 
           s.exitDate >= from && 
           s.exitDate <= to
         );
 
-        const filteredExpenses = expenses.filter(e => 
+        const filteredExpenses = expenses.filter((e: any) => 
           e.expense_date && 
           e.expense_date >= from && 
           e.expense_date <= to
@@ -2190,31 +2091,31 @@
                 <p>Fechamento Comercial de Caixa</p>
               </div>
               <div style="text-align: right;">
-                <p>Período: <strong>${fmtDate(from)} a ${fmtDate(to)}</strong></p>
-                <p>Modelo de Filtro: <strong>${viewMode === "labor" ? "Apenas M.O. Líquida" : "Faturamento Bruto Líquido"}</strong></p>
+                <p>Período: <strong>\${fmtDate(from)} a \${fmtDate(to)}</strong></p>
+                <p>Modelo de Filtro: <strong>\${viewMode === "labor" ? "Apenas M.O. Líquida" : "Faturamento Bruto Líquido"}</strong></p>
               </div>
             </div>
 
             <div class="grid-summary">
               <div class="kpi">
                 <span>Peças Bruto</span>
-                <strong>${fmt(totalPecas)}</strong>
+                <strong>\${fmt(totalPecas)}</strong>
               </div>
               <div class="kpi">
                 <span>Mão de Obra Bruta</span>
-                <strong>${fmt(totalMO)}</strong>
+                <strong>\${fmt(totalMO)}</strong>
               </div>
               <div class="kpi">
-                <span>Entradas Líquidas (${viewMode === "labor" ? "M.O." : "Total"})</span>
-                <strong style="color: #16a34a;">${fmt(faturamentoTotal)}</strong>
+                <span>Entradas Líquidas (\${viewMode === "labor" ? "M.O." : "Total"})</span>
+                <strong style="color: #16a34a;">\${fmt(faturamentoTotal)}</strong>
               </div>
-              <div class="kpi" style="border-color: ${(saldoFinal) >= 0 ? '#bbf7d0' : '#fecaca'};">
+              <div class="kpi" style="border-color: \${\(saldoFinal\) >= 0 ? '#bbf7d0' : '#fecaca'};">
                 <span>Resultado Caixa (Líquido)</span>
-                <strong style="color: ${(saldoFinal) >= 0 ? '#16a34a' : '#dc2626'};">${fmt(saldoFinal)}</strong>
+                <strong style="color: \${\(saldoFinal\) >= 0 ? '#16a34a' : '#dc2626'};">\${fmt(saldoFinal)}</strong>
               </div>
             </div>
 
-            <h2>🛠️ Serviços Entregues (${filteredServices.length})</h2>
+            <h2>🛠️ Serviços Entregues (\${filteredServices.length})</h2>
             <table>
               <thead>
                 <tr>
@@ -2227,20 +2128,20 @@
                 </tr>
               </thead>
               <tbody>
-                ${filteredServices.map(s => `
+                \${filteredServices.map(s => `
                   <tr>
-                    <td>${fmtDate(s.exitDate)}</td>
-                    <td><strong style="text-transform: uppercase;">${s.vehiclePlate}</strong><br/><span style="color:#64748b; font-size:9px;">${s.vehicleBrand}</span></td>
-                    <td>${s.description.replace(/\|\|/g, " · ")}</td>
-                    <td>${s.paymentMethod}</td>
-                    <td style="text-align: right; font-weight: 500;">${fmt(s.laborValue)}</td>
-                    <td style="text-align: right;" class="value-in">${fmt(viewMode === "labor" ? (s.laborValue * (1 - (PAYMENT_METHODS[s.paymentMethod] || 0) / 100)) : s.netValue)}</td>
+                    <td>\${fmtDate(s.exitDate)}</td>
+                    <td><strong style="text-transform: uppercase;">\${s.vehiclePlate}</strong><br/><span style="color:#64748b; font-size:9px;">\${s.vehicleBrand}</span></td>
+                    <td>\${s.description.replace(/\\|\\|/g, " · ")}</td>
+                    <td>\${s.paymentMethod}</td>
+                    <td style="text-align: right; font-weight: 500;">\${fmt(s.laborValue)}</td>
+                    <td style="text-align: right;" class="value-in">\${fmt(viewMode === "labor" ? (s.laborValue * (1 - (PAYMENT_METHODS[s.paymentMethod] || 0) / 100)) : s.netValue)}</td>
                   </tr>
                 `).join("")}
               </tbody>
             </table>
 
-            <h2>💸 Despesas Lançadas (${filteredExpenses.length})</h2>
+            <h2>💸 Despesas Lançadas (\${filteredExpenses.length})</h2>
             <table>
               <thead>
                 <tr>
@@ -2251,19 +2152,19 @@
                 </tr>
               </thead>
               <tbody>
-                ${filteredExpenses.map(e => `
+                \${filteredExpenses.map(e => `
                   <tr>
-                    <td>${fmtDate(e.expense_date)}</td>
-                    <td><strong>${e.category}</strong></td>
-                    <td>${e.supplier || 'Geral'}</td>
-                    <td style="text-align: right;" class="value-out">-${fmt(e.value)}</td>
+                    <td>\${fmtDate(e.expense_date)}</td>
+                    <td><strong>\${e.category}</strong></td>
+                    <td>\${e.supplier || 'Geral'}</td>
+                    <td style="text-align: right;" class="value-out">-\${fmt(e.value)}</td>
                   </tr>
                 `).join("")}
               </tbody>
             </table>
 
             <div class="footer-meta">
-              Relatório gerado em ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR")} · ASDCAR AutoGestão
+              Relatório gerado em \${new Date().toLocaleDateString("pt-BR")} às \${new Date().toLocaleTimeString("pt-BR")} · ASDCAR AutoGestão
             </div>
           </div>
           </body>
@@ -2271,15 +2172,8 @@
         `;
 
         const win = window.open("", "_blank");
-        win.document.write(html);
-        win.document.close();
+        if (win) {
+          win.document.write(html);
+          win.document.close();
+        }
       }
-
-      const root = ReactDOM.createRoot(document.getElementById("root"));
-      root.render(<App />);
-    } catch (err) {
-      console.error("INIT_ERROR:", err.message, err.stack);
-    }
-  </script>
-</body>
-</html>
