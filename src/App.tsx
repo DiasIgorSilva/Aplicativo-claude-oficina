@@ -908,6 +908,57 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
       color: var(--text-muted);
       font-size: 13px;
     }
+
+    /* Filter Tabs */
+    .filter-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .filter-tab {
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: var(--font-heading);
+      cursor: pointer;
+      transition: var(--transition);
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .filter-tab:hover {
+      border-color: var(--primary);
+      color: var(--text);
+      background: var(--surface-overlay);
+    }
+
+    .filter-tab.active {
+      background: var(--primary);
+      color: #090b11;
+      border-color: var(--primary);
+      font-weight: 700;
+      box-shadow: 0 0 12px var(--primary-glow);
+    }
+
+    @media (max-width: 767px) {
+      .filter-tabs {
+        display: flex;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 4px;
+        -webkit-overflow-scrolling: touch;
+      }
+      .filter-tab {
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+    }
             `}</style>
             <header>
               <div className="logo-area">
