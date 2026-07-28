@@ -949,14 +949,16 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
     @media (max-width: 767px) {
       .filter-tabs {
         display: flex;
-        overflow-x: auto;
-        flex-wrap: nowrap;
-        padding-bottom: 4px;
-        -webkit-overflow-scrolling: touch;
+        flex-wrap: wrap;
+        gap: 6px;
+        width: 100%;
       }
       .filter-tab {
+        flex: 1 1 auto;
+        padding: 8px 10px;
+        font-size: 11px;
+        text-align: center;
         white-space: nowrap;
-        flex-shrink: 0;
       }
     }
             `}</style>
