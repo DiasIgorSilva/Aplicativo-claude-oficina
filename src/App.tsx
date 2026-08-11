@@ -665,6 +665,85 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
               )}
             </div>
           )}
+                    {/* 📷 MÓDULO DE FOTOS & VISTORIA (GOOGLE DRIVE) */}
+          <div style={{ background: "#0d0f14", padding: 14, borderRadius: 10, border: "1px solid #3b82f6", marginTop: 15, marginBottom: 15 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <label className="label" style={{ color: "#3b82f6", fontSize: 12, fontWeight: 700, margin: 0 }}>
+                📷 REGISTRO FOTOGRÁFICO (VISTORIA & SERVIÇO)
+              </label>
+              <button 
+                type="button" 
+                className="btn-ghost" 
+                style={{ fontSize: 10, padding: "2px 8px", color: driveUrl ? "#10b981" : "#f59e0b", borderColor: driveUrl ? "#10b981" : "#f59e0b" }} 
+                onClick={onOpenDriveConfig}
+              >
+                {driveUrl ? "☁️ Drive Conectado" : "⚙️ Conectar Drive"}
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+              <select className="input" style={{ fontSize: 11 }} value={photoType} onChange={e => setPhotoType(e.target.value)}>
+                <option value="Vistoria / Avarias">Vistoria / Avarias (Pneus/Riscados)</option>
+                <option value="Diagnóstico / Defeito">Diagnóstico / Peça Com Defeito</option>
+                <option value="Peça Antiga / Nova">Peça Nova vs Antiga</option>
+                <option value="Serviço Concluído">Serviço Concluído</option>
+              </select>
+
+              <input 
+                type="file" 
+                accept="image/*" 
+                capture="environment" 
+                style={{ display: "none" }} 
+                ref={fileInputRef} 
+                onChange={handleUploadPhoto} 
+              />
+
+              <button 
+                type="button" 
+                className="btn-primary" 
+                style={{ background: "#3b82f6", color: "#fff", fontSize: 11, padding: "8px 12px", height: "auto" }}
+                onClick={() => {
+                  if (!form.vehicleId) return alert("Selecione o veículo primeiro para vincular a foto à placa!");
+                  fileInputRef.current?.click();
+                }}
+                disabled={uploadingPhoto}
+              >
+                {uploadingPhoto ? "⏳ Enviando Foto..." : "📷 Tirar Foto / Anexar"}
+              </button>
+            </div>
+
+            {/* Galeria de Thumbnails */}
+            {Array.isArray(form.photos) && form.photos.length > 0 ? (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(75px, 1fr))", gap: 8, marginTop: 10 }}>
+                {form.photos.map((photo: any, idx: number) => (
+                  <div key={idx} style={{ position: "relative", borderRadius: 6, overflow: "hidden", border: "1px solid #1e2736", background: "#000", height: 75 }}>
+                    <img 
+                      src={photo.url} 
+                      alt={photo.type} 
+                      style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "pointer" }} 
+                      onClick={() => onZoomPhoto(photo)}
+                    />
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.75)", fontSize: 8, color: "#fff", padding: "2px 4px", textOverflow: "ellipsis", overflow: "hidden", whitespace: "nowrap" }}>
+                      {photo.type?.slice(0, 12)}
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={(e) => { e.stopPropagation(); handleDeletePhoto(idx); }}
+                      style={{ position: "absolute", top: 2, right: 2, background: "rgba(239,68,68,0.9)", color: "#fff", border: "none", borderRadius: "50%", width: 18, height: 18, fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                      title="Excluir foto"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ fontSize: 11, color: "#64748b", margin: 0, fontStyle: "italic" }}>
+                Nenhuma foto registrada para este serviço ainda.
+              </p>
+            )}
+          </div>
+
           <button className="btn-primary" style={{ width: "100%", marginTop: 15 }} onClick={save}>Salvar Informações</button>
         </div></div>
       )}
