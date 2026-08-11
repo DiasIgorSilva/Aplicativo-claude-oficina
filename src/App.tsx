@@ -552,8 +552,10 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const v = vehicles.find((veh: any) => veh.id === form.vehicleId);
-    const plate = v?.plate || form.vehiclePlate || "GERAL";
+    const selectedVehicle = vehicles.find((veh: any) => veh.id === form.vehicleId || veh.id === form.vehicle_id);
+    const rawPlate = form.vehiclePlate || form.vehicle_plate || selectedVehicle?.plate || "GERAL";
+    const cleanPlate = rawPlate.replace(/[^a-zA-Z0-9]/g, "").toUpperCase() || "GERAL";
+    const plate = "PLACA_" + cleanPlate;
 
     setUploadingPhoto(true);
     try {
@@ -568,7 +570,7 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
       if (driveUrl) {
         try {
           const payload = {
-            folderName: "PLACA_" + plate.toUpperCase(),
+            folderName: plate,
             fileName: `${photoType.replace(/\//g, "_")}_${Date.now()}.jpg`,
             base64: compressed.base64,
             mimeType: "image/jpeg"
@@ -591,7 +593,7 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
           // If CORS prevents reading JSON response, post via no-cors to guarantee Drive script execution
           try {
             const payload = {
-              folderName: "PLACA_" + plate.toUpperCase(),
+              folderName: plate,
               fileName: `${photoType.replace(/\//g, "_")}_${Date.now()}.jpg`,
               base64: compressed.base64,
               mimeType: "image/jpeg"
