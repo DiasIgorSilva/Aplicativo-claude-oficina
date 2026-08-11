@@ -1367,3 +1367,1131 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
             } else {
               throw new Error(resData.error || "Erro no upload");
             }
+          } catch (err) {
+            alert("Erro ao enviar foto para o Google Drive: " + err.message);
+            setUploadStatus("");
+          } finally {
+            setUploading(false);
+          }
+        };
+
+        const handleDeletePhoto = (index: any) => {
+          if (!confirm("Deseja remover esta foto do registro? (O arquivo continuará no seu Google Drive)")) return;
+          const currentPhotos = form.photos || [];
+          const updated = currentPhotos.filter((_, idx) => idx !== index);
+          setForm({ ...form, photos: updated });
+        };
+
+        const open = (s = null) => { 
+          setEditing(s); 
+          let initialOwner = "oficina";
+          let ofiText = "";
+          let cliText = "";
+          if (s) {
+            if (s.description?.includes("|| Peças Oficina:")) {
+              initialOwner = "mista";
+              const partes = s.description.split("||");
+              ofiText = partes[1]?.replace("Peças Oficina:", "")?.trim() || "";
+              cliText = partes[2]?.replace("Peças Cliente:", "")?.trim() || "";
+            } else if (s.description?.includes("(Cliente forneceu as peças)")) {
+              initialOwner = "cliente";
+            }
+          }
+          setPartsOwner(initialOwner);
+          setOficinaPartsText(ofiText);
+          setClientePartsText(cliText);
+          setForm(s || { status: "Aguardando", description: "", partsValue: 0, laborValue: 0, entryDate: today(), paymentMethod: "Dinheiro", mixedCash: 0, mixedCard: 0, mixedCardMethod: "Débito" }); 
+          setModal(true); 
+        };
+        
+        const close = () => { setModal(false); setEditing(null); setForm({}); };
+
+        const save = async () => {
+          if (!form.vehicleId || !form.description) return alert("Selecione o carro e descreva o serviço.");
+          const v = vehicles.find(v => v.id === form.vehicleId);
+          let descLimpa = form.description.split("||")[0].replace(/\s*\(Cliente forneceu as peças\)/gi, "").trim();
+          let finalPartsValue = Number(form.partsValue) || 0;
+
+          if (partsOwner === "cliente") {
+            descLimpa += " (Cliente forneceu as peças)";
+            finalPartsValue = 0;
+          } else if (partsOwner === "mista") {
+            descLimpa += ` || Peças Oficina: ${oficinaPartsText || "Especificadas"} || Peças Cliente: ${clientePartsText || "Especificadas"}`;
+          }
+
+          let liquido = 0;
+          const bruto = finalPartsValue + (Number(form.laborValue) || 0);
+          const metodoCartaoMisto = form.mixedCardMethod || "Débito";
+
+          if (form.paymentMethod === "Múltiplo / Misto") {
+            const taxaCard = PAYMENT_METHODS[metodoCartaoMisto] || 0;
+            const parteCash = Number(form.mixedCash) || 0;
+            const parteCard = Number(form.mixedCard) || 0;
+            liquido = parteCash + (parteCard * (1 - taxaCard / 100));
+          } else {
+            const taxa = PAYMENT_METHODS[form.paymentMethod] || 0;
+            liquido = bruto - (bruto * (taxa / 100));
+          }
+
+          const row = { 
+            id: editing?.id || uid(), 
+            vehicle_id: form.vehicleId, 
+            vehicle_plate: v?.plate, 
+            vehicle_brand: v?.brand, 
+            vehicle_model: v?.model, 
+            description: descLimpa, 
+            parts_value: finalPartsValue, 
+            labor_value: Number(form.laborValue) || 0, 
+            net_value: liquido, 
+            status: form.status, 
+            entry_date: form.entryDate, 
+            exit_date: form.status === "Entregue" ? (form.exitDate || today()) : null, 
+            payment_method: form.paymentMethod || "Dinheiro", 
+            mileage: Number(form.mileage) || 0,
+            mixed_cash: form.paymentMethod === "Múltiplo / Misto" ? Number(form.mixedCash) : 0,
+            mixed_card: form.paymentMethod === "Múltiplo / Misto" ? Number(form.mixedCard) : 0,
+            mixed_card_method: form.paymentMethod === "Múltiplo / Misto" ? metodoCartaoMisto : null,
+            photos: JSON.stringify(form.photos || [])
+          };
+          
+          const { error } = await supabase.from("services").upsert(row);
+          if (!error) { await loadAll(); close(); } else { alert("Erro ao salvar: " + error.message); }
+        };
+
+        const filtered = services.filter(s => {
+          const matchesStatus = filterStatus ? s.status === filterStatus : true;
+          const matchesSearch = !search || 
+            (s.vehiclePlate || "").toLowerCase().includes(search.toLowerCase()) || 
+            (s.vehicleBrand || "").toLowerCase().includes(search.toLowerCase()) || 
+            (s.vehicleModel || "").toLowerCase().includes(search.toLowerCase()) || 
+            (s.description || "").toLowerCase().includes(search.toLowerCase());
+          return matchesStatus && matchesSearch;
+        });
+
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div className="section-header" style={{ marginBottom: "10px" }}>
+              <h3 className="section-title">🛠️ Ordem de Serviços</h3>
+              <button className="btn btn-primary" onClick={() => open()}>
+                <Icon name="plus" size={15} color="#090b11" /> Novo Registro
+              </button>
+            </div>
+
+            <div className="card" style={{ display: "flex", flexDirection: "column", gap: "12px", background: "var(--surface)" }}>
+              <div style={{ position: "relative" }}>
+                <input 
+                  className="input" 
+                  placeholder="Pesquisar por Placa, Carro ou Descrição..." 
+                  value={search} 
+                  onChange={e => setSearch(e.target.value)} 
+                  style={{ paddingLeft: "40px" }}
+                />
+                <Icon name="search" size={16} color="var(--text-muted)" style={{ position: "absolute", left: "14px", top: "14px" }} />
+              </div>
+
+              <div className="filter-tabs">
+                <button 
+                  className={`filter-tab ${filterStatus === "" ? "active" : ""}`}
+                  onClick={() => setFilterStatus("")}
+                >
+                  Todos
+                </button>
+                {Object.keys(STATUS_COLORS).map(s => (
+                  <button 
+                    key={s}
+                    className={`filter-tab ${filterStatus === s ? "active" : ""}`}
+                    onClick={() => setFilterStatus(s)}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="list-container">
+              {filtered.length === 0 ? (
+                <div className="card empty-state">Nenhum serviço registrado neste filtro.</div>
+              ) : (
+                filtered.map(s => (
+                  <div key={s.id} className="item-card">
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <span className="plate-badge">
+                          <span className="plate-top">BRASIL</span>
+                          <span className="plate-number">{s.vehiclePlate}</span>
+                        </span>
+                        <span style={{ fontSize: "14px", fontWeight: 700 }}>{s.vehicleBrand} {s.vehicleModel}</span>
+                      </div>
+                      <div className="item-details" style={{ marginTop: "10px" }}>
+                        <h4>{s.description.replace(/\|\|/g, " · ")}</h4>
+                        <p>Entrada: {fmtDate(s.entryDate)} {s.exitDate ? ` · Saída: ${fmtDate(s.exitDate)}` : ""} · KM: {fmtKm(s.mileage)}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="label" style={{ marginBottom: "2px" }}>Mão de Obra</span>
+                      <div style={{ fontSize: "13px", fontWeight: 600 }}>{fmt(s.laborValue)}</div>
+                    </div>
+                    <div>
+                      <span className="label" style={{ marginBottom: "2px" }}>Peças</span>
+                      <div style={{ fontSize: "13px", fontWeight: 600 }}>{fmt(s.partsValue)}</div>
+                    </div>
+                    <div>
+                      <span className="label" style={{ marginBottom: "4px" }}>Status</span>
+                      <span className={`badge badge-${statusClass(s.status)}`}>{s.status}</span>
+                    </div>
+                    <div className="actions-cell">
+                      <button 
+                        onClick={() => onOpenOS(s)} 
+                        className="btn btn-accent" 
+                        style={{ padding: "8px 12px", fontSize: "11px", gap: "4px" }}
+                      >
+                        <Icon name="file" size={13} color="#fff" /> OS
+                      </button>
+                      <button onClick={() => open(s)} className="icon-btn" title="Editar"><Icon name="edit" size={14} /></button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {modal && (
+              <div className="modal-overlay" onClick={close}>
+                <div className="modal-content" onClick={e => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <h3 className="modal-title">{editing ? "Editar Serviço" : "Nova Entrada de Veículo"}</h3>
+                    <button className="modal-close" onClick={close}><Icon name="x" size={18} /></button>
+                  </div>
+
+                  <VehicleSelector vehicles={vehicles} value={form.vehicleId} onChange={(val) => setForm({ ...form, vehicleId: val })} />
+                  
+                  <div className="form-group">
+                    <label className="label">Defeito / Serviço Principal *</label>
+                    <textarea 
+                      className="textarea"
+                      placeholder="Descreva o serviço a ser feito..."
+                      value={form.description ? form.description.split("||")[0] : ""}
+                      onChange={e => setForm({ ...form, description: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="label">Fornecimento das Peças</label>
+                    <select className="select" value={partsOwner} onChange={e => setPartsOwner(e.target.value)}>
+                      <option value="oficina">Oficina comprou tudo (Padrão)</option>
+                      <option value="cliente">Cliente trouxe tudo</option>
+                      <option value="mista">Fornecimento Misto (Oficina + Cliente)</option>
+                    </select>
+                  </div>
+
+                  {partsOwner === "mista" && (
+                    <div style={{ background: "var(--surface)", padding: "14px", borderRadius: "10px", marginBottom: "16px", border: "1px solid var(--border)" }}>
+                      <div className="form-group">
+                        <label className="label">O que a ASDCAR comprou?</label>
+                        <input className="input" placeholder="Ex: Óleo, Filtros" value={oficinaPartsText} onChange={e => setOficinaPartsText(e.target.value)} />
+                      </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="label">O que o Cliente trouxe?</label>
+                        <input className="input" placeholder="Ex: Correia Dentada, Pastilhas" value={clientePartsText} onChange={e => setClientePartsText(e.target.value)} />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="form-grid-2">
+                    <div className="form-group">
+                      <label className="label">KM Atual</label>
+                      <input className="input" type="number" value={form.mileage || ""} onChange={e => setForm({ ...form, mileage: e.target.value })} />
+                    </div>
+                    <div className="form-group">
+                      <label className="label">{partsOwner === "cliente" ? "Peças (Cliente Forneceu)" : "Valor Peças ASDCAR (R$)"}</label>
+                      <input 
+                        className="input" 
+                        type="number" 
+                        value={partsOwner === "cliente" ? 0 : (form.partsValue || "")} 
+                        onChange={e => setForm({ ...form, partsValue: e.target.value })} 
+                        disabled={partsOwner === "cliente"} 
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-grid-2">
+                    <div className="form-group">
+                      <label className="label">Mão de Obra (R$)</label>
+                      <input className="input" type="number" value={form.laborValue || ""} onChange={e => setForm({ ...form, laborValue: e.target.value })} />
+                    </div>
+                    <div className="form-group">
+                      <label className="label">Status</label>
+                      <select className="select" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
+                        {Object.keys(STATUS_COLORS).map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="form-grid-2">
+                    <div className="form-group">
+                      <label className="label">Data de Entrada</label>
+                      <input className="input" type="date" value={form.entryDate || ""} onChange={e => setForm({ ...form, entryDate: e.target.value })} />
+                    </div>
+                    {form.status === "Entregue" && (
+                      <div className="form-group">
+                        <label className="label">Data de Entrega</label>
+                        <input className="input" type="date" value={form.exitDate || today()} onChange={e => setForm({ ...form, exitDate: e.target.value })} />
+                      </div>
+                    )}
+                  </div>
+
+                  {form.status === "Entregue" && (
+                    <div style={{ background: "var(--surface)", padding: "14px", borderRadius: "10px", border: "1px solid var(--success)", marginTop: "10px" }}>
+                      <div className="form-group">
+                        <label className="label">Forma de Pagamento</label>
+                        <select className="select" value={form.paymentMethod} onChange={e => setForm({ ...form, paymentMethod: e.target.value })}>
+                          {Object.keys(PAYMENT_METHODS).map(m => <option key={m} value={m}>{m}</option>)}
+                          <option value="Múltiplo / Misto">Múltiplo / Misto (Cartão + Pix/Dinheiro)</option>
+                        </select>
+                      </div>
+
+                      {form.paymentMethod === "Múltiplo / Misto" && (
+                        <div style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px dashed var(--border)" }}>
+                          <div className="form-grid-2">
+                            <div className="form-group">
+                              <label className="label">Pix ou Dinheiro (R$)</label>
+                              <input className="input" type="number" value={form.mixedCash || ""} onChange={e => setForm({ ...form, mixedCash: e.target.value })} />
+                            </div>
+                            <div className="form-group">
+                              <label className="label">Parte Cartão (R$)</label>
+                              <input className="input" type="number" value={form.mixedCard || ""} onChange={e => setForm({ ...form, mixedCard: e.target.value })} />
+                            </div>
+                          </div>
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="label">Plano do Cartão</label>
+                            <select className="select" value={form.mixedCardMethod || "Débito"} onChange={e => setForm({ ...form, mixedCardMethod: e.target.value })}>
+                              {Object.keys(PAYMENT_METHODS).filter(m => m !== "Dinheiro" && m !== "Pix").map(m => (
+                                <option key={m} value={m}>{m}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                                    {/* Seção Google Drive Fotos & Vistoria */}
+                  <div style={{ background: "var(--surface)", padding: "14px", borderRadius: "12px", marginTop: "16px", border: "1px solid var(--border)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                      <label className="label" style={{ marginBottom: 0 }}>📷 Fotos & Vistoria do Veículo</label>
+                      {driveUrl ? (
+                        <span style={{ fontSize: "10px", color: "var(--success)", fontWeight: 700 }}>● Drive Conectado</span>
+                      ) : (
+                        <button className="btn btn-secondary" style={{ padding: "4px 8px", fontSize: "10px" }} onClick={onOpenDriveConfig}>⚙️ Conectar Drive</button>
+                      )}
+                    </div>
+
+                    <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
+                      <select className="select" value={photoType} onChange={e => setPhotoType(e.target.value)} style={{ flex: 1 }}>
+                        <option value="Vistoria / Avarias">🚗 Vistoria (Arranhão / Batida)</option>
+                        <option value="Diagnóstico / Defeito">🔍 Diagnóstico / Defeito</option>
+                        <option value="Peça Antiga / Nova">⚙️ Peça Antiga / Nova</option>
+                        <option value="Serviço Concluído">✅ Serviço Concluído</option>
+                      </select>
+
+                      <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        accept="image/*" 
+                        capture="environment" 
+                        style={{ display: "none" }} 
+                        onChange={e => handleUploadPhoto(e.target.files[0])} 
+                      />
+                      
+                      <button 
+                        className="btn btn-accent" 
+                        style={{ padding: "8px 12px", fontSize: "11px", whiteSpace: "nowrap", gap: "4px" }}
+                        onClick={() => {
+                          if (!driveUrl) { onOpenDriveConfig(); return; }
+                          fileInputRef.current.click();
+                        }}
+                        disabled={uploading}
+                      >
+                        <Icon name="camera" size={14} color="#fff" />
+                        {uploading ? "Enviando..." : "Add Foto"}
+                      </button>
+                    </div>
+
+                    {uploadStatus && <div style={{ fontSize: "11px", color: "var(--primary)", marginTop: "4px" }}>{uploadStatus}</div>}
+
+                    {form.photos && form.photos.length > 0 && (
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px", marginTop: "12px" }}>
+                        {form.photos.map((p, idx) => (
+                          <div key={idx} style={{ position: "relative", borderRadius: "8px", overflow: "hidden", border: "1px solid var(--border)", background: "#000" }}>
+                            <img src={p.url} alt={p.type} style={{ width: "100%", height: "75px", objectFit: "cover", cursor: "pointer" }} onClick={() => onZoomPhoto(p)} />
+                            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.75)", padding: "2px 4px", fontSize: "9px", color: "#fff", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                              {p.type.split(" ")[0]}
+                            </div>
+                            <button 
+                              onClick={() => handleDeletePhoto(idx)} 
+                              style={{ position: "absolute", top: "3px", right: "3px", background: "rgba(239, 68, 68, 0.85)", border: "none", color: "#fff", borderRadius: "4px", width: "18px", height: "18px", fontSize: "11px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                              title="Remover foto"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <button className="btn btn-primary" style={{ width: "100%", marginTop: "20px", height: "46px" }} onClick={save}>
+                    Salvar Informações
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any) {
+        const [modal, setModal] = useState(false);
+        const [form, setForm] = useState({ expense_date: today() });
+        const [selMonth, setSelMonth] = useState(new Date().getMonth());
+        const [selYear, setSelYear] = useState(new Date().getFullYear());
+
+        const totalIn = services.filter(s => s.status === "Entregue" && s.exitDate && new Date(s.exitDate + "T12:00:00").getMonth() === selMonth && new Date(s.exitDate + "T12:00:00").getFullYear() === selYear)
+          .reduce((acc, s) => {
+            if (s.paymentMethod === "Múltiplo / Misto") {
+              const taxaCard = PAYMENT_METHODS[s.mixedCardMethod || "Débito"] || 0;
+              const dinheiroPixLivre = Number(s.mixedCash || 0);
+              if (viewMode === "labor") {
+                const totalBrutoServico = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
+                if (totalBrutoServico <= 0) return acc;
+                const percentualLabor = Number(s.laborValue) / totalBrutoServico;
+                return acc + (dinheiroPixLivre * percentualLabor) + ((Number(s.mixedCard || 0) * percentualLabor) * (1 - taxaCard / 100));
+              } else {
+                return acc + dinheiroPixLivre + (Number(s.mixedCard || 0) * (1 - taxaCard / 100));
+              }
+            }
+            const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
+            return viewMode === "labor" ? acc + (Number(s.laborValue || 0) * (1 - taxa / 100)) : acc + (s.netValue || 0);
+          }, 0);
+
+        const filteredExp = expenses.filter(e => e.expense_date && new Date(e.expense_date + "T12:00:00").getMonth() === selMonth && new Date(e.expense_date + "T12:00:00").getFullYear() === selYear);
+        const totalOut = filteredExp.reduce((acc, e) => acc + Number(e.value || 0), 0);
+
+        const saveExp = async () => {
+          if (!form.category || !form.value) return alert("Preencha categoria e valor.");
+          const row = { id: form.id || uid(), category: form.category, value: Number(form.value), supplier: form.supplier || "Geral", expense_date: form.expense_date || today() };
+          const { error } = await supabase.from("expenses").upsert(row);
+          if (!error) { await loadAll(); setModal(false); setForm({ expense_date: today() }); } else { alert("Erro ao salvar: " + error.message); }
+        };
+
+        const deleteExp = async (id) => {
+          if (!confirm("Deseja realmente excluir esta despesa?")) return;
+          const { error } = await supabase.from("expenses").delete().eq("id", id);
+          if (!error) { await loadAll(); } else { alert("Erro ao deletar: " + error.message); }
+        };
+
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div className="section-header" style={{ marginBottom: "10px" }}>
+              <h3 className="section-title">💰 Fluxo de Caixa</h3>
+              <button className="btn btn-primary" onClick={() => { setForm({ expense_date: today() }); setModal(true); }}>
+                <Icon name="plus" size={15} color="#090b11" /> Lançar Saída
+              </button>
+            </div>
+
+            <div className="card" style={{ display: "flex", gap: "10px", alignItems: "center", background: "var(--surface)" }}>
+              <div style={{ flex: 1 }}>
+                <label className="label">Mês Financeiro</label>
+                <select className="select" value={selMonth} onChange={(e) => setSelMonth(Number(e.target.value))}>
+                  {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
+                </select>
+              </div>
+              <div style={{ width: 120 }}>
+                <label className="label">Ano</label>
+                <select className="select" value={selYear} onChange={(e) => setSelYear(Number(e.target.value))}>
+                  {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="kpis-grid">
+              <div className="kpi-card" style={{ borderLeft: "4px solid var(--success)" }}>
+                <span className="kpi-label">{viewMode === "labor" ? "Entradas M.O. Líquida" : "Entradas Totais Líquidas"}</span>
+                <div className="kpi-value" style={{ color: "var(--success)" }}>{fmt(totalIn)}</div>
+              </div>
+              <div className="kpi-card" style={{ borderLeft: "4px solid var(--danger)" }}>
+                <span className="kpi-label">Despesas (Saídas)</span>
+                <div className="kpi-value" style={{ color: "var(--danger)" }}>{fmt(totalOut)}</div>
+              </div>
+              <div className="kpi-card" style={{ gridColumn: "1 / -1", borderLeft: `4px solid ${(totalIn - totalOut) >= 0 ? "var(--success)" : "var(--danger)"}` }}>
+                <span className="kpi-label">Margem Real do Mês (Lucro / Prejuízo)</span>
+                <div className="kpi-value" style={{ fontSize: "22px", color: (totalIn - totalOut) >= 0 ? "var(--success)" : "var(--danger)" }}>
+                  {fmt(totalIn - totalOut)}
+                </div>
+              </div>
+            </div>
+
+            <div className="card">
+              <div className="section-header">
+                <h3 className="section-title">📊 Relatório de Despesas</h3>
+                <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{filteredExp.length} despesas este mês</span>
+              </div>
+              
+              {filteredExp.length === 0 ? (
+                <div className="empty-state">Nenhuma despesa registrada neste mês de referência.</div>
+              ) : (
+                <div className="list-container">
+                  {filteredExp.map(e => (
+                    <div key={e.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid var(--border)" }}>
+                      <div>
+                        <div style={{ fontSize: "14px", fontWeight: 700 }}>{e.category}</div>
+                        <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
+                          Destino: {e.supplier} · Pago em: {fmtDate(e.expense_date)}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <div className="value-highlight" style={{ color: "var(--danger)", fontSize: "14px" }}>-{fmt(e.value)}</div>
+                        <button 
+                          onClick={() => { setForm(e); setModal(true); }} 
+                          className="icon-btn"
+                          title="Editar"
+                        >
+                          <Icon name="edit" size={13} />
+                        </button>
+                        <button 
+                          onClick={() => deleteExp(e.id)} 
+                          className="icon-btn"
+                          style={{ color: "var(--danger)" }}
+                          title="Excluir"
+                        >
+                          <Icon name="trash" size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {modal && (
+              <div className="modal-overlay" onClick={() => setModal(false)}>
+                <div className="modal-content" onClick={e => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <h3 className="modal-title">{form.id ? "Editar Lançamento" : "Nova Despesa Interna"}</h3>
+                    <button className="modal-close" onClick={() => setModal(false)}><Icon name="x" size={18} /></button>
+                  </div>
+                  
+                  <div className="form-group">
+                    <label className="label">Categoria do Gasto *</label>
+                    <input className="input" placeholder="Ex: Aluguel, Luz, Ferramentas" value={form.category || ""} onChange={e => setForm({ ...form, category: e.target.value })} />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="label">Valor Pago (R$) *</label>
+                    <input className="input" type="number" placeholder="0.00" value={form.value || ""} onChange={e => setForm({ ...form, value: e.target.value })} />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="label">Fornecedor / Destino</label>
+                    <input className="input" placeholder="Ex: CPFL, Imobiliária, Mercado" value={form.supplier || ""} onChange={e => setForm({ ...form, supplier: e.target.value })} />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="label">Data de Vencimento / Pagamento</label>
+                    <input className="input" type="date" value={form.expense_date || ""} onChange={e => setForm({ ...form, expense_date: e.target.value })} />
+                  </div>
+
+                  <button className="btn btn-primary" style={{ width: "100%", marginTop: "20px" }} onClick={saveExp}>
+                    Salvar Despesa
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      function VehiclesTab({ vehicles, services, loadAll }) {
+        const [modal, setModal] = useState(false);
+        const [historyModal, setHistoryModal] = useState(false);
+        const [selectedV, setSelectedV] = useState<any>(null);
+        const [editing, setEditing] = useState<any>(null);
+        const [search, setSearch] = useState("");
+        const [form, setForm] = useState({});
+        
+        const open = (v = null) => { setEditing(v); setForm(v || {}); setModal(true); };
+        const close = () => { setModal(false); setEditing(null); setForm({}); };
+
+        const save = async () => {
+          if (!form.plate || !form.brand || !form.model) return alert("Dados obrigatórios faltando.");
+          const row = { 
+            id: editing?.id || uid(), 
+            plate: form.plate.toUpperCase().trim(), 
+            brand: form.brand, 
+            model: form.model, 
+            year: form.year, 
+            color: form.color, 
+            owner: form.owner, 
+            phone: form.phone, 
+            notes: form.notes, 
+            mileage: Number(form.mileage) || 0 
+          };
+          const { error } = await supabase.from("vehicles").upsert(row);
+          if (!error) { await loadAll(); close(); } else { alert("Erro ao salvar: " + error.message); }
+        };
+
+        const filtered = vehicles.filter(v => 
+          !search || 
+          (v.plate || "").toLowerCase().includes(search.toLowerCase()) || 
+          (v.owner || "").toLowerCase().includes(search.toLowerCase()) || 
+          (v.model || "").toLowerCase().includes(search.toLowerCase())
+        );
+
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div className="section-header" style={{ marginBottom: "10px" }}>
+              <h3 className="section-title">🚗 Banco de Veículos</h3>
+              <button className="btn btn-primary" onClick={() => open()}>
+                <Icon name="plus" size={15} color="#090b11" /> Novo Cadastro
+              </button>
+            </div>
+
+            <div className="card" style={{ background: "var(--surface)" }}>
+              <div style={{ position: "relative" }}>
+                <input 
+                  className="input" 
+                  placeholder="Buscar por placa, modelo ou nome de cliente..." 
+                  value={search} 
+                  onChange={e => setSearch(e.target.value)} 
+                  style={{ paddingLeft: "40px" }}
+                />
+                <Icon name="search" size={16} color="var(--text-muted)" style={{ position: "absolute", left: "14px", top: "14px" }} />
+              </div>
+            </div>
+
+            <div className="list-container">
+              {filtered.length === 0 ? (
+                <div className="card empty-state">Nenhum veículo registrado ou encontrado.</div>
+              ) : (
+                filtered.map(v => {
+                  const count = services.filter(s => s.vehicleId === v.id).length;
+                  return (
+                    <div key={v.id} className="item-card">
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <span className="plate-badge">
+                          <span className="plate-top">BRASIL</span>
+                          <span className="plate-number">{v.plate}</span>
+                        </span>
+                        <div>
+                          <h4 style={{ fontSize: "15px", fontWeight: 700 }}>{v.brand} {v.model}</h4>
+                          <p style={{ fontSize: "11px", color: "var(--text-muted)" }}>Ano: {v.year || "—"} · KM Inicial: {fmtKm(v.mileage)}</p>
+                        </div>
+                      </div>
+                      <div>
+                        <span className="label" style={{ marginBottom: "2px" }}>Proprietário</span>
+                        <div style={{ fontSize: "13px", fontWeight: 600 }}>{v.owner || "Não informado"}</div>
+                      </div>
+                      <div>
+                        <span className="label" style={{ marginBottom: "2px" }}>Contato</span>
+                        <div style={{ fontSize: "13px", fontWeight: 600 }}>{v.phone || "—"}</div>
+                      </div>
+                      <div>
+                        <span className="label" style={{ marginBottom: "2px" }}>Frequência</span>
+                        <div style={{ fontSize: "13px", fontWeight: 600 }}>{count} Serviço{count !== 1 ? "s" : ""}</div>
+                      </div>
+                      <div className="actions-cell">
+                        <button 
+                          onClick={() => { setSelectedV(v); setHistoryModal(true); }} 
+                          className="btn btn-secondary" 
+                          style={{ padding: "8px 12px", fontSize: "11px" }}
+                        >
+                          <Icon name="history" size={13} color="var(--text-dim)" /> Histórico
+                        </button>
+                        <button onClick={() => open(v)} className="icon-btn" title="Editar"><Icon name="edit" size={14} /></button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {modal && (
+              <div className="modal-overlay" onClick={close}>
+                <div className="modal-content" onClick={e => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <h3 className="modal-title">{form.id ? "Editar Registro" : "Novo Cadastro Automotivo"}</h3>
+                    <button className="modal-close" onClick={close}><Icon name="x" size={18} /></button>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="label">Placa do Veículo *</label>
+                    <input className="input" placeholder="Ex: ABC1D23" value={form.plate || ""} onChange={e => setForm({ ...form, plate: e.target.value.toUpperCase() })} />
+                  </div>
+
+                  <BrandSelector value={form.brand || ""} onChange={(val) => setForm({ ...form, brand: val })} />
+
+                  <div className="form-group">
+                    <label className="label">Modelo *</label>
+                    <input className="input" placeholder="Ex: Corolla XEI, Gol G5" value={form.model || ""} onChange={e => setForm({ ...form, model: e.target.value })} />
+                  </div>
+
+                  <div className="form-grid-2">
+                    <div className="form-group">
+                      <label className="label">Ano</label>
+                      <input className="input" placeholder="Ex: 2018" value={form.year || ""} onChange={e => setForm({ ...form, year: e.target.value })} />
+                    </div>
+                    <div className="form-group">
+                      <label className="label">KM de Entrada Inicial</label>
+                      <input className="input" type="number" placeholder="0" value={form.mileage || ""} onChange={e => setForm({ ...form, mileage: e.target.value })} />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="label">Cliente / Proprietário</label>
+                    <input className="input" placeholder="Nome do Dono do Veículo" value={form.owner || ""} onChange={e => setForm({ ...form, owner: e.target.value })} />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="label">Telefone / WhatsApp</label>
+                    <input className="input" placeholder="Ex: (11) 99999-9999" value={form.phone || ""} onChange={e => setForm({ ...form, phone: e.target.value })} />
+                  </div>
+
+                  <button className="btn btn-primary" style={{ width: "100%", marginTop: "20px" }} onClick={save}>
+                    Confirmar Cadastro
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {historyModal && (
+              <div className="modal-overlay" onClick={() => setHistoryModal(false)}>
+                <div className="modal-content" style={{ maxWidth: "600px" }} onClick={e => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <h3 className="modal-title">Histórico Geral: {selectedV?.plate}</h3>
+                    <button className="modal-close" onClick={() => setHistoryModal(false)}><Icon name="x" size={18} /></button>
+                  </div>
+
+                  <div style={{ background: "var(--surface)", padding: "12px", borderRadius: "10px", marginBottom: "16px", fontSize: "13px" }}>
+                    <strong>Proprietário:</strong> {selectedV?.owner || "Sem nome registrado"} <br/>
+                    <strong>Veículo:</strong> {selectedV?.brand} {selectedV?.model} {selectedV?.year ? `(${selectedV.year})` : ""}
+                  </div>
+
+                  <div style={{ maxHeight: "350px", overflowY: "auto" }}>
+                    {services.filter(s => s.vehicleId === selectedV?.id).length === 0 ? (
+                      <div className="empty-state">Este veículo ainda não possui serviços registrados no banco.</div>
+                    ) : (
+                      services.filter(s => s.vehicleId === selectedV?.id).map(s => (
+                        <div key={s.id} style={{ padding: "14px", background: "var(--surface)", borderRadius: "10px", marginBottom: "10px", borderLeft: `3px solid ${STATUS_COLORS[s.status] || "var(--border)"}` }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                            <span style={{ fontSize: "13px", fontWeight: 700 }}>{s.description.replace(/\|\|/g, " · ")}</span>
+                            <span className={`badge badge-${statusClass(s.status)}`} style={{ padding: "3px 8px", fontSize: "9px" }}>{s.status}</span>
+                          </div>
+                          <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "6px" }}>
+                            KM: {fmtKm(s.mileage)} | Entrada: {fmtDate(s.entryDate)} {s.exitDate ? `| Saída: ${fmtDate(s.exitDate)}` : ""}
+                          </div>
+                          
+                          {s.photos && s.photos.length > 0 && (
+                            <div style={{ display: "flex", gap: "6px", overflowX: "auto", marginTop: "10px", paddingBottom: "4px" }}>
+                              {s.photos.map((p, pIdx) => (
+                                <div key={pIdx} style={{ flexShrink: 0, position: "relative" }}>
+                                  <img src={p.url} alt={p.type} style={{ width: "60px", height: "60px", borderRadius: "6px", objectFit: "cover", border: "1px solid var(--border)", cursor: "pointer" }} onClick={() => onZoomPhoto(p)} />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px", paddingTop: "8px", borderTop: "1px dashed var(--border)" }}>
+                            <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>Pagamento: {s.paymentMethod}</span>
+                            <span style={{ fontSize: "12px", fontWeight: 800, color: "var(--success)" }}>Total: {fmt(Number(s.partsValue) + Number(s.laborValue))}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  
+                  <button className="btn btn-secondary" style={{ width: "100%", marginTop: "20px" }} onClick={() => setHistoryModal(false)}>
+                    Fechar Janela
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      function ReportModal({ onClose, onGenerate }: any) {
+        const [from, setFrom] = useState(today().slice(0, 8) + "01");
+        const [to, setTo] = useState(today());
+        return (
+          <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-content" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3 className="modal-title">Gerar Fechamento Financeiro</h3>
+                <button className="modal-close" onClick={onClose}><Icon name="x" size={18} /></button>
+              </div>
+              
+              <div className="form-group">
+                <label className="label">Data de Início</label>
+                <input className="input" type="date" value={from} onChange={e => setFrom(e.target.value)} />
+              </div>
+
+              <div className="form-group">
+                <label className="label">Data de Término</label>
+                <input className="input" type="date" value={to} onChange={e => setTo(e.target.value)} />
+              </div>
+
+              <button className="btn btn-primary" style={{ width: "100%", marginTop: "20px" }} onClick={() => onGenerate(from, to)}>
+                Compilar Fechamento Comercial
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      function OSModal({ service, vehicles, onClose }: any) {
+        const [email, setEmail] = useState("");
+        const car = vehicles.find(v => v.id === service.vehicleId) || {};
+        return (
+          <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-content" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3 className="modal-title">Emitir Ordem de Serviço (O.S.)</h3>
+                <button className="modal-close" onClick={onClose}><Icon name="x" size={18} /></button>
+              </div>
+              
+              <div className="form-group">
+                <label className="label">Cliente</label>
+                <input className="input" value={car.owner || "—"} disabled style={{ background: "var(--surface)", opacity: 0.7 }} />
+              </div>
+
+              <div className="form-group">
+                <label className="label">E-mail de Contato (Opcional)</label>
+                <input className="input" type="email" placeholder="cliente@email.com" value={email} onChange={e => setEmail(e.target.value)} />
+              </div>
+
+              <button className="btn btn-accent" style={{ width: "100%", marginTop: "20px" }} onClick={() => { generateOSFile(service, car, email); onClose(); }}>
+                Gerar Via de Impressão (PDF)
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      function generateOSFile(s: any, car: any, email: any) {
+        const tBruto = Number(s.partsValue || 0) + Number(s.laborValue || 0);
+        let escopoPrincipal = s.description;
+        let blocoPecasMistas = "";
+        
+        if (s.description?.includes("|| Peças Oficina:")) {
+          const blocos = s.description.split("||");
+          escopoPrincipal = blocos[0].trim();
+          blocoPecasMistas = `
+            <div style="margin-top:15px; padding:12px; background:#f8fafc; border-radius:6px; border:1px solid #e2e8f0;">
+              <p style="margin-bottom:6px; font-size:11px;">⚙️ <strong>Peças fornecidas pela Oficina (ASDCAR):</strong> ${blocos[1]?.replace("Peças Oficina:", "")?.trim()}</p>
+              <p style="font-size:11px;">👤 <strong>Peças trazidas pelo Cliente:</strong> ${blocos[2]?.replace("Peças Cliente:", "")?.trim()} (Sem ônus)</p>
+            </div>`;
+        } else if (s.description?.includes("(Cliente forneceu as peças)")) {
+          escopoPrincipal = s.description.replace("(Cliente forneceu as peças)", "").trim();
+          blocoPecasMistas = `<div style="margin-top:12px; padding:10px; background:#fffbeb; color:#b45309; border-radius:6px; border:1px solid #fef3c7; font-size:11px; font-style:italic;">⚠️ Nota: Todas as peças deste serviço foram providenciadas e fornecidas pelo próprio cliente.</div>`;
+        }
+
+        const html = `
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+          <meta charset="UTF-8"/>
+          <title>Ordem de Serviço - ASDCAR #${s.id.toUpperCase()}</title>
+          <style>
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1e293b; padding: 30px; line-height: 1.5; }
+            .os-box { border: 1px solid #cbd5e1; padding: 25px; border-radius: 8px; max-width: 800px; margin: 0 auto; background: #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+            .hdr { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 15px; margin-bottom: 20px; }
+            .hdr-logo h1 { font-size: 24px; font-weight: 800; color: #f97316; letter-spacing: 0.5px; }
+            .hdr-logo p { color: #64748b; font-size: 11px; margin-top: 2px; text-transform: uppercase; }
+            .hdr-meta { text-align: right; font-size: 11px; }
+            .grid-info { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+            .section-block { background: #f8fafc; padding: 14px; border-radius: 6px; border: 1px solid #e2e8f0; }
+            h2 { font-size: 12px; font-weight: 700; text-transform: uppercase; color: #0f172a; margin-bottom: 8px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; }
+            .service-details { margin-bottom: 20px; }
+            .desc-box { font-size: 13px; font-weight: 500; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; line-height: 1.6; }
+            .financial-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+            .financial-table th { background: #0f172a; color: #fff; padding: 8px 12px; font-size: 11px; text-align: left; text-transform: uppercase; }
+            .financial-table td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; }
+            .total-row { font-size: 14px; font-weight: 800; background: #f8fafc; border-top: 2px solid #0f172a !important; }
+            .termos { font-size: 9px; color: #64748b; margin: 25px 0; text-align: justify; line-height: 1.4; border-top: 1px solid #e2e8f0; padding-top: 12px; }
+            .assinaturas { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 40px; }
+            .sign-col { border-top: 1px solid #64748b; padding-top: 8px; text-align: center; font-size: 10px; font-weight: 600; text-transform: uppercase; }
+            .btn-print { background: #f97316; color: #fff; border: none; padding: 12px; text-align: center; font-weight: 700; cursor: pointer; margin-bottom: 20px; border-radius: 6px; width: 100%; font-size: 14px; box-shadow: 0 4px 10px rgba(249, 115, 22, 0.2); }
+            @media print {
+              .btn-print { display: none; }
+              body { padding: 0; }
+              .os-box { border: none; box-shadow: none; padding: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <button class="btn-print" onclick="window.print()">🖨️ IMPRIMIR COMPROVANTE / O.S. (SALVAR PDF)</button>
+          
+          <div class="os-box">
+            <div class="hdr">
+              <div class="hdr-logo">
+                <h1>ASDCAR</h1>
+                <p>Centro Automotivo & Manutenção</p>
+              </div>
+              <div class="hdr-meta">
+                <strong>ORDEM DE SERVIÇO</strong><br/>
+                O.S. ID: <strong>#${s.id.toUpperCase()}</strong><br/>
+                Status: <strong>${s.status.toUpperCase()}</strong><br/>
+                Data de Entrada: ${fmtDate(s.entryDate)}
+              </div>
+            </div>
+
+            <div class="grid-info">
+              <div class="section-block">
+                <h2>👤 DADOS DO CLIENTE</h2>
+                <p>Nome: <strong>${car.owner || '—'}</strong></p>
+                <p>Telefone: <strong>${car.phone || '—'}</strong></p>
+                <p>E-mail: <strong>${email || 'Não informado'}</strong></p>
+              </div>
+              <div class="section-block">
+                <h2>🚗 FICHA DO VEÍCULO</h2>
+                <p>Modelo: <strong>${car.brand || s.vehicleBrand} ${car.model || s.vehicleModel}</strong></p>
+                <p>Placa: <strong style="text-transform: uppercase;">${s.vehiclePlate}</strong></p>
+                <p>KM do Registro: <strong>${fmtKm(s.mileage)}</strong></p>
+              </div>
+            </div>
+
+            <div class="service-details">
+              <h2>🛠️ DESCRIÇÃO DO DIAGNÓSTICO E SERVIÇO</h2>
+              <div class="desc-box">${escopoPrincipal}</div>
+              ${blocoPecasMistas}
+            </div>
+
+            <div>
+              <h2>💰 VALORES E PAGAMENTO</h2>
+              <table class="financial-table">
+                <thead>
+                  <tr>
+                    <th>Descrição da Despesa</th>
+                    <th style="text-align: right; width: 150px;">Valor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Serviço de Mão de Obra Mecânica</td>
+                    <td style="text-align: right; font-weight: 600;">${fmt(s.laborValue)}</td>
+                  </tr>
+                  <tr>
+                    <td>Peças e Componentes Aplicados</td>
+                    <td style="text-align: right; font-weight: 600;">${fmt(s.partsValue)}</td>
+                  </tr>
+                  <tr class="total-row">
+                    <td>Valor Total do Orçamento</td>
+                    <td style="text-align: right; color:#16a34a;">${fmt(tBruto)}</td>
+                  </tr>
+                </tbody>
+              </table>
+              ${s.status === "Entregue" ? `
+                <div style="margin-top:12px; font-size:11px; color:#475569;">
+                  Método de liquidação: <strong>${s.paymentMethod}</strong> ${s.exitDate ? ` | Pago em: <strong>${fmtDate(s.exitDate)}</strong>` : ""}
+                </div>
+              ` : ""}
+            </div>
+
+            ${s.photos && s.photos.length > 0 ? `
+              <div style="margin-top:20px; page-break-inside:avoid;">
+                <h2>📷 REGISTRO FOTOGRÁFICO DE VISTORIA</h2>
+                <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-top:10px;">
+                  ${s.photos.map(p => `
+                    <div style="border:1px solid #cbd5e1; border-radius:6px; padding:6px; background:#f8fafc; text-align:center;">
+                      <img src="${p.url}" style="width:100%; height:110px; object-fit:cover; border-radius:4px;" />
+                      <div style="font-size:9px; font-weight:700; color:#475569; margin-top:4px;">${p.type}</div>
+                    </div>
+                  `).join("")}
+                </div>
+              </div>
+            ` : ""}
+
+            <div class="termos">
+              <strong>TERMOS E GARANTIA:</strong> Oferecemos garantia legal de 90 dias a partir da data de entrega do serviço para serviços mecânicos de mão de obra e peças faturadas diretamente pela oficina. Peças fornecidas pelo próprio cliente não possuem cobertura de garantia civil ou responsabilidade mecânica da ASDCAR. A assinatura deste termo expressa plena aprovação e autorização das manutenções acima descritas.
+            </div>
+
+            <div class="assinaturas">
+              <div class="sign-col">
+                <div style="height:40px;"></div>
+                ASDCAR Centro Automotivo
+              </div>
+              <div class="sign-col">
+                <div style="height:40px;"></div>
+                Assinatura do Cliente
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+        `;
+
+        const win = window.open("", "_blank");
+        win.document.write(html);
+        win.document.close();
+      }
+
+      function generatePDF(vehicles: any, services: any, expenses: any, from: any, to: any, viewMode: any) {
+        const filteredServices = services.filter(s => 
+          s.status === "Entregue" && 
+          s.exitDate && 
+          s.exitDate >= from && 
+          s.exitDate <= to
+        );
+
+        const filteredExpenses = expenses.filter(e => 
+          e.expense_date && 
+          e.expense_date >= from && 
+          e.expense_date <= to
+        );
+
+        const faturamentoTotal = filteredServices.reduce((acc, s) => {
+          if (s.paymentMethod === "Múltiplo / Misto") {
+            const taxaCard = PAYMENT_METHODS[s.mixedCardMethod || "Débito"] || 0;
+            const dinheiroPixLivre = Number(s.mixedCash || 0);
+            if (viewMode === "labor") {
+              const totalBrutoServico = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
+              if (totalBrutoServico <= 0) return acc;
+              const percentualLabor = Number(s.laborValue) / totalBrutoServico;
+              return acc + (dinheiroPixLivre * percentualLabor) + ((Number(s.mixedCard || 0) * percentualLabor) * (1 - taxaCard / 100));
+            } else {
+              return acc + dinheiroPixLivre + (Number(s.mixedCard || 0) * (1 - taxaCard / 100));
+            }
+          }
+          const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
+          return viewMode === "labor" ? acc + (Number(s.laborValue || 0) * (1 - taxa / 100)) : acc + (s.netValue || 0);
+        }, 0);
+
+        const totalPecas = filteredServices.reduce((acc, s) => acc + (Number(s.partsValue) || 0), 0);
+        const totalMO = filteredServices.reduce((acc, s) => acc + (Number(s.laborValue) || 0), 0);
+        const totalSaidas = filteredExpenses.reduce((acc, e) => acc + Number(e.value || 0), 0);
+        const saldoFinal = faturamentoTotal - totalSaidas;
+
+        const html = `
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+          <meta charset="UTF-8"/>
+          <title>Fechamento Comercial ASDCAR</title>
+          <style>
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #1e293b; padding: 30px; line-height: 1.5; }
+            .report-box { max-width: 900px; margin: 0 auto; background: #fff; }
+            .hdr { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 20px; }
+            .hdr h1 { font-size: 20px; font-weight: 800; color: #f97316; }
+            .hdr p { font-size: 11px; color: #64748b; font-weight: 600; }
+            .grid-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 25px; }
+            .kpi { border: 1px solid #e2e8f0; background: #f8fafc; padding: 12px; border-radius: 6px; }
+            .kpi strong { display: block; font-size: 15px; margin-top: 4px; color: #0f172a; }
+            .kpi span { font-size: 9px; text-transform: uppercase; color: #64748b; font-weight: 700; }
+            h2 { font-size: 11px; font-weight: 700; text-transform: uppercase; margin: 20px 0 8px 0; border-left: 3px solid #f97316; padding-left: 6px; color: #0f172a; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            th { background: #f1f5f9; color: #475569; padding: 6px 8px; text-align: left; text-transform: uppercase; font-size: 9px; border-bottom: 1px solid #cbd5e1; }
+            td { padding: 8px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+            .value-in { color: #16a34a; font-weight: 700; }
+            .value-out { color: #dc2626; font-weight: 700; }
+            .footer-meta { font-size: 9px; color: #64748b; text-align: center; margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 12px; }
+            .btn-print { background: #8b5cf6; color: #fff; border: none; padding: 12px; text-align: center; font-weight: 700; cursor: pointer; margin-bottom: 20px; border-radius: 6px; width: 100%; font-size: 14px; box-shadow: 0 4px 10px rgba(139, 92, 246, 0.2); }
+            @media print {
+              .btn-print { display: none; }
+              body { padding: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <button class="btn-print" onclick="window.print()">🖨️ IMPRIMIR RELATÓRIO COMERCIAL (SALVAR PDF)</button>
+          
+          <div class="report-box">
+            <div class="hdr">
+              <div>
+                <h1>ASDCAR Centro Automotivo</h1>
+                <p>Fechamento Comercial de Caixa</p>
+              </div>
+              <div style="text-align: right;">
+                <p>Período: <strong>${fmtDate(from)} a ${fmtDate(to)}</strong></p>
+                <p>Modelo de Filtro: <strong>${viewMode === "labor" ? "Apenas M.O. Líquida" : "Faturamento Bruto Líquido"}</strong></p>
+              </div>
+            </div>
+
+            <div class="grid-summary">
+              <div class="kpi">
+                <span>Peças Bruto</span>
+                <strong>${fmt(totalPecas)}</strong>
+              </div>
+              <div class="kpi">
+                <span>Mão de Obra Bruta</span>
+                <strong>${fmt(totalMO)}</strong>
+              </div>
+              <div class="kpi">
+                <span>Entradas Líquidas (${viewMode === "labor" ? "M.O." : "Total"})</span>
+                <strong style="color: #16a34a;">${fmt(faturamentoTotal)}</strong>
+              </div>
+              <div class="kpi" style="border-color: ${(saldoFinal) >= 0 ? '#bbf7d0' : '#fecaca'};">
+                <span>Resultado Caixa (Líquido)</span>
+                <strong style="color: ${(saldoFinal) >= 0 ? '#16a34a' : '#dc2626'};">${fmt(saldoFinal)}</strong>
+              </div>
+            </div>
+
+            <h2>🛠️ Serviços Entregues (${filteredServices.length})</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 80px;">Saída</th>
+                  <th style="width: 80px;">Veículo</th>
+                  <th>Descrição do Serviço Realizado</th>
+                  <th style="width: 100px;">Método Pag.</th>
+                  <th style="text-align: right; width: 90px;">M.O. Bruta</th>
+                  <th style="text-align: right; width: 90px;">Líquido OS</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filteredServices.map(s => `
+                  <tr>
+                    <td>${fmtDate(s.exitDate)}</td>
+                    <td><strong style="text-transform: uppercase;">${s.vehiclePlate}</strong><br/><span style="color:#64748b; font-size:9px;">${s.vehicleBrand}</span></td>
+                    <td>${s.description.replace(/\|\|/g, " · ")}</td>
+                    <td>${s.paymentMethod}</td>
+                    <td style="text-align: right; font-weight: 500;">${fmt(s.laborValue)}</td>
+                    <td style="text-align: right;" class="value-in">${fmt(viewMode === "labor" ? (s.laborValue * (1 - (PAYMENT_METHODS[s.paymentMethod] || 0) / 100)) : s.netValue)}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+
+            <h2>💸 Despesas Lançadas (${filteredExpenses.length})</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 100px;">Data</th>
+                  <th>Categoria</th>
+                  <th>Fornecedor / Destinatário</th>
+                  <th style="text-align: right; width: 120px;">Valor Pago</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filteredExpenses.map(e => `
+                  <tr>
+                    <td>${fmtDate(e.expense_date)}</td>
+                    <td><strong>${e.category}</strong></td>
+                    <td>${e.supplier || 'Geral'}</td>
+                    <td style="text-align: right;" class="value-out">-${fmt(e.value)}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+
+            <div class="footer-meta">
+              Relatório gerado em ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR")} · ASDCAR AutoGestão
+            </div>
+          </div>
+          </body>
+        </html>
+        `;
+
+        const win = window.open("", "_blank");
+        win.document.write(html);
+        win.document.close();
+      }
