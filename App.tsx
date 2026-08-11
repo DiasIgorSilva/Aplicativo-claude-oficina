@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Inicialização do cliente Supabase
+
+      
+
+      // Inicialização do cliente Supabase
       const supabase = createClient(
         "https://bofhihxpqmqimkanwkyw.supabase.co",
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJvZmhpaHhwcW1xaW1rYW53a3l3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODQ3OTMsImV4cCI6MjA5MDY2MDc5M30.fOOD-FweGID1x2mlJ3LWImtw7B6m6Pc-8auXLIuCqbw"
@@ -79,7 +82,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
       });
 
       
-      function compressImage(file, maxWidth = 1600, quality = 0.8) {
+      function compressImage(file: any, maxWidth = 1600, quality = 0.8) {
         return new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.readAsDataURL(file);
@@ -144,7 +147,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
         
         useEffect(() => { setQuery(value || ""); }, [value]);
         useEffect(() => {
-          function handleClick(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+          function handleClick(e: any) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
           document.addEventListener("mousedown", handleClick); 
           return () => document.removeEventListener("mousedown", handleClick);
         }, []);
@@ -190,7 +193,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
         ).slice(0, 10);
 
         useEffect(() => {
-          function handleClick(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+          function handleClick(e: any) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
           document.addEventListener("mousedown", handleClick); 
           return () => document.removeEventListener("mousedown", handleClick);
         }, []);
@@ -277,16 +280,16 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
       export default function App() {
         const [tab, setTab] = useState("dashboard");
-        const [vehicles, setVehicles] = useState<any[]>([]);
-        const [services, setServices] = useState<any[]>([]);
-        const [expenses, setExpenses] = useState<any[]>([]);
+        const [vehicles, setVehicles] = useState([]);
+        const [services, setServices] = useState([]);
+        const [expenses, setExpenses] = useState([]);
         const [loading, setLoading] = useState(true);
         const [showReport, setShowReport] = useState(false);
-        const [showOSModal, setShowOSModal] = useState<any>(null);
+        const [showOSModal, setShowOSModal] = useState(null);
         const [globalViewMode, setGlobalViewMode] = useState("labor");
         const [driveUrl, setDriveUrl] = useState(() => localStorage.getItem("asdcar_drive_url") || "");
         const [showDriveModal, setShowDriveModal] = useState(false);
-        const [zoomPhoto, setZoomPhoto] = useState<any>(null);
+        const [zoomPhoto, setZoomPhoto] = useState(null);
 
         async function loadAll() {
           setLoading(true);
@@ -1309,9 +1312,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
         return "entregue";
       }
 
-      function ServicesTab({ services, vehicles, loadAll, onOpenOS }) {
+      function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
         const [modal, setModal] = useState(false);
-        const [editing, setEditing] = useState<any>(null);
+        const [editing, setEditing] = useState(null);
         const [form, setForm] = useState({});
         const [search, setSearch] = useState("");
         const [partsOwner, setPartsOwner] = useState("oficina"); 
@@ -1910,11 +1913,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
         );
       }
 
-      function VehiclesTab({ vehicles, services, loadAll }) {
+      function VehiclesTab({ vehicles, services, loadAll }: any) {
         const [modal, setModal] = useState(false);
         const [historyModal, setHistoryModal] = useState(false);
-        const [selectedV, setSelectedV] = useState<any>(null);
-        const [editing, setEditing] = useState<any>(null);
+        const [selectedV, setSelectedV] = useState(null);
+        const [editing, setEditing] = useState(null);
         const [search, setSearch] = useState("");
         const [form, setForm] = useState({});
         
@@ -2175,7 +2178,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
         );
       }
 
-      function generateOSFile(s: any, car: any, email: any) {
+      function generateOSFile(s, car, email: any) {
         const tBruto = Number(s.partsValue || 0) + Number(s.laborValue || 0);
         let escopoPrincipal = s.description;
         let blocoPecasMistas = "";
@@ -2334,7 +2337,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
         win.document.close();
       }
 
-      function generatePDF(vehicles: any, services: any, expenses: any, from: any, to: any, viewMode: any) {
+      function generatePDF(vehicles, services, expenses, from, to, viewMode: any) {
         const filteredServices = services.filter(s => 
           s.status === "Entregue" && 
           s.exitDate && 
