@@ -548,45 +548,67 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!driveUrl) {
-      alert("Por favor, conecte a URL do seu Google Drive primeiro no botão ☁️ no topo da tela.");
-      if (onOpenDriveConfig) onOpenDriveConfig();
-      return;
-    }
-
     const v = vehicles.find((veh: any) => veh.id === form.vehicleId);
     const plate = v?.plate || form.vehiclePlate || "GERAL";
 
     setUploadingPhoto(true);
     try {
-      const compressed: any = await compressImage(file, 1600, 0.8);
-      const payload = {
-        folderName: "PLACA_" + plate.toUpperCase(),
-        fileName: `${photoType.replace(/\//g, "_")}_${Date.now()}.jpg`,
-        base64: compressed.base64,
-        mimeType: "image/jpeg"
+      // 1. Compress image to prevent memory timeout
+      const compressed: any = await compressImage(file, 1400, 0.75);
+
+      let savedUrl = compressed.dataUrl;
+      let driveLink = compressed.dataUrl;
+      let driveSuccess = false;
+
+      // 2. Try sending to Google Drive if URL is set
+      if (driveUrl) {
+        try {
+          const payload = {
+            folderName: "PLACA_" + plate.toUpperCase(),
+            fileName: `${photoType.replace(/\//g, "_")}_${Date.now()}.jpg`,
+            base64: compressed.base64,
+            mimeType: "image/jpeg"
+          };
+
+          const res = await fetch(driveUrl, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify(payload)
+          });
+          
+          if (res.ok) {
+            const data = await res.json();
+            if (data.status === "success" || data.fileUrl) {
+              savedUrl = data.fileUrl || compressed.dataUrl;
+              driveLink = data.driveLink || data.fileUrl;
+              driveSuccess = true;
+            }
+          }
+        } catch (driveErr) {
+          console.warn("Drive upload failed, saving photo locally:", driveErr);
+        }
+      }
+
+      // 3. Save photo entry to form state (works with or without Drive)
+      const newPhoto = {
+        url: savedUrl,
+        driveLink: driveLink,
+        type: photoType,
+        driveSaved: driveSuccess,
+        createdAt: new Date().toISOString()
       };
 
-      const res = await fetch(driveUrl, {
-        method: "POST",
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
+      const updatedPhotos = [...(form.photos || []), newPhoto];
+      setForm({ ...form, photos: updatedPhotos });
 
-      if (data.status === "success") {
-        const newPhoto = {
-          url: data.fileUrl || compressed.dataUrl,
-          driveLink: data.driveLink || data.fileUrl,
-          type: photoType,
-          createdAt: new Date().toISOString()
-        };
-        const updatedPhotos = [...(form.photos || []), newPhoto];
-        setForm({ ...form, photos: updatedPhotos });
-      } else {
-        alert("Erro ao enviar imagem para o Google Drive: " + (data.message || "Erro desconhecido"));
+      if (!driveUrl) {
+        alert("📷 Foto salva no registro! (Conecte seu Google Drive no topo se desejar backup automático em nuvem).");
+      } else if (!driveSuccess) {
+        alert("📷 Foto anexada ao registro com sucesso! (Não foi possível salvar na nuvem Google Drive no momento, mas ficou salva no app).");
       }
+
     } catch (err: any) {
-      alert("Erro no upload: " + err.message);
+      alert("Erro ao processar imagem: " + (err.message || "Formato incompatível"));
     } finally {
       setUploadingPhoto(false);
       if (cameraInputRef.current) cameraInputRef.current.value = "";
