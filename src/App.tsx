@@ -41,6 +41,10 @@ const mapS = (r: any) => {
     if (r.photos) {
       photosList = typeof r.photos === 'string' ? JSON.parse(r.photos) : r.photos;
     }
+    if ((!photosList || photosList.length === 0) && typeof window !== 'undefined' && window.localStorage) {
+      const localCache = localStorage.getItem("asdcar_photos_" + r.id);
+      if (localCache) photosList = JSON.parse(localCache);
+    }
   } catch (e) { photosList = []; }
 
   return {
@@ -678,6 +682,11 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
       photos: JSON.stringify(form.photos || [])
     };
     
+    // Store photos in local storage cache so they are NEVER lost even if Supabase column is missing
+    if (typeof window !== "undefined" && window.localStorage && form.photos) {
+      localStorage.setItem("asdcar_photos_" + row.id, JSON.stringify(form.photos));
+    }
+
     let { error } = await supabase.from("services").upsert(row);
 
     // Fallback: If Supabase table 'services' doesn't have 'photos' column yet, retry saving service details without photos column
@@ -888,6 +897,9 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
                       style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "pointer" }} 
                       onClick={() => onZoomPhoto(photo)}
                     />
+                    <div style={{ position: "absolute", top: 2, left: 2, background: photo.driveSaved || photo.driveLink?.includes("drive") ? "rgba(16,185,129,0.9)" : "rgba(59,130,246,0.9)", color: "#fff", borderRadius: 4, padding: "1px 4px", fontSize: 8, fontWeight: 700 }}>
+                      {photo.driveSaved || photo.driveLink?.includes("drive") ? "☁️ Nuvem" : "📱 App"}
+                    </div>
                     <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.8)", fontSize: 8, color: "#fff", padding: "2px 4px", textOverflow: "ellipsis", overflow: "hidden", whitespace: "nowrap" }}>
                       {photo.type?.slice(0, 12)}
                     </div>
