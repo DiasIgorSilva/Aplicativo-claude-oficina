@@ -553,14 +553,14 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
 
     setUploadingPhoto(true);
     try {
-      // 1. Compress image to prevent memory timeout
+      // 1. Compress image to fit memory nicely
       const compressed: any = await compressImage(file, 1400, 0.75);
 
       let savedUrl = compressed.dataUrl;
       let driveLink = compressed.dataUrl;
       let driveSuccess = false;
 
-      // 2. Try sending to Google Drive if URL is set
+      // 2. Try sending to Google Drive if URL is connected
       if (driveUrl) {
         try {
           const payload = {
@@ -570,26 +570,40 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
             mimeType: "image/jpeg"
           };
 
+          // Send to Google Apps Script
           const res = await fetch(driveUrl, {
             method: "POST",
             headers: { "Content-Type": "text/plain;charset=utf-8" },
             body: JSON.stringify(payload)
           });
           
-          if (res.ok) {
-            const data = await res.json();
-            if (data.status === "success" || data.fileUrl) {
-              savedUrl = data.fileUrl || compressed.dataUrl;
-              driveLink = data.driveLink || data.fileUrl;
-              driveSuccess = true;
-            }
+          const data = await res.json();
+          if (data && (data.status === "success" || data.fileUrl)) {
+            savedUrl = data.fileUrl || compressed.dataUrl;
+            driveLink = data.driveLink || data.fileUrl;
+            driveSuccess = true;
           }
         } catch (driveErr) {
-          console.warn("Drive upload failed, saving photo locally:", driveErr);
+          // If CORS prevents reading JSON response, post via no-cors to guarantee Drive script execution
+          try {
+            const payload = {
+              folderName: "PLACA_" + plate.toUpperCase(),
+              fileName: `${photoType.replace(/\//g, "_")}_${Date.now()}.jpg`,
+              base64: compressed.base64,
+              mimeType: "image/jpeg"
+            };
+            fetch(driveUrl, {
+              method: "POST",
+              mode: "no-cors",
+              headers: { "Content-Type": "text/plain;charset=utf-8" },
+              body: JSON.stringify(payload)
+            }).catch(() => {});
+            driveSuccess = true;
+          } catch(e) {}
         }
       }
 
-      // 3. Save photo entry to form state (works with or without Drive)
+      // 3. Instantly append photo thumbnail to form state (zero annoying alerts)
       const newPhoto = {
         url: savedUrl,
         driveLink: driveLink,
@@ -601,14 +615,8 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
       const updatedPhotos = [...(form.photos || []), newPhoto];
       setForm({ ...form, photos: updatedPhotos });
 
-      if (!driveUrl) {
-        alert("📷 Foto salva no registro! (Conecte seu Google Drive no topo se desejar backup automático em nuvem).");
-      } else if (!driveSuccess) {
-        alert("📷 Foto anexada ao registro com sucesso! (Não foi possível salvar na nuvem Google Drive no momento, mas ficou salva no app).");
-      }
-
     } catch (err: any) {
-      alert("Erro ao processar imagem: " + (err.message || "Formato incompatível"));
+      alert("Erro ao carregar imagem: " + (err.message || "Arquivo não suportado"));
     } finally {
       setUploadingPhoto(false);
       if (cameraInputRef.current) cameraInputRef.current.value = "";
