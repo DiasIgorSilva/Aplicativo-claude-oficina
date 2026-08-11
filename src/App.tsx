@@ -286,6 +286,12 @@ export default function App() {
         .nav-item.active { color: #f97316; }
 
         .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px; backdrop-filter: blur(4px); }
+        .table-wrap { width: 100%; overflow-x: auto; border-radius: 12px; }
+        .table-header { display: grid; grid-template-columns: 2fr 1.3fr 1fr 1fr 110px; padding: 12px 16px; background: #0b0d14; border-bottom: 1px solid #1c2234; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; min-width: 680px; }
+        .table-row { display: grid; grid-template-columns: 2fr 1.3fr 1fr 1fr 110px; padding: 14px 16px; border-bottom: 1px solid #1c2234; align-items: center; min-width: 680px; transition: background 0.2s; }
+        .table-row:last-child { border-bottom: none; }
+        .table-row:hover { background: rgba(255,255,255,0.02); }
+
         .modal { background: #141824; border: 1px solid #1c2234; border-radius: 20px; padding: 24px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.6); }
 
         @media (max-width: 767px) {
@@ -666,12 +672,21 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
             const statusClass = "status-" + (s.status || "Aguardando").replace(/ /g, "-");
             return (
               <div key={s.id} className="table-row" style={{ gridTemplateColumns: cols }}>
-                <div style={{ fontSize: 12 }}><div style={{ color: "#f8fafc", fontWeight: 600 }}>{s.description.replace(/\|\|/g, " · ")}</div><div style={{ fontSize: 10, color: "#64748b", marginTop: 2 }}>KM: {fmtKm(s.mileage)} · Entrada: {fmtDate(s.entryDate)}</div></div>
-                <div style={{ fontSize: 11 }}>
-                  <div style={{ fontWeight: 800, color: "#f97316" }}>{s.vehiclePlate}</div>
-                  <div style={{ fontSize: 10, color: "#94a3b8" }}>{s.vehicleBrand} {s.vehicleModel}</div>
+                <div>
+                  <div style={{ color: "#f8fafc", fontWeight: 700, fontSize: 13 }}>{s.description.split("||")[0]}</div>
+                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>KM: {fmtKm(s.mileage)} · Entrada: {fmtDate(s.entryDate)}</div>
                 </div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#10b981" }}>{fmt(s.laborValue)}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div className="plate-badge" style={{ width: 75, padding: 0 }}>
+                    <div className="plate-top" style={{ fontSize: 6 }}>BRASIL</div>
+                    <div className="plate-number" style={{ fontSize: 11 }}>{s.vehiclePlate}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#f8fafc" }}>{s.vehicleModel || s.vehicleBrand}</div>
+                    <div style={{ fontSize: 10, color: "#64748b" }}>{s.vehicleBrand}</div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#10b981" }}>{fmt(s.laborValue)}</div>
                 <div><span className={`status-pill ${statusClass}`}>{s.status}</span></div>
                 <div style={{ display: "flex", gap: 6 }}>
                   <button onClick={() => onOpenOS(s)} className="btn-primary" style={{ padding: "6px 10px", background: "#7c3aed", color: "#fff", fontSize: 10 }}>📋 O.S</button>
