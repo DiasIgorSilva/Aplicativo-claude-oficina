@@ -435,11 +435,12 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
   const [clientePartsText, setClientePartsText] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
 
-  const open = (s = null) => { 
+  const open = (s: any = null) => { 
     setEditing(s); 
     let initialOwner = "oficina";
     let ofiText = "";
     let cliText = "";
+    let photosList = [];
     if (s) {
       if (s.description?.includes("|| Peças Oficina:")) {
         initialOwner = "mista";
@@ -449,12 +450,67 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
       } else if (s.description?.includes("(Cliente forneceu as peças)")) {
         initialOwner = "cliente";
       }
+      photosList = Array.isArray(s.photos) ? s.photos : (typeof s.photos === 'string' ? JSON.parse(s.photos || '[]') : []);
     }
     setPartsOwner(initialOwner);
     setOficinaPartsText(ofiText);
     setClientePartsText(cliText);
-    setForm(s || { status: "Aguardando", description: "", partsValue: 0, laborValue: 0, entryDate: today(), paymentMethod: "Dinheiro", mixedCash: 0, mixedCard: 0, mixedCardMethod: "Débito" }); 
+    setForm(s ? { ...s, photos: photosList } : { status: "Aguardando", description: "", partsValue: 0, laborValue: 0, entryDate: today(), paymentMethod: "Dinheiro", mixedCash: 0, mixedCard: 0, mixedCardMethod: "Débito", photos: [] }); 
     setModal(true); 
+  };
+
+  const handleUploadPhoto = async (e: any) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!driveUrl) {
+      alert("Por favor, conecte a URL do seu Google Drive primeiro no botão ☁️ no topo da tela.");
+      if (onOpenDriveConfig) onOpenDriveConfig();
+      return;
+    }
+
+    const v = vehicles.find((veh: any) => veh.id === form.vehicleId);
+    const plate = v?.plate || form.vehiclePlate || "GERAL";
+
+    setUploadingPhoto(true);
+    try {
+      const compressed: any = await compressImage(file, 1600, 0.8);
+      const payload = {
+        folderName: "PLACA_" + plate.toUpperCase(),
+        fileName: `${photoType.replace(/\//g, "_")}_${Date.now()}.jpg`,
+        base64: compressed.base64,
+        mimeType: "image/jpeg"
+      };
+
+      const res = await fetch(driveUrl, {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      if (data.status === "success") {
+        const newPhoto = {
+          url: data.fileUrl || compressed.dataUrl,
+          driveLink: data.driveLink || data.fileUrl,
+          type: photoType,
+          createdAt: new Date().toISOString()
+        };
+        const updatedPhotos = [...(form.photos || []), newPhoto];
+        setForm({ ...form, photos: updatedPhotos });
+      } else {
+        alert("Erro ao enviar imagem para o Google Drive: " + (data.message || "Erro desconhecido"));
+      }
+    } catch (err: any) {
+      alert("Erro no upload: " + err.message);
+    } finally {
+      setUploadingPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDeletePhoto = (idxToRemove: number) => {
+    const updatedPhotos = (form.photos || []).filter((_: any, idx: number) => idx !== idxToRemove);
+    setForm({ ...form, photos: updatedPhotos });
   };
   const close = () => { setModal(false); setEditing(null); setForm({}); };
 
@@ -502,7 +558,8 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
       mileage: Number(form.mileage) || 0,
       mixed_cash: form.paymentMethod === "Múltiplo / Misto" ? Number(form.mixedCash) : 0,
       mixed_card: form.paymentMethod === "Múltiplo / Misto" ? Number(form.mixedCard) : 0,
-      mixed_card_method: form.paymentMethod === "Múltiplo / Misto" ? metodoCartaoMisto : null
+      mixed_card_method: form.paymentMethod === "Múltiplo / Misto" ? metodoCartaoMisto : null,
+      photos: JSON.stringify(form.photos || [])
     };
     
     const { error } = await supabase.from("services").upsert(row);
@@ -605,6 +662,85 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
               )}
             </div>
           )}
+                    {/* 📷 MÓDULO DE FOTOS & VISTORIA (GOOGLE DRIVE) */}
+          <div style={{ background: "#0d0f14", padding: 14, borderRadius: 10, border: "1px solid #3b82f6", marginTop: 15, marginBottom: 15 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <label className="label" style={{ color: "#3b82f6", fontSize: 12, fontWeight: 700, margin: 0 }}>
+                📷 REGISTRO FOTOGRÁFICO (VISTORIA & SERVIÇO)
+              </label>
+              <button 
+                type="button" 
+                className="btn-ghost" 
+                style={{ fontSize: 10, padding: "2px 8px", color: driveUrl ? "#10b981" : "#f59e0b", borderColor: driveUrl ? "#10b981" : "#f59e0b" }} 
+                onClick={onOpenDriveConfig}
+              >
+                {driveUrl ? "☁️ Drive Conectado" : "⚙️ Conectar Drive"}
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+              <select className="input" style={{ fontSize: 11 }} value={photoType} onChange={e => setPhotoType(e.target.value)}>
+                <option value="Vistoria / Avarias">Vistoria / Avarias (Pneus/Riscados)</option>
+                <option value="Diagnóstico / Defeito">Diagnóstico / Peça Com Defeito</option>
+                <option value="Peça Antiga / Nova">Peça Nova vs Antiga</option>
+                <option value="Serviço Concluído">Serviço Concluído</option>
+              </select>
+
+              <input 
+                type="file" 
+                accept="image/*" 
+                capture="environment" 
+                style={{ display: "none" }} 
+                ref={fileInputRef} 
+                onChange={handleUploadPhoto} 
+              />
+
+              <button 
+                type="button" 
+                className="btn-primary" 
+                style={{ background: "#3b82f6", color: "#fff", fontSize: 11, padding: "8px 12px", height: "auto" }}
+                onClick={() => {
+                  if (!form.vehicleId) return alert("Selecione o veículo primeiro para vincular a foto à placa!");
+                  fileInputRef.current?.click();
+                }}
+                disabled={uploadingPhoto}
+              >
+                {uploadingPhoto ? "⏳ Enviando Foto..." : "📷 Tirar Foto / Anexar"}
+              </button>
+            </div>
+
+            {/* Galeria de Thumbnails */}
+            {Array.isArray(form.photos) && form.photos.length > 0 ? (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(75px, 1fr))", gap: 8, marginTop: 10 }}>
+                {form.photos.map((photo: any, idx: number) => (
+                  <div key={idx} style={{ position: "relative", borderRadius: 6, overflow: "hidden", border: "1px solid #1e2736", background: "#000", height: 75 }}>
+                    <img 
+                      src={photo.url} 
+                      alt={photo.type} 
+                      style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "pointer" }} 
+                      onClick={() => onZoomPhoto(photo)}
+                    />
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.75)", fontSize: 8, color: "#fff", padding: "2px 4px", textOverflow: "ellipsis", overflow: "hidden", whitespace: "nowrap" }}>
+                      {photo.type?.slice(0, 12)}
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={(e) => { e.stopPropagation(); handleDeletePhoto(idx); }}
+                      style={{ position: "absolute", top: 2, right: 2, background: "rgba(239,68,68,0.9)", color: "#fff", border: "none", borderRadius: "50%", width: 18, height: 18, fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                      title="Excluir foto"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ fontSize: 11, color: "#64748b", margin: 0, fontStyle: "italic" }}>
+                Nenhuma foto registrada para este serviço ainda.
+              </p>
+            )}
+          </div>
+
           <button className="btn-primary" style={{ width: "100%", marginTop: 15 }} onClick={save}>Salvar Informações</button>
         </div></div>
       )}
