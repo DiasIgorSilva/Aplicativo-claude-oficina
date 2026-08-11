@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from "react";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   "https://bofhihxpqmqimkanwkyw.supabase.co",
@@ -36,7 +36,7 @@ const mapS = (r: any) => {
   const parts = Number(r.parts_value) || 0;
   const labor = Number(r.labor_value) || 0;
   const net = r.net_value != null ? Number(r.net_value) : (parts + labor);
-  let photosList = [];
+  let photosList: any[] = [];
   try {
     if (r.photos) {
       photosList = typeof r.photos === 'string' ? JSON.parse(r.photos) : r.photos;
@@ -108,6 +108,8 @@ function VehicleSelector({ vehicles, value, onChange }: any) {
     </div>
   );
 }
+
+// ── APP PRINCIPAL ─────────────────────────────────────────────────────────
 
 function compressImage(file: any, maxWidth = 1600, quality = 0.8) {
   return new Promise((resolve, reject) => {
@@ -193,7 +195,6 @@ function PhotoZoomModal({ photo, onClose }: any) {
   );
 }
 
-// ── APP PRINCIPAL ─────────────────────────────────────────────────────────
 export default function App() {
   const [tab, setTab] = useState("dashboard");
   const [vehicles, setVehicles] = useState<any[]>([]);
@@ -276,21 +277,19 @@ export default function App() {
         </div>
       </header>
 
-      <main style={{ padding: 16, flex: 1, maxWidth: 1200, margin: "0 auto", width: "100%" }}>
-        {loading ? (
-          <div style={{ padding: 40, textAlign: "center", color: "#f97316" }}>Carregando dados da oficina...</div>
-        ) : (
+      <main style={{ flex: 1, padding: "16px", width: "100%", maxWidth: 1200, margin: "0 auto" }}>
+        {loading ? <div style={{ textAlign: "center", padding: 100 }}>Sincronizando...</div> : (
           <>
             {tab === "dashboard" && <Dashboard services={services} viewMode={globalViewMode} setViewMode={setGlobalViewMode} />}
             {tab === "services" && <ServicesTab services={services} vehicles={vehicles} loadAll={loadAll} onOpenOS={(s: any) => setShowOSModal(s)} driveUrl={driveUrl} onOpenDriveConfig={() => setShowDriveModal(true)} onZoomPhoto={(p: any) => setZoomPhoto(p)} />}
-            {tab === "finance" && <FinanceTab expenses={expenses} services={services} loadAll={loadAll} viewMode={globalViewMode} />}
+            {tab === "finance" && <FinanceTab services={services} expenses={expenses} loadAll={loadAll} viewMode={globalViewMode} setViewMode={setGlobalViewMode} />}
             {tab === "vehicles" && <VehiclesTab vehicles={vehicles} services={services} loadAll={loadAll} onZoomPhoto={(p: any) => setZoomPhoto(p)} />}
           </>
         )}
       </main>
 
       <nav className="bottom-nav">
-        <div style={{ display: "flex", justifyContent: "space-around", maxWidth: 600, margin: "0 auto" }}>
+        <div style={{ display: "flex", justifyContent: "space-around" }}>
           {tabs.map(t => (
             <button key={t.id} className={`nav-item ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>
               <span style={{ fontSize: 22 }}>{t.icon}</span>{t.label}
@@ -374,71 +373,52 @@ function Dashboard({ services, viewMode, setViewMode }: any) {
             </select>
           </div>
         </div>
-
         <div>
-          <label className="label">Visualização do Painel</label>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button 
-              className="btn-ghost" 
-              style={{ flex: 1, fontSize: 11, background: viewMode === "labor" ? "#f97316" : "transparent", color: viewMode === "labor" ? "#0d0f14" : "#94a3b8", border: viewMode === "labor" ? "none" : "1px solid #1e2736", fontWeight: viewMode === "labor" ? 800 : 400 }}
-              onClick={() => setViewMode("labor")}
-            >
-              🛠️ Apenas Mão de Obra
-            </button>
-            <button 
-              className="btn-ghost" 
-              style={{ flex: 1, fontSize: 11, background: viewMode === "total" ? "#3b82f6" : "transparent", color: viewMode === "total" ? "#ffffff" : "#94a3b8", border: viewMode === "total" ? "none" : "1px solid #1e2736", fontWeight: viewMode === "total" ? 800 : 400 }}
-              onClick={() => setViewMode("total")}
-            >
-              💵 Bruto Total (M.O. + Peças)
-            </button>
-          </div>
+          <label className="label">Modelo de Filtro (Painel & PDF)</label>
+          <select className="input" value={viewMode} onChange={(e) => setViewMode(e.target.value)} style={{ marginBottom: 0 }}>
+            <option value="labor">Visualizar Apenas Mão de Obra Líquida</option>
+            <option value="total">Visualizar Faturamento Total Bruto</option>
+          </select>
         </div>
       </div>
 
-      <div className="kpi-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))" }}>
-        <div className="card" style={{ borderLeft: "4px solid #f97316" }}>
-          <span className="label">Pátio Oficina</span>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#f97316", marginTop: 4 }}>{activeServices.length}</div>
-          <span style={{ fontSize: 10, color: "#64748b" }}>Carros no pátio</span>
-        </div>
-        <div className="card" style={{ borderLeft: "4px solid #8b5cf6" }}>
-          <span className="label">Peças ({MONTHS[selMonth].slice(0,3)})</span>
-          <div style={{ fontSize: 18, fontWeight: 700, color: "#8b5cf6", marginTop: 4 }}>{fmt(tP)}</div>
-          <span style={{ fontSize: 10, color: "#64748b" }}>Peças faturadas</span>
-        </div>
-        <div className="card" style={{ borderLeft: "4px solid #10b981" }}>
-          <span className="label">M.O. ({MONTHS[selMonth].slice(0,3)})</span>
-          <div style={{ fontSize: 18, fontWeight: 700, color: "#10b981", marginTop: 4 }}>{fmt(tL)}</div>
-          <span style={{ fontSize: 10, color: "#64748b" }}>Mão de obra bruta</span>
-        </div>
-        <div className="card" style={{ borderLeft: "4px solid #f59e0b" }}>
-          <span className="label">Ticket Médio M.O.</span>
-          <div style={{ fontSize: 18, fontWeight: 700, color: "#f59e0b", marginTop: 4 }}>{fmt(filteredDelivered.length > 0 ? (tL / filteredDelivered.length) : 0)}</div>
-          <span style={{ fontSize: 10, color: "#64748b" }}>Por carro entregue</span>
-        </div>
-        <div className="card" style={{ borderLeft: "4px solid #3b82f6" }}>
-          <span className="label">{viewMode === "labor" ? "M.O. Líquida" : "Faturamento Líq."}</span>
-          <div style={{ fontSize: 18, fontWeight: 700, color: "#3b82f6", marginTop: 4 }}>{fmt(receitaCalculada)}</div>
-          <span style={{ fontSize: 10, color: "#10b981" }}>Líquido descontado taxas</span>
-        </div>
+      <div className="kpi-grid">
+        {[
+          { label: "Na Oficina", value: activeServices.length, icon: "🔧", accent: "#f97316" },
+          { label: `Peças (${MONTHS[selMonth].slice(0,3)})`, value: fmt(tP), icon: "⚙️", accent: "#6366f1" },
+          { label: `M.O. (${MONTHS[selMonth].slice(0,3)})`, value: fmt(tL), icon: "🔧", accent: "#10b981" },
+          { label: viewMode === "labor" ? "Receita (M.O. Líq)" : "Receita Bruta Total", value: fmt(receitaCalculada), icon: "💰", accent: "#3b82f6" },
+        ].map((k, i) => (
+          <div key={i} className="card" style={{ borderLeft: `3px solid ${k.accent}`, padding: 12 }}>
+            <div style={{ fontSize: 16 }}>{k.icon}</div>
+            <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4, color: "#f1f5f9" }}>{k.value}</div>
+            <div style={{ fontSize: 9, color: "#475569", textTransform: "uppercase", marginTop: 2 }}>{k.label}</div>
+          </div>
+        ))}
       </div>
 
       <div className="card">
-        <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>📋 Pátio em Atendimento ({activeServices.length})</h3>
-        {activeServices.length === 0 ? <p style={{ fontSize: 12, color: "#64748b" }}>Nenhum veículo em atendimento no momento.</p> : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {activeServices.map((s: any) => (
-              <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", background: "#0d0f14", borderRadius: 8, borderLeft: `3px solid ${STATUS_COLORS[s.status] || "#6b7280"}` }}>
-                <div>
-                  <strong style={{ fontSize: 13, color: "#f97316" }}>{s.vehiclePlate}</strong> · <span style={{ fontSize: 12 }}>{s.vehicleBrand} {s.vehicleModel}</span>
-                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{s.description.split("||")[0]}</div>
-                </div>
-                <StatusBadge status={s.status} map={STATUS_COLORS} />
-              </div>
-            ))}
-          </div>
-        )}
+        <h3 style={{ fontSize: 14, marginBottom: 12, color: "#f97316", fontFamily: "'Syne', sans-serif" }}>🛠️ Carros na Oficina (Ativos)</h3>
+        {activeServices.length === 0 ? <div style={{ fontSize: 12, color: "#475569", textAlign: "center", padding: 10 }}>Pátio vazio no momento.</div> : 
+          activeServices.map((sv: any) => (
+            <div key={sv.id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #1e2736", alignItems: "center" }}>
+              <div style={{ flex: 1, paddingRight: 10 }}><div style={{ fontSize: 12, color: "#e2e8f0", fontWeight: 700 }}>{sv.vehiclePlate} — {sv.vehicleBrand}</div><div style={{ fontSize: 10, color: "#64748b" }}>{sv.description.replace(/\|\|/g, " · ")}</div></div>
+              <StatusBadge status={sv.status} map={STATUS_COLORS} />
+            </div>
+          ))
+        }
+      </div>
+
+      <div className="card">
+        <h3 style={{ fontSize: 14, marginBottom: 12, color: "#10b981", fontFamily: "'Syne', sans-serif" }}>✅ Entregues em {MONTHS[selMonth]}</h3>
+        {filteredDelivered.length === 0 ? <div style={{ fontSize: 12, color: "#475569", textAlign: "center", padding: 10 }}>Nenhum serviço finalizado neste mês.</div> :
+          filteredDelivered.map((sv: any) => (
+            <div key={sv.id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #1e2736", alignItems: "center" }}>
+              <div style={{ flex: 1 }}><div style={{ fontSize: 12, color: "#e2e8f0" }}>{sv.vehiclePlate} — {sv.vehicleBrand}</div><div style={{ fontSize: 10, color: "#64748b" }}>Entregue: {fmtDate(sv.exitDate)}</div></div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: "#10b981" }}>{fmt((Number(sv.partsValue)||0) + (Number(sv.laborValue)||0))}</div>
+            </div>
+          ))
+        }
       </div>
     </div>
   );
@@ -446,6 +426,9 @@ function Dashboard({ services, viewMode, setViewMode }: any) {
 
 // ── ABA OFICINA ────────────────────────────────────────────────────────────
 function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDriveConfig, onZoomPhoto }: any) {
+  const [photoType, setPhotoType] = useState("Vistoria / Avarias");
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<any>(null);
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
@@ -455,11 +438,12 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
   const [clientePartsText, setClientePartsText] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
 
-  const open = (s = null) => { 
+  const open = (s: any = null) => { 
     setEditing(s); 
     let initialOwner = "oficina";
     let ofiText = "";
     let cliText = "";
+    let photosList: any[] = [];
     if (s) {
       if (s.description?.includes("|| Peças Oficina:")) {
         initialOwner = "mista";
@@ -469,12 +453,67 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
       } else if (s.description?.includes("(Cliente forneceu as peças)")) {
         initialOwner = "cliente";
       }
+      photosList = Array.isArray(s.photos) ? s.photos : (typeof s.photos === 'string' ? JSON.parse(s.photos || '[]') : []);
     }
     setPartsOwner(initialOwner);
     setOficinaPartsText(ofiText);
     setClientePartsText(cliText);
-    setForm(s || { status: "Aguardando", description: "", partsValue: 0, laborValue: 0, entryDate: today(), paymentMethod: "Dinheiro", mixedCash: 0, mixedCard: 0, mixedCardMethod: "Débito" }); 
+    setForm(s ? { ...s, photos: photosList } : { status: "Aguardando", description: "", partsValue: 0, laborValue: 0, entryDate: today(), paymentMethod: "Dinheiro", mixedCash: 0, mixedCard: 0, mixedCardMethod: "Débito", photos: [] }); 
     setModal(true); 
+  };
+
+  const handleUploadPhoto = async (e: any) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!driveUrl) {
+      alert("Por favor, conecte a URL do seu Google Drive primeiro no botão ☁️ no topo da tela.");
+      if (onOpenDriveConfig) onOpenDriveConfig();
+      return;
+    }
+
+    const v = vehicles.find((veh: any) => veh.id === form.vehicleId);
+    const plate = v?.plate || form.vehiclePlate || "GERAL";
+
+    setUploadingPhoto(true);
+    try {
+      const compressed: any = await compressImage(file, 1600, 0.8);
+      const payload = {
+        folderName: "PLACA_" + plate.toUpperCase(),
+        fileName: `${photoType.replace(/\//g, "_")}_${Date.now()}.jpg`,
+        base64: compressed.base64,
+        mimeType: "image/jpeg"
+      };
+
+      const res = await fetch(driveUrl, {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      if (data.status === "success") {
+        const newPhoto = {
+          url: data.fileUrl || compressed.dataUrl,
+          driveLink: data.driveLink || data.fileUrl,
+          type: photoType,
+          createdAt: new Date().toISOString()
+        };
+        const updatedPhotos = [...(form.photos || []), newPhoto];
+        setForm({ ...form, photos: updatedPhotos });
+      } else {
+        alert("Erro ao enviar imagem para o Google Drive: " + (data.message || "Erro desconhecido"));
+      }
+    } catch (err: any) {
+      alert("Erro no upload: " + err.message);
+    } finally {
+      setUploadingPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDeletePhoto = (idxToRemove: number) => {
+    const updatedPhotos = (form.photos || []).filter((_: any, idx: number) => idx !== idxToRemove);
+    setForm({ ...form, photos: updatedPhotos });
   };
   const close = () => { setModal(false); setEditing(null); setForm({}); };
 
@@ -522,7 +561,8 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
       mileage: Number(form.mileage) || 0,
       mixed_cash: form.paymentMethod === "Múltiplo / Misto" ? Number(form.mixedCash) : 0,
       mixed_card: form.paymentMethod === "Múltiplo / Misto" ? Number(form.mixedCard) : 0,
-      mixed_card_method: form.paymentMethod === "Múltiplo / Misto" ? metodoCartaoMisto : null
+      mixed_card_method: form.paymentMethod === "Múltiplo / Misto" ? metodoCartaoMisto : null,
+      photos: JSON.stringify(form.photos || [])
     };
     
     const { error } = await supabase.from("services").upsert(row);
@@ -539,236 +579,185 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
           <button key={s} onClick={() => setFilterStatus(s)} style={{ background: filterStatus === s ? "#f97316" : "transparent", color: filterStatus === s ? "#0d0f14" : "#64748b", border: `1px solid ${filterStatus === s ? "#f97316" : "#1e2736"}`, borderRadius: 20, padding: "4px 12px", fontSize: 11, cursor: "pointer" }}>{s || "Todos"}</button>
         ))}
       </div>
-
-      <div className="table-wrap"><div className="card" style={{ padding: 0 }}>
-        <div className="table-header" style={{ gridTemplateColumns: cols }}>
-          <div>Veículo / Descrição</div>
-          <div>Forma de Pagamento</div>
-          <div>Valores (P / M.O.)</div>
-          <div>Status / Datas</div>
-          <div style={{ textAlign: "right" }}>Ações</div>
-        </div>
-
-        {filtered.length === 0 ? <div style={{ padding: 20, textAlign: "center", color: "#64748b" }}>Nenhum serviço registrado.</div> : (
-          filtered.map((s: any) => {
-            const totalBruto = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
-            return (
-              <div key={s.id} className="table-row" style={{ gridTemplateColumns: cols }}>
-                <div>
-                  <button className="btn-history" onClick={() => {
-                    const car = vehicles.find((v: any) => v.id === s.vehicleId);
-                    if (car) alert(`Histórico do veículo ${car.plate}:\nProprietário: ${car.owner || '—'}\nMarca/Modelo: ${car.brand} ${car.model}`);
-                  }}>
-                    📋 {s.vehiclePlate}
-                  </button>
-                  <div style={{ fontSize: 13, fontWeight: 700 }}>{s.vehicleBrand} {s.vehicleModel}</div>
-                  <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>{s.description.split("||")[0]}</div>
-                </div>
-
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 600 }}>{s.paymentMethod}</div>
-                  {s.paymentMethod === "Múltiplo / Misto" && (
-                    <div style={{ fontSize: 10, color: "#f97316", marginTop: 2 }}>
-                      Esp: {fmt(s.mixedCash)} · {s.mixedCardMethod}: {fmt(s.mixedCard)}
-                    </div>
-                  )}
-                  {PAYMENT_METHODS[s.paymentMethod] > 0 && <div style={{ fontSize: 10, color: "#64748b" }}>Taxa: {PAYMENT_METHODS[s.paymentMethod]}%</div>}
-                </div>
-
-                <div>
-                  <div style={{ fontSize: 11, color: "#8b5cf6" }}>P: {fmt(s.partsValue)}</div>
-                  <div style={{ fontSize: 11, color: "#10b981" }}>M.O: {fmt(s.laborValue)}</div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#f97316", marginTop: 2 }}>Bruto: {fmt(totalBruto)}</div>
-                </div>
-
-                <div>
-                  <StatusBadge status={s.status} map={STATUS_COLORS} />
-                  <div style={{ fontSize: 10, color: "#64748b", marginTop: 4 }}>Entrada: {fmtDate(s.entryDate)}</div>
-                  {s.exitDate && <div style={{ fontSize: 10, color: "#10b981" }}>Saída: {fmtDate(s.exitDate)}</div>}
-                </div>
-
-                <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                  <button className="btn-ghost" style={{ fontSize: 11, padding: "4px 8px" }} onClick={() => onOpenOS(s)}>📄 OS</button>
-                  <button className="btn-ghost" style={{ fontSize: 11, padding: "4px 8px" }} onClick={() => open(s)}>✏️</button>
-                </div>
+      <div className="card" style={{ padding: 0 }}>
+        <div className="table-wrap">
+          <div className="table-header" style={{ gridTemplateColumns: cols }}>
+            <span>Serviço</span><span>Veículo</span><span>M.O.</span><span>Status</span><span>Ações</span>
+          </div>
+          {filtered.map((s: any) => (
+            <div key={s.id} className="table-row" style={{ gridTemplateColumns: cols }}>
+              <div style={{ fontSize: 12 }}><div style={{ color: "#e2e8f0" }}>{s.description.replace(/\|\|/g, " · ")}</div><div style={{ fontSize: 10, color: "#475569", marginTop: 2 }}>KM: {fmtKm(s.mileage)} · Entrada: {fmtDate(s.entryDate)}</div></div>
+              <div style={{ fontSize: 11 }}><div style={{ fontWeight: 700, color: "#f1f5f9" }}>{s.vehiclePlate}</div><div style={{ fontSize: 9, color: "#64748b" }}>{s.vehicleBrand}</div></div>
+              <div style={{ fontSize: 11, color: "#10b981" }}>{fmt(s.laborValue)}</div>
+              <StatusBadge status={s.status} map={STATUS_COLORS} />
+              <div style={{ display: "flex", gap: 6 }}>
+                <button onClick={() => onOpenOS(s)} className="btn-primary" style={{ padding: "6px 10px", background: "#7c3aed", color: "#fff", fontSize: 10 }}>📋 O.S</button>
+                <button onClick={() => open(s)} className="btn-ghost" style={{ padding: 6 }}>✏️</button>
               </div>
-            );
-          })
-        )}
-      </div></div>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {modal && (
         <div className="modal-bg" onClick={close}><div className="modal" onClick={e => e.stopPropagation()}>
-          <h3>{editing ? "Editar Serviço" : "Novo Serviço"}</h3>
-          
+          <h3>Fluxo de Serviço</h3>
           <VehicleSelector vehicles={vehicles} value={form.vehicleId} onChange={(val: any) => setForm({ ...form, vehicleId: val })} />
-
-          <div style={{ marginBottom: 15 }}>
-            <label className="label">Origem das Peças *</label>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" className="btn-ghost" style={{ flex: 1, fontSize: 11, background: partsOwner === "oficina" ? "#f97316" : "transparent", color: partsOwner === "oficina" ? "#0d0f14" : "#94a3b8" }} onClick={() => { setPartsOwner("oficina"); setForm({ ...form, partsValue: form.partsValue || 0 }); }}>Oficina Fornece</button>
-              <button type="button" className="btn-ghost" style={{ flex: 1, fontSize: 11, background: partsOwner === "cliente" ? "#3b82f6" : "transparent", color: partsOwner === "cliente" ? "#ffffff" : "#94a3b8" }} onClick={() => { setPartsOwner("cliente"); setForm({ ...form, partsValue: 0 }); }}>Cliente Trouxe Tudo</button>
-              <button type="button" className="btn-ghost" style={{ flex: 1, fontSize: 11, background: partsOwner === "mista" ? "#8b5cf6" : "transparent", color: partsOwner === "mista" ? "#ffffff" : "#94a3b8" }} onClick={() => setPartsOwner("mista")}>Peças Mistas</button>
-            </div>
+          
+          <div style={{ marginBottom: 10 }}>
+            <label className="label">Defeito / Serviço Principal *</label>
+            <textarea 
+              className="textarea"
+              placeholder="Digite o serviço feito aqui..."
+              value={form.description ? form.description.split("||")[0] : ""}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+            />
           </div>
 
+          <div style={{ marginBottom: 12 }}>
+            <label className="label">Quem forneceu as peças?</label>
+            <select className="input" value={partsOwner} onChange={e => setPartsOwner(e.target.value)}>
+              <option value="oficina">Oficina comprou tudo (Padrão)</option>
+              <option value="cliente">Cliente trouxe tudo</option>
+              <option value="mista">Fornecimento Misto (Oficina + Cliente)</option>
+            </select>
+          </div>
           {partsOwner === "mista" && (
-            <div style={{ background: "#0d0f14", padding: 12, borderRadius: 8, marginBottom: 15, border: "1px solid #8b5cf6" }}>
-              <Field label="Peças Fornecidas pela Oficina" placeholder="Ex: Filtro de óleo, Óleo 5W30" value={oficinaPartsText} onChange={setOficinaPartsText} />
-              <Field label="Peças Trazidas pelo Cliente" placeholder="Ex: Pastilhas de freio traseiras" value={clientePartsText} onChange={setClientePartsText} />
+            <div style={{ background: "#0d0f14", padding: 12, borderRadius: 8, marginBottom: 12, border: "1px solid #1e2736" }}>
+              <Field label="O que a ASDCAR comprou?" placeholder="Ex: Óleo e Filtro" value={oficinaPartsText} onChange={oficinaPartsText} />
+              <Field label="O que o Cliente trouxe?" placeholder="Ex: Correia Dentada" value={clientePartsText} onChange={clientePartsText} />
             </div>
           )}
-
-          <div style={{ marginBottom: 15 }}>
-            <label className="label">Descrição do Serviço *</label>
-            <textarea className="textarea" placeholder="Descreva os serviços a serem realizados..." value={form.description ? form.description.split("||")[0].replace(/\s*\(Cliente forneceu as peças\)/gi, "") : ""} onChange={e => setForm({ ...form, description: e.target.value })} />
-          </div>
-
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {partsOwner !== "cliente" && <Field label="Valor das Peças (R$)" type="number" value={form.partsValue} onChange={(v: any) => setForm({ ...form, partsValue: v })} />}
+            <Field label="KM Atual" type="number" value={form.mileage} onChange={(v: any) => setForm({ ...form, mileage: v })} />
+            <Field label={partsOwner === "cliente" ? "Peças (Cliente Forneceu)" : "Valor Peças ASDCAR (R$)"} type="number" value={partsOwner === "cliente" ? 0 : form.partsValue} onChange={(v: any) => setForm({ ...form, partsValue: v })} disabled={partsOwner === "cliente"} />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <Field label="Mão de Obra (R$)" type="number" value={form.laborValue} onChange={(v: any) => setForm({ ...form, laborValue: v })} />
+            <SelectField label="Status" value={form.status} onChange={(v: any) => setForm({ ...form, status: v })} options={Object.keys(STATUS_COLORS)} />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <Field label="Entrada" type="date" value={form.entryDate} onChange={(v: any) => setForm({ ...form, entryDate: v })} />
+            {form.status === "Entregue" && <Field label="Entrega" type="date" value={form.exitDate || today()} onChange={(v: any) => setForm({ ...form, exitDate: v })} />}
           </div>
 
-          <SelectField label="Status do Serviço" value={form.status || "Aguardando"} onChange={(v: any) => setForm({ ...form, status: v })} options={["Aguardando", "Em andamento", "Pronto", "Entregue"]} />
-          <SelectField label="Forma de Pagamento" value={form.paymentMethod || "Dinheiro"} onChange={(v: any) => setForm({ ...form, paymentMethod: v })} options={Object.keys(PAYMENT_METHODS).concat(["Múltiplo / Misto"])} />
+          {form.status === "Entregue" && (
+            <div style={{ background: "#0d0f14", padding: 15, borderRadius: 10, border: "1px solid #10b981", marginTop: 10 }}>
+              <label className="label">Forma de Pagamento</label>
+              <select className="input" value={form.paymentMethod} onChange={e => setForm({ ...form, paymentMethod: e.target.value })}>
+                {Object.keys(PAYMENT_METHODS).map(m => <option key={m} value={m}>{m}</option>)}
+                <option value="Múltiplo / Misto">Múltiplo / Misto (Cartão + Pix/Dinheiro)</option>
+              </select>
 
-          {form.paymentMethod === "Múltiplo / Misto" && (
-            <div style={{ background: "#0d0f14", padding: 12, borderRadius: 8, marginBottom: 15, border: "1px solid #f97316" }}>
-              <Field label="Valor em Espécie / Pix (R$)" type="number" value={form.mixedCash} onChange={(v: any) => setForm({ ...form, mixedCash: v })} />
-              <Field label="Valor no Cartão (R$)" type="number" value={form.mixedCard} onChange={(v: any) => setForm({ ...form, mixedCard: v })} />
-              <SelectField label="Modalidade do Cartão Misto" value={form.mixedCardMethod || "Débito"} onChange={(v: any) => setForm({ ...form, mixedCardMethod: v })} options={Object.keys(PAYMENT_METHODS).filter(m => m !== "Dinheiro" && m !== "Pix")} />
+              {form.paymentMethod === "Múltiplo / Misto" && (
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #1e2736" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <Field label="Parte Pix / Dinheiro (R$)" type="number" value={form.mixedCash} onChange={v => setForm({ ...form, mixedCash: v })} />
+                    <Field label="Parte Cartão (R$)" type="number" value={form.mixedCard} onChange={v => setForm({ ...form, mixedCard: v })} />
+                  </div>
+                  <label className="label">Plano do Cartão (Para calcular a taxa)</label>
+                  <select className="input" value={form.mixed_card_method || form.mixedCardMethod || "Débito"} onChange={e => setForm({ ...form, mixed_card_method: e.target.value, mixedCardMethod: e.target.value })}>
+                    {Object.keys(PAYMENT_METHODS).filter(m => m !== "Dinheiro" && m !== "Pix").map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
           )}
-
-          <button className="btn-primary" style={{ width: "100%", marginTop: 15 }} onClick={save}>Salvar Registro</button>
+          <button className="btn-primary" style={{ width: "100%", marginTop: 15 }} onClick={save}>Salvar Informações</button>
         </div></div>
       )}
     </Section>
   );
 }
 
-// ── ABA FINANCEIRO ──────────────────────────────────────────────────────────
-function FinanceTab({ expenses, services, loadAll, viewMode }: any) {
+// ── ABA FINANCEIRO ─────────────────────────────────────────────────────────
+function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any) {
   const [modal, setModal] = useState(false);
-  const [form, setForm] = useState<any>({});
+  const [form, setForm] = useState<any>({ expense_date: today() });
   const [selMonth, setSelMonth] = useState(new Date().getMonth());
   const [selYear, setSelYear] = useState(new Date().getFullYear());
 
-  const saveExpense = async () => {
-    if (!form.description || !form.value) return alert("Informe a descrição e o valor da despesa.");
-    const row = {
-      id: form.id || uid(),
-      description: form.description,
-      value: Number(form.value) || 0,
-      category: form.category || "Outros",
-      expense_date: form.expense_date || today()
-    };
+  const totalIn = services.filter((s:any) => s.status === "Entregue" && s.exitDate && new Date(s.exitDate + "T12:00:00").getMonth() === selMonth && new Date(s.exitDate + "T12:00:00").getFullYear() === selYear)
+    .reduce((acc:any, s:any) => {
+      if (s.paymentMethod === "Múltiplo / Misto") {
+        const taxaCard = PAYMENT_METHODS[s.mixed_card_method || s.mixedCardMethod || "Débito"] || 0;
+        const dinheiroPixLivre = Number(s.mixedCash || 0);
+        if (viewMode === "labor") {
+          const totalBrutoServico = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
+          if (totalBrutoServico <= 0) return acc;
+          const percentualLabor = Number(s.laborValue) / totalBrutoServico;
+          return acc + (dinheiroPixLivre * percentualLabor) + ((Number(s.mixedCard || 0) * percentualLabor) * (1 - taxaCard / 100));
+        } else {
+          return acc + dinheiroPixLivre + (Number(s.mixedCard || 0) * (1 - taxaCard / 100));
+        }
+      }
+      const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
+      return viewMode === "labor" ? acc + (Number(s.laborValue || 0) * (1 - taxa / 100)) : acc + (s.netValue || 0);
+    }, 0);
+
+  const filteredExp = expenses.filter((e:any) => e.expense_date && new Date(e.expense_date + "T12:00:00").getMonth() === selMonth && new Date(e.expense_date + "T12:00:00").getFullYear() === selYear);
+  const totalOut = filteredExp.reduce((acc:any, e:any) => acc + Number(e.value || 0), 0);
+
+  const saveExp = async () => {
+    if (!form.category || !form.value) return alert("Preencha categoria e valor.");
+    const row = { id: form.id || uid(), category: form.category, value: Number(form.value), supplier: form.supplier || "Geral", expense_date: form.expense_date || today() };
     const { error } = await supabase.from("expenses").upsert(row);
-    if (!error) { await loadAll(); setModal(false); setForm({}); } else { alert("Erro: " + error.message); }
+    if (!error) { await loadAll(); setModal(false); setForm({ expense_date: today() }); } else { alert("Erro ao salvar: " + error.message); }
   };
 
-  const filteredDelivered = services.filter((s: any) => {
-    if (s.status !== "Entregue" || !s.exitDate) return false;
-    const d = new Date(s.exitDate + "T12:00:00");
-    return d.getMonth() === selMonth && d.getFullYear() === selYear;
-  });
-
-  const faturamentoLiquido = filteredDelivered.reduce((acc: any, s: any) => {
-    if (s.paymentMethod === "Múltiplo / Misto") {
-      const taxaCard = PAYMENT_METHODS[s.mixedCardMethod] || 0;
-      const dinheiroPixLivre = Number(s.mixedCash || 0);
-      
-      if (viewMode === "labor") {
-        const totalBrutoServico = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
-        if (totalBrutoServico <= 0) return acc;
-        const percentualLabor = Number(s.laborValue) / totalBrutoServico;
-        return acc + (dinheiroPixLivre * percentualLabor) + (Number(s.mixedCard || 0) * percentualLabor * (1 - taxaCard / 100));
-      } else {
-        return acc + dinheiroPixLivre + (Number(s.mixedCard || 0) * (1 - taxaCard / 100));
-      }
-    }
-
-    const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
-    if (viewMode === "labor") {
-      return acc + (Number(s.laborValue || 0) * (1 - taxa / 100));
-    } else {
-      return acc + (s.netValue || 0);
-    }
-  }, 0);
-
-  const monthExpenses = expenses.filter((e: any) => {
-    if (!e.expense_date) return false;
-    const d = new Date(e.expense_date + "T12:00:00");
-    return d.getMonth() === selMonth && d.getFullYear() === selYear;
-  });
-
-  const totalDespesas = monthExpenses.reduce((acc: any, e: any) => acc + (Number(e.value) || 0), 0);
-  const lucroLiquidoReal = faturamentoLiquido - totalDespesas;
-
   return (
-    <Section title="Financeiro & Caixa" action={<button className="btn-primary" onClick={() => { setForm({ expense_date: today() }); setModal(true); }}>+ Lançar Despesa</button>}>
-      <div className="card" style={{ display: "flex", gap: 10, background: "#1a2030" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div className="card" style={{ display: "flex", gap: 10, alignItems: "center", background: "#1a2030" }}>
         <div style={{ flex: 1 }}>
-          <label className="label">Mês</label>
-          <select className="input" value={selMonth} onChange={e => setSelMonth(Number(e.target.value))}>
-            {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
-          </select>
+          <label className="label">Mês Financeiro</label>
+          <select className="input" value={selMonth} onChange={(e) => setSelMonth(Number(e.target.value))}>{MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}</select>
         </div>
         <div style={{ width: 100 }}>
           <label className="label">Ano</label>
-          <select className="input" value={selYear} onChange={e => setSelYear(Number(e.target.value))}>
-            {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
+          <select className="input" value={selYear} onChange={(e) => setSelYear(Number(e.target.value))}>{[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}</select>
         </div>
+      </div>
+      <div className="kpi-grid">
+        <div className="card" style={{ borderLeft: "3px solid #10b981" }}>
+          <label className="label">{viewMode === "labor" ? "Entradas (M.O. Líquida)" : "Entradas (Total Líquido)"}</label>
+          <div style={{ fontSize: 16, fontWeight: 800 }}>{fmt(totalIn)}</div>
+        </div>
+        <div className="card" style={{ borderLeft: "3px solid #ef4444" }}><label className="label">Despesas (Saídas)</label><div style={{ fontSize: 16, fontWeight: 800 }}>{fmt(totalOut)}</div></div>
+        <div className="card" style={{ borderLeft: "3px solid #3b82f6", gridColumn: "1 / -1" }}><label className="label">Margem de Lucro Real</label><div style={{ fontSize: 20, fontWeight: 800, color: (totalIn - totalOut) >= 0 ? "#10b981" : "#ef4444" }}>{fmt(totalIn - totalOut)}</div></div>
       </div>
 
-      <div className="kpi-grid">
-        <div className="card" style={{ borderLeft: "4px solid #10b981" }}>
-          <span className="label">Entradas Líquidas</span>
-          <div style={{ fontSize: 20, fontWeight: 700, color: "#10b981", marginTop: 4 }}>{fmt(faturamentoLiquido)}</div>
-        </div>
-        <div className="card" style={{ borderLeft: "4px solid #ef4444" }}>
-          <span className="label">Despesas Totais</span>
-          <div style={{ fontSize: 20, fontWeight: 700, color: "#ef4444", marginTop: 4 }}>{fmt(totalDespesas)}</div>
-        </div>
-        <div className="card" style={{ borderLeft: `4px solid ${lucroLiquidoReal >= 0 ? "#10b981" : "#ef4444"}` }}>
-          <span className="label">Resultado Real do Mês</span>
-          <div style={{ fontSize: 20, fontWeight: 700, color: lucroLiquidoReal >= 0 ? "#10b981" : "#ef4444", marginTop: 4 }}>{fmt(lucroLiquidoReal)}</div>
-        </div>
-      </div>
+      <button className="btn-primary" onClick={() => { setForm({ expense_date: today() }); setModal(true); }}>+ Lançar Despesa Mensal</button>
 
       <div className="card">
-        <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>💸 Lançamentos de Despesas ({monthExpenses.length})</h3>
-        {monthExpenses.length === 0 ? <p style={{ fontSize: 12, color: "#64748b" }}>Nenhuma despesa lançada neste mês.</p> : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {monthExpenses.map((e: any) => (
-              <div key={e.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", background: "#0d0f14", borderRadius: 8 }}>
-                <div>
-                  <strong style={{ fontSize: 13 }}>{e.description}</strong>
-                  <div style={{ fontSize: 11, color: "#64748b" }}>Cat: {e.category} · Data: {fmtDate(e.expense_date)}</div>
-                </div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#ef4444" }}>-{fmt(e.value)}</div>
-              </div>
-            ))}
+        <h3 style={{ fontSize: 13, marginBottom: 12 }}>Relatório de Gastos</h3>
+        {filteredExp.length === 0 ? <p style={{fontSize:11, color:"#64748b"}}>Nenhuma despesa lançada neste mês.</p> : filteredExp.map((e: any) => (
+          <div key={e.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #1e2736", alignItems: "center" }}>
+            <div style={{ fontSize: 11 }}><strong>{e.category}</strong><br /><span style={{ color: "#64748b" }}>{e.supplier} - {fmtDate(e.expense_date)}</span></div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: "#ef4444" }}>-{fmt(e.value)}</div>
+              <button onClick={() => { setForm({ id: e.id, category: e.category, value: e.value, supplier: e.supplier, expense_date: e.expense_date }); setModal(true); }} className="btn-ghost" style={{ padding: "4px 8px", fontSize: 11 }}>✏️</button>
+            </div>
           </div>
-        )}
+        ))}
       </div>
 
       {modal && (
-        <div className="modal-bg" onClick={() => setModal(false)}><div className="modal" onClick={ev => ev.stopPropagation()}>
-          <h3>Nova Despesa</h3>
-          <Field label="Descrição" placeholder="Ex: Conta de luz, Compra de chaves" value={form.description} onChange={(v: any) => setForm({ ...form, description: v })} />
-          <Field label="Valor (R$)" type="number" value={form.value} onChange={(v: any) => setForm({ ...form, value: v })} />
-          <SelectField label="Categoria" value={form.category || "Outros"} onChange={(v: any) => setForm({ ...form, category: v })} options={["Peças", "Ferramentas", "Aluguel", "Energia / Água", "Salários", "Impostos", "Outros"]} />
-          <Field label="Data da Despesa" type="date" value={form.expense_date} onChange={(v: any) => setForm({ ...form, expense_date: v })} />
-          <button className="btn-primary" style={{ width: "100%", marginTop: 15 }} onClick={saveExpense}>Salvar Despesa</button>
+        <div className="modal-bg" onClick={() => setModal(false)}><div className="modal" onClick={e => e.stopPropagation()}>
+          <h3>Gasto Interno ASDCAR</h3>
+          <Field label="Categoria de Gasto *" value={form.category} onChange={(v:any)=>setForm({...form, category:v})} />
+          <Field label="Valor Pago (R$) *" type="number" value={form.value} onChange={(v:any)=>setForm({...form, value:v})} />
+          <Field label="Fornecedor / Destino" value={form.supplier} onChange={(v:any)=>setForm({...form, supplier:v})} />
+          <Field label="Data do Pagamento" type="date" value={form.expense_date} onChange={(v:any)=>setForm({...form, expense_date:v})} />
+          <button className="btn-primary" style={{width:"100%", marginTop:15}} onClick={saveExp}>Salvar Lançamento</button>
         </div></div>
       )}
-    </Section>
+    </div>
   );
 }
 
-// ── ABA BANCO DE VEÍCULOS ──────────────────────────────────────────────────
+// ── ABA BASE DE VEÍCULOS ──────────────────────────────────────────────────
 function VehiclesTab({ vehicles, services, loadAll, onZoomPhoto }: any) {
   const [modal, setModal] = useState(false);
   const [historyModal, setHistoryModal] = useState(false);
@@ -776,77 +765,61 @@ function VehiclesTab({ vehicles, services, loadAll, onZoomPhoto }: any) {
   const [editing, setEditing] = useState<any>(null);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState<any>({});
-
+  
   const open = (v = null) => { setEditing(v); setForm(v || {}); setModal(true); };
   const close = () => { setModal(false); setEditing(null); setForm({}); };
 
   const save = async () => {
-    if (!form.plate || !form.brand || !form.model) return alert("Preencha placa, marca e modelo.");
-    const row = {
-      id: editing?.id || uid(),
-      plate: form.plate.toUpperCase().trim(),
-      brand: form.brand,
-      model: form.model,
-      year: form.year,
-      color: form.color,
-      owner: form.owner,
-      phone: form.phone,
-      notes: form.notes,
-      mileage: Number(form.mileage) || 0
+    if (!form.plate || !form.brand || !form.model) return alert("Dados obrigatórios faltando.");
+    const row = { 
+      id: editing?.id || uid(), plate: form.plate.toUpperCase(), brand: form.brand, model: form.model, 
+      year: form.year, color: form.color, owner: form.owner, phone: form.phone, notes: form.notes, mileage: Number(form.mileage) || 0 
     };
     const { error } = await supabase.from("vehicles").upsert(row);
     if (!error) { await loadAll(); close(); } else { alert("Erro ao salvar: " + error.message); }
   };
 
-  const filtered = vehicles.filter((v: any) => 
-    !search || 
-    (v.plate || "").toLowerCase().includes(search.toLowerCase()) || 
-    (v.owner || "").toLowerCase().includes(search.toLowerCase()) ||
-    (v.model || "").toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = vehicles.filter((v: any) => !search || (v.plate||"").toLowerCase().includes(search.toLowerCase()) || (v.owner||"").toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <Section title="Cadastro de Veículos" action={<button className="btn-primary" onClick={() => open()}>+ Novo Veículo</button>}>
-      <input className="input" placeholder="Buscar por placa, modelo ou dono..." value={search} onChange={e => setSearch(e.target.value)} style={{ marginBottom: 12 }} />
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {filtered.length === 0 ? <div style={{ padding: 20, textAlign: "center", color: "#64748b" }}>Nenhum veículo encontrado.</div> : (
-          filtered.map((v: any) => {
-            const count = services.filter((s: any) => s.vehicleId === v.id).length;
-            return (
-              <div key={v.id} className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <strong style={{ fontSize: 15, color: "#f97316" }}>{v.plate}</strong> · <span style={{ fontWeight: 700 }}>{v.brand} {v.model}</span>
-                  <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>Dono: {v.owner || "—"} · Tel: {v.phone || "—"}</div>
-                  <div style={{ fontSize: 10, color: "#64748b" }}>Ano: {v.year || "—"} · KM Inicial: {fmtKm(v.mileage)} · {count} Serviço(s)</div>
-                </div>
-
-                <div style={{ display: "flex", gap: 6 }}>
-                  <button className="btn-ghost" style={{ fontSize: 11 }} onClick={() => { setSelectedV(v); setHistoryModal(true); }}>📋 Histórico</button>
-                  <button className="btn-ghost" style={{ fontSize: 11 }} onClick={() => open(v)}>✏️</button>
-                </div>
+    <Section title="Base de Veículos" action={<button className="btn-primary" onClick={() => open()}>+ Novo</button>}>
+      <input className="input" placeholder="Buscar por placa ou cliente..." value={search} onChange={e => setSearch(e.target.value)} style={{ marginBottom: 10 }} />
+      <div className="card" style={{ padding: 0 }}>
+        <div className="table-wrap">
+          <div className="table-header" style={{ gridTemplateColumns: "1.8fr 1.5fr 1fr 90px" }}>
+            <span>Veículo</span><span>Cliente</span><span>Telefone</span><span></span>
+          </div>
+          {filtered.map((v: any) => (
+            <div key={v.id} className="table-row" style={{ gridTemplateColumns: "1.8fr 1.5fr 1fr 90px" }}>
+              <div>
+                <button onClick={() => { setSelectedV(v); setHistoryModal(true); }} className="btn-history">📜 Histórico</button>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{v.brand} {v.model}</div>
+                <div style={{ fontSize: 10, color: "#f97316" }}>{v.plate} · {v.year || "—"} · {fmtKm(v.mileage)}</div>
               </div>
-            );
-          })
-        )}
+              <div style={{ fontSize: 12 }}>{v.owner || "—"}</div>
+              <div style={{ fontSize: 12 }}>{v.phone || "—"}</div>
+              <button onClick={() => open(v)} className="btn-ghost" style={{ padding: 6 }}>✏️</button>
+            </div>
+          ))}
+        </div>
       </div>
-
+      
       {modal && (
         <div className="modal-bg" onClick={close}><div className="modal" onClick={e => e.stopPropagation()}>
-          <h3>{editing ? "Editar Veículo" : "Novo Veículo"}</h3>
-          <Field label="Placa *" placeholder="Ex: ABC1D23" value={form.plate} onChange={(v: any) => setForm({ ...form, plate: v.toUpperCase() })} />
-          <BrandSelector value={form.brand} onChange={(v: any) => setForm({ ...form, brand: v })} />
-          <Field label="Modelo *" placeholder="Ex: Corolla XEI" value={form.model} onChange={(v: any) => setForm({ ...form, model: v })} />
+          <h3>Cadastro Master</h3>
+          <Field label="Placa *" value={form.plate} onChange={(v: any) => setForm({ ...form, plate: v.toUpperCase() })} />
+          <BrandSelector value={form.brand || ""} onChange={(v: any) => setForm({ ...form, brand: v })} />
+          <Field label="Modelo *" value={form.model} onChange={(v: any) => setForm({ ...form, model: v })} />
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            <Field label="Ano" placeholder="Ex: 2018" value={form.year} onChange={(v: any) => setForm({ ...form, year: v })} />
+            <Field label="Ano" value={form.year} onChange={(v: any) => setForm({ ...form, year: v })} />
             <Field label="KM Inicial" type="number" value={form.mileage} onChange={(v: any) => setForm({ ...form, mileage: v })} />
           </div>
-          <Field label="Cliente / Proprietário" placeholder="Nome do proprietário" value={form.owner} onChange={(v: any) => setForm({ ...form, owner: v })} />
-          <Field label="Telefone / WhatsApp" placeholder="Ex: (11) 99999-9999" value={form.phone} onChange={(v: any) => setForm({ ...form, phone: v })} />
-          <button className="btn-primary" style={{ width: "100%", marginTop: 15 }} onClick={save}>Salvar Veículo</button>
+          <Field label="Dono / Cliente" value={form.owner} onChange={(v: any) => setForm({ ...form, owner: v })} />
+          <Field label="Telefone" value={form.phone} onChange={(v: any) => setForm({ ...form, phone: v })} />
+          <button className="btn-primary" style={{ width: "100%", marginTop: 15 }} onClick={save}>Salvar</button>
         </div></div>
       )}
-
+      
       {historyModal && (
         <div className="modal-bg" onClick={() => setHistoryModal(false)}><div className="modal" onClick={e => e.stopPropagation()}>
           <h3>Histórico: {selectedV?.plate}</h3>
@@ -902,17 +875,18 @@ function SelectField({ label, value, onChange, options }: any) { return <div sty
 // ── GERADORES DE DOCUMENTOS COMPLETOS ─────────────────────────────────────
 function generateOSFile(s: any, car: any, email: string) {
   const tBruto = Number(s.partsValue || 0) + Number(s.laborValue || 0);
-  let escopoPrincipal = s.description;
+  let escopoPrincipal = s.description || "";
   let blocoPecasMistas = "";
   if (s.description?.includes("|| Peças Oficina:")) {
     const blocos = s.description.split("||");
     escopoPrincipal = blocos[0].trim();
-    blocoPecasMistas = `<div style="margin-top:15px; padding:10px; background:#f8fafc; border-radius:4px; border:1px solid #e2e8f0;"><p style="margin-bottom:4px;">⚙️ <strong>Peças fornecidas pela ASDCAR:</strong> ${blocos[1]?.replace("Peças Oficina:", "")?.trim()}</p><p>👤 <strong>Peças trazidas pelo Cliente:</strong> ${blocos[2]?.replace("Peças Cliente:", "")?.trim()} <em>(Cliente forneceu)</em></p></div>`;
+    blocoPecasMistas = "<div style='margin-top:15px; padding:10px; background:#f8fafc; border-radius:4px; border:1px solid #e2e8f0;'><p style='margin-bottom:4px;'>⚙️ <strong>Peças fornecidas pela ASDCAR:</strong> " + (blocos[1]?.replace("Peças Oficina:", "")?.trim() || "") + "</p><p>👤 <strong>Peças trazidas pelo Cliente:</strong> " + (blocos[2]?.replace("Peças Cliente:", "")?.trim() || "") + " <em>(Cliente forneceu)</em></p></div>";
   } else if (s.description?.includes("(Cliente forneceu as peças)")) {
     escopoPrincipal = s.description.replace("(Cliente forneceu as peças)", "").trim();
-    blocoPecasMistas = `<div style="margin-top:10px; color:#64748b; font-style:italic;">⚠️ Nota: Todas as peças para este serviço foram fornecidas pelo próprio cliente.</div>`;
+    blocoPecasMistas = "<div style='margin-top:10px; color:#64748b; font-style:italic;'>⚠️ Nota: Todas as peças para este serviço foram fornecidas pelo próprio cliente.</div>";
   }
-  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>O.S. ${s.vehiclePlate}</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:12px;color:#0f172a;padding:40px;}.os-border{border:2px dashed #000;padding:30px;}.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #000;padding-bottom:15px;margin-bottom:20px;}.grid-ficha{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:25px;background:#f8fafc;padding:15px;border:1px solid #e2e8f0;}h2{font-size:13px;text-transform:uppercase;margin:20px 0 10px 0;border-left:4px solid #000;padding-left:8px;}.box-servico{border:1px solid #e2e8f0;padding:15px;min-height:80px;line-height:1.5;background:#fff;margin-bottom:20px;}.termos{font-size:10px;color:#475569;margin:30px 0;text-align:justify;}.assinaturas{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:50px;text-align:center;}.linha-sub{border-top:1px solid #000;padding-top:6px;font-size:11px;font-weight:bold;}.no-print{background:#7c3aed;color:white;padding:14px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:25px;border-radius:8px;border:none;width:100%;font-size:15px;}@media print{.no-print{display:none;}body{padding:0;}.os-border{border:none;}}</style></head><body><button class="no-print" onclick="window.print()">CLIQUE AQUI PARA IMPRIMIR VIA DO CLIENTE</button><div class="os-border"><div class="hdr"><div><strong style="font-size:24px;letter-spacing:1px;">ASDCAR</strong><br/><span style="color:#475569;">Centro Automotivo</span></div><div style="text-align:right;"><strong>ORDEM DE SERVIÇO</strong><br/>Data Entrada: ${fmtDate(s.entryDate)}<br/>Status: <strong>${s.status}</strong></div></div><h2>👤 Ficha do Cliente</h2><div class="grid-ficha"><div>Nome: <strong>${car.owner || '—'}</strong><br/>Telefone: <strong>${car.phone || '—'}</strong></div><div>E-mail: <strong>${email || 'Não informado'}</strong></div></div><h2>🚗 Identificação do Veículo</h2><div class="grid-ficha"><div>Placa: <strong style="text-transform:uppercase;">${s.vehiclePlate}</strong><br/>Modelo: <strong>${s.vehicleBrand || car.brand} ${s.vehicleModel || car.model}</strong></div><div>Ano: <strong>${car.year || '—'}</strong><br/>KM Entrada: <strong>${fmtKm(s.mileage)}</strong></div></div><h2>⚙️ Serviços Solicitados / Diagnóstico</h2><div class="box-servico"><strong>${escopoPrincipal}</strong>${blocoPecasMistas}</div><h2>💰 Valores e Condição de Pagamento</h2><div class="grid-ficha"><div>Valor Peças: <strong>${fmt(s.partsValue)}</strong><br/>Mão de Obra: <strong>${fmt(s.laborValue)}</strong><br/><span style="font-size:14px;color:#000;">Total da O.S.: <strong>${fmt(tBruto)}</strong></span></div><div>Forma de Pagamento: <strong>${s.paymentMethod}</strong>${s.paymentMethod === 'Múltiplo / Misto' ? `<br/>Espécie/Pix: ${fmt(s.mixedCash)}<br/>Cartão (${s.mixedCardMethod}): ${fmt(s.mixedCard)}` : ''}</div></div><div class="termos"><strong>TERMOS DE GARANTIA E CONDIÇÕES:</strong><br/>1. A garantia dos serviços executados é de 90 dias a contar da data de entrega do veículo, cobrindo exclusivamente defeitos de mão de obra.<br/>2. Peças fornecidas pelo cliente não possuem garantia pela oficina ASDCAR.<br/>3. Veículos não retirados em até 5 dias após a notificação de término estarão sujeitos a taxa de diária de permanência.</div><div class="assinaturas"><div><div class="linha-sub">ASDCAR Centro Automotivo</div></div><div><div class="linha-sub">Assinatura do Cliente / De acordo</div></div></div></div></body></html>`;
+
+  const html = "<!DOCTYPE html><html lang='pt-BR'><head><meta charset='UTF-8'/><title>O.S. " + s.vehiclePlate + "</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:12px;color:#0f172a;padding:40px;}.os-border{border:2px dashed #000;padding:30px;}.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #000;padding-bottom:15px;margin-bottom:20px;}.grid-ficha{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:25px;background:#f8fafc;padding:15px;border:1px solid #e2e8f0;}h2{font-size:13px;text-transform:uppercase;margin:20px 0 10px 0;border-left:4px solid #000;padding-left:8px;}.box-servico{border:1px solid #e2e8f0;padding:15px;min-height:80px;line-height:1.5;background:#fff;margin-bottom:20px;}.termos{font-size:10px;color:#475569;margin:30px 0;text-align:justify;}.assinaturas{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:50px;text-align:center;}.linha-sub{border-top:1px solid #000;padding-top:6px;font-size:11px;font-weight:bold;}.no-print{background:#7c3aed;color:white;padding:14px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:25px;border-radius:8px;border:none;width:100%;font-size:15px;}@media print{.no-print{display:none;}body{padding:0;}.os-border{border:none;}}</style></head><body><button class='no-print' onclick='window.print()'>CLIQUE AQUI PARA IMPRIMIR VIA DO CLIENTE</button><div class='os-border'><div class='hdr'><div><strong style='font-size:24px;letter-spacing:1px;'>ASDCAR</strong><br/><span style='color:#475569;'>Centro Automotivo</span></div><div style='text-align:right;'><strong>ORDEM DE SERVIÇO</strong><br/>Data Entrada: " + fmtDate(s.entryDate) + "<br/>Status: <strong>" + s.status + "</strong></div></div><h2>👤 Ficha do Cliente</h2><div class='grid-ficha'><div>Nome: <strong>" + (car.owner || '—') + "</strong><br/>Telefone: <strong>" + (car.phone || '—') + "</strong></div><div>E-mail: <strong>" + (email || 'Não informado') + "</strong></div></div><h2>🚗 Identificação do Veículo</h2><div class='grid-ficha'><div>Placa: <strong style='text-transform:uppercase;'>" + s.vehiclePlate + "</strong><br/>Modelo: <strong>" + (s.vehicleBrand || car.brand) + " " + (s.vehicleModel || car.model) + "</strong></div><div>Ano: <strong>" + (car.year || '—') + "</strong><br/>KM Entrada: <strong>" + fmtKm(s.mileage) + "</strong></div></div><h2>⚙️ Serviços Solicitados / Diagnóstico</h2><div class='box-servico'><strong>" + escopoPrincipal + "</strong>" + blocoPecasMistas + "</div><h2>💰 Valores e Condição de Pagamento</h2><div class='grid-ficha'><div>Valor Peças: <strong>" + fmt(s.partsValue) + "</strong><br/>Mão de Obra: <strong>" + fmt(s.laborValue) + "</strong><br/><span style='font-size:14px;color:#000;'>Total da O.S.: <strong>" + fmt(tBruto) + "</strong></span></div><div>Forma de Pagamento: <strong>" + s.paymentMethod + "</strong></div></div><div class='termos'><strong>TERMOS DE GARANTIA E CONDIÇÕES:</strong><br/>1. A garantia dos serviços executados é de 90 dias a contar da data de entrega do veículo, cobrindo exclusivamente defeitos de mão de obra.<br/>2. Peças fornecidas pelo cliente não possuem garantia pela oficina ASDCAR.<br/>3. Veículos não retirados em até 5 dias após a notificação de término estarão sujeitos a taxa de diária de permanência.</div><div class='assinaturas'><div><div class='linha-sub'>ASDCAR Centro Automotivo</div></div><div><div class='linha-sub'>Assinatura do Cliente / De acordo</div></div></div></div></body></html>";
   const w = window.open("", "_blank");
   if (w) { w.document.write(html); w.document.close(); }
 }
@@ -947,7 +921,7 @@ function generatePDF(vehicles: any[], services: any[], expenses: any[], fromStr:
   const totalDespesas = relExpenses.reduce((a, e) => a + (Number(e.value) || 0), 0);
   const resultadoReal = faturamentoLiquido - totalDespesas;
 
-  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Fechamento Comercial ASDCAR</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:11px;color:#0f172a;padding:30px;}.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #f97316;padding-bottom:12px;margin-bottom:20px;}.kpi-box{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}.kpi{background:#f8fafc;border:1px solid #e2e8f0;padding:10px;border-radius:6px;}.kpi-lbl{font-size:9px;color:#64748b;text-transform:uppercase;}.kpi-val{font-size:14px;font-weight:bold;margin-top:2px;}table{width:100%;border-collapse:collapse;margin-bottom:20px;}th,td{padding:8px;border:1px solid #e2e8f0;text-align:left;}th{background:#f1f5f9;font-size:9px;text-transform:uppercase;}.no-print{background:#f97316;color:white;padding:12px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:6px;border:none;width:100%;font-size:14px;}@media print{.no-print{display:none;}body{padding:0;}}</style></head><body><button class="no-print" onclick="window.print()">CLIQUE AQUI PARA IMPRIMIR OU SALVAR EM PDF</button><div class="hdr"><div><strong style="font-size:22px;color:#f97316;">ASDCAR</strong><br/><span>Fechamento Comercial</span></div><div style="text-align:right;">Período: <strong>${fmtDate(fromStr)} até ${fmtDate(toStr)}</strong></div></div><div class="kpi-box"><div class="kpi"><div class="kpi-lbl">Peças Totais</div><div class="kpi-val" style="color:#8b5cf6;">${fmt(totalPecas)}</div></div><div class="kpi"><div class="kpi-lbl">Mão de Obra</div><div class="kpi-val" style="color:#10b981;">${fmt(totalMO)}</div></div><div class="kpi"><div class="kpi-lbl">Entradas Líquidas</div><div class="kpi-val" style="color:#3b82f6;">${fmt(faturamentoLiquido)}</div></div><div class="kpi"><div class="kpi-lbl">Resultado Real</div><div class="kpi-val" style="color:${resultadoReal >= 0 ? '#10b981' : '#ef4444'};">${fmt(resultadoReal)}</div></div></div><h3>📋 Serviços Entregues (${relServices.length})</h3><table><thead><tr><th>Veículo</th><th>Descrição / Obs.</th><th>Forma Pagto</th><th>Peças</th><th>M.O.</th><th>Saída</th></tr></thead><tbody>${relServices.map(s => `<tr><td><strong>${s.vehiclePlate}</strong><br/>${s.vehicleBrand} ${s.vehicleModel}</td><td>${s.description.replace(/\|\|/g, '<br/>')}</td><td>${s.paymentMethod}</td><td>${fmt(s.partsValue)}</td><td>${fmt(s.laborValue)}</td><td>${fmtDate(s.exitDate)}</td></tr>`).join('')}</tbody></table><h3>💸 Despesas do Período (${relExpenses.length})</h3><table><thead><tr><th>Descrição</th><th>Categoria</th><th>Data</th><th>Valor</th></tr></thead><tbody>${relExpenses.map(e => `<tr><td>${e.description}</td><td>${e.category}</td><td>${fmtDate(e.expense_date)}</td><td style="color:#ef4444;font-weight:bold;">-${fmt(e.value)}</td></tr>`).join('')}</tbody></table></body></html>`;
+  const html = "<!DOCTYPE html><html lang='pt-BR'><head><meta charset='UTF-8'/><title>Fechamento Comercial ASDCAR</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:11px;color:#0f172a;padding:30px;}.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #f97316;padding-bottom:12px;margin-bottom:20px;}.kpi-box{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}.kpi{background:#f8fafc;border:1px solid #e2e8f0;padding:10px;border-radius:6px;}.kpi-lbl{font-size:9px;color:#64748b;text-transform:uppercase;}.kpi-val{font-size:14px;font-weight:bold;margin-top:2px;}table{width:100%;border-collapse:collapse;margin-bottom:20px;}th,td{padding:8px;border:1px solid #e2e8f0;text-align:left;}th{background:#f1f5f9;font-size:9px;text-transform:uppercase;}.no-print{background:#f97316;color:white;padding:12px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:6px;border:none;width:100%;font-size:14px;}@media print{.no-print{display:none;}body{padding:0;}}</style></head><body><button class='no-print' onclick='window.print()'>CLIQUE AQUI PARA IMPRIMIR OU SALVAR EM PDF</button><div class='hdr'><div><strong style='font-size:22px;color:#f97316;'>ASDCAR</strong><br/><span>Fechamento Comercial</span></div><div style='text-align:right;'>Período: <strong>" + fmtDate(fromStr) + " até " + fmtDate(toStr) + "</strong></div></div><div class='kpi-box'><div class='kpi'><div class='kpi-lbl'>Peças Totais</div><div class='kpi-val' style='color:#8b5cf6;'>" + fmt(totalPecas) + "</div></div><div class='kpi'><div class='kpi-lbl'>Mão de Obra</div><div class='kpi-val' style='color:#10b981;'>" + fmt(totalMO) + "</div></div><div class='kpi'><div class='kpi-lbl'>Entradas Líquidas</div><div class='kpi-val' style='color:#3b82f6;'>" + fmt(faturamentoLiquido) + "</div></div><div class='kpi'><div class='kpi-lbl'>Resultado Real</div><div class='kpi-val' style='color:" + (resultadoReal >= 0 ? '#10b981' : '#ef4444') + ";'>" + fmt(resultadoReal) + "</div></div></div><h3>📋 Serviços Entregues (" + relServices.length + ")</h3><table><thead><tr><th>Veículo</th><th>Descrição / Obs.</th><th>Forma Pagto</th><th>Peças</th><th>M.O.</th><th>Saída</th></tr></thead><tbody>" + relServices.map(s => "<tr><td><strong>" + s.vehiclePlate + "</strong><br/>" + s.vehicleBrand + " " + s.vehicleModel + "</td><td>" + s.description.replace(/\|\|/g, '<br/>') + "</td><td>" + s.paymentMethod + "</td><td>" + fmt(s.partsValue) + "</td><td>" + fmt(s.laborValue) + "</td><td>" + fmtDate(s.exitDate) + "</td></tr>").join('') + "</tbody></table><h3>💸 Despesas do Período (" + relExpenses.length + ")</h3><table><thead><tr><th>Descrição</th><th>Categoria</th><th>Data</th><th>Valor</th></tr></thead><tbody>" + relExpenses.map(e => "<tr><td>" + e.description + "</td><td>" + e.category + "</td><td>" + fmtDate(e.expense_date) + "</td><td style='color:#ef4444;font-weight:bold;'>-" + fmt(e.value) + "</td></tr>").join('') + "</tbody></table></body></html>";
   const w = window.open("", "_blank");
   if (w) { w.document.write(html); w.document.close(); }
 }
