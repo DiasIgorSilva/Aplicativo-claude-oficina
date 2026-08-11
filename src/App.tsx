@@ -564,6 +564,7 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
 
       let savedUrl = compressed.dataUrl;
       let driveLink = compressed.dataUrl;
+      let driveFileId: string | null = null;
       let driveSuccess = false;
 
       // 2. Try sending to Google Drive if URL is connected
@@ -587,6 +588,7 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
           if (data && (data.status === "success" || data.fileUrl)) {
             savedUrl = data.fileUrl || compressed.dataUrl;
             driveLink = data.driveLink || data.fileUrl;
+            driveFileId = data.fileId || null;
             driveSuccess = true;
           }
         } catch (driveErr) {
@@ -613,7 +615,7 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
       const newPhoto = {
         url: savedUrl,
         driveLink: driveLink,
-        fileId: data?.fileId || null,
+        fileId: driveFileId,
         type: photoType,
         driveSaved: driveSuccess,
         createdAt: new Date().toISOString()
