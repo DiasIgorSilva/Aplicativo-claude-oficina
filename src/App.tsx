@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+
+      
+
       // Inicialização do cliente Supabase
       const supabase = createClient(
         "https://bofhihxpqmqimkanwkyw.supabase.co",
@@ -78,6 +81,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
         mileage: r.mileage || 0, createdAt: r.created_at
       });
 
+      
       function compressImage(file: any, maxWidth = 1600, quality = 0.8) {
         return new Promise((resolve, reject) => {
           const reader = new FileReader();
@@ -223,6 +227,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
         );
       }
 
+      
       function DriveModal({ driveUrl, onSave, onClose }: any) {
         const [urlInput, setUrlInput] = useState(driveUrl || "");
         return (
@@ -1385,6 +1390,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
           let initialOwner = "oficina";
           let ofiText = "";
           let cliText = "";
+          let photosArray = [];
           if (s) {
             if (s.description?.includes("|| Peças Oficina:")) {
               initialOwner = "mista";
@@ -1394,11 +1400,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
             } else if (s.description?.includes("(Cliente forneceu as peças)")) {
               initialOwner = "cliente";
             }
+            try {
+              photosArray = Array.isArray(s.photos) ? s.photos : (typeof s.photos === 'string' ? JSON.parse(s.photos || '[]') : []);
+            } catch (e) { photosArray = []; }
           }
           setPartsOwner(initialOwner);
           setOficinaPartsText(ofiText);
           setClientePartsText(cliText);
-          setForm(s || { status: "Aguardando", description: "", partsValue: 0, laborValue: 0, entryDate: today(), paymentMethod: "Dinheiro", mixedCash: 0, mixedCard: 0, mixedCardMethod: "Débito" }); 
+          setForm(s ? { ...s, photos: photosArray } : { status: "Aguardando", description: "", partsValue: 0, laborValue: 0, entryDate: today(), paymentMethod: "Dinheiro", mixedCash: 0, mixedCard: 0, mixedCardMethod: "Débito", photos: [] }); 
           setModal(true); 
         };
         
@@ -1716,7 +1725,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
                     {uploadStatus && <div style={{ fontSize: "11px", color: "var(--primary)", marginTop: "4px" }}>{uploadStatus}</div>}
 
-                    {form.photos && form.photos.length > 0 && (
+                    {Array.isArray(form.photos) && form.photos.length > 0 && (
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px", marginTop: "12px" }}>
                         {form.photos.map((p, idx) => (
                           <div key={idx} style={{ position: "relative", borderRadius: "8px", overflow: "hidden", border: "1px solid var(--border)", background: "#000" }}>
@@ -2087,7 +2096,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
                             KM: {fmtKm(s.mileage)} | Entrada: {fmtDate(s.entryDate)} {s.exitDate ? `| Saída: ${fmtDate(s.exitDate)}` : ""}
                           </div>
                           
-                          {s.photos && s.photos.length > 0 && (
+                          {Array.isArray(s.photos) && s.photos.length > 0 && (
                             <div style={{ display: "flex", gap: "6px", overflowX: "auto", marginTop: "10px", paddingBottom: "4px" }}>
                               {s.photos.map((p, pIdx) => (
                                 <div key={pIdx} style={{ flexShrink: 0, position: "relative" }}>
