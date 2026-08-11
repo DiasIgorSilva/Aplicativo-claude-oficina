@@ -291,33 +291,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
         const [showDriveModal, setShowDriveModal] = useState(false);
         const [zoomPhoto, setZoomPhoto] = useState(null);
 
-        async function loadAll() {
-          setLoading(true);
-          const vRes = await supabase.from("vehicles").select("*").order("created_at", { ascending: false });
-          if (vRes.data) setVehicles(vRes.data.map(mapV));
-
-          const sRes = await supabase.from("services").select("*").order("created_at", { ascending: false });
-          if (sRes.data) setServices(sRes.data.map(mapS));
-
-          const eRes = await supabase.from("expenses").select("*").order("expense_date", { ascending: false });
-          if (eRes.data) setExpenses(eRes.data);
-          
-          setLoading(false);
-        }
-
-        useEffect(() => { loadAll(); }, []);
-
-        const tabs = [
-          { id: "dashboard", label: "Início", icon: "home" }, 
-          { id: "services", label: "Oficina", icon: "wrench" }, 
-          { id: "finance", label: "Financeiro", icon: "finance" }, 
-          { id: "vehicles", label: "Carros", icon: "car" }
-        ];
-
-        return (
-          <div>
-            <style>{`
-/* ── SISTEMA DE DESIGN GERAL ─────────────────────────────────────────── */
+        
+  useEffect(() => {
+    if (!document.getElementById("asdcar-theme-styles")) {
+      const styleEl = document.createElement("style");
+      styleEl.id = "asdcar-theme-styles";
+      styleEl.textContent = `/* ── SISTEMA DE DESIGN GERAL ─────────────────────────────────────────── */
     :root {
       --bg: #090b11;
       --surface: #131722;
@@ -1062,8 +1041,36 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
         text-align: center;
         white-space: nowrap;
       }
+    }`;
+      document.head.appendChild(styleEl);
     }
-            `}</style>
+  }, []);
+
+  async function loadAll() {
+          setLoading(true);
+          const vRes = await supabase.from("vehicles").select("*").order("created_at", { ascending: false });
+          if (vRes.data) setVehicles(vRes.data.map(mapV));
+
+          const sRes = await supabase.from("services").select("*").order("created_at", { ascending: false });
+          if (sRes.data) setServices(sRes.data.map(mapS));
+
+          const eRes = await supabase.from("expenses").select("*").order("expense_date", { ascending: false });
+          if (eRes.data) setExpenses(eRes.data);
+          
+          setLoading(false);
+        }
+
+        useEffect(() => { loadAll(); }, []);
+
+        const tabs = [
+          { id: "dashboard", label: "Início", icon: "home" }, 
+          { id: "services", label: "Oficina", icon: "wrench" }, 
+          { id: "finance", label: "Financeiro", icon: "finance" }, 
+          { id: "vehicles", label: "Carros", icon: "car" }
+        ];
+
+        return (
+          <div>
             <header>
               <div className="logo-area">
                 <div className="logo-icon">🚗</div>
