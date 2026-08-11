@@ -670,7 +670,15 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
       photos: JSON.stringify(form.photos || [])
     };
     
-    const { error } = await supabase.from("services").upsert(row);
+    let { error } = await supabase.from("services").upsert(row);
+
+    // Fallback: If Supabase table 'services' doesn't have 'photos' column yet, retry saving service details without photos column
+    if (error && error.message?.includes("photos")) {
+      delete row.photos;
+      const retry = await supabase.from("services").upsert(row);
+      error = retry.error;
+    }
+
     if (!error) { await loadAll(); close(); } else { alert("Erro ao salvar: " + error.message); }
   };
 
