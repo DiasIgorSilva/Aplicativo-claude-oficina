@@ -1,5 +1,6 @@
+'use client';
 import { useState, useEffect, useRef } from "react";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "@supabase/supabase-js";
 
 
       
@@ -287,7 +288,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
         const [showReport, setShowReport] = useState(false);
         const [showOSModal, setShowOSModal] = useState(null);
         const [globalViewMode, setGlobalViewMode] = useState("labor");
-        const [driveUrl, setDriveUrl] = useState(() => localStorage.getItem("asdcar_drive_url") || "");
+        const [driveUrl, setDriveUrl] = useState("");
+
+        useEffect(() => {
+          if (typeof window !== "undefined" && window.localStorage) {
+            setDriveUrl(localStorage.getItem("asdcar_drive_url") || "");
+          }
+        }, []);
         const [showDriveModal, setShowDriveModal] = useState(false);
         const [zoomPhoto, setZoomPhoto] = useState(null);
 
@@ -1153,7 +1160,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
                         {showDriveModal && (
               <DriveModal 
                 driveUrl={driveUrl} 
-                onSave={(url) => { localStorage.setItem("asdcar_drive_url", url); setDriveUrl(url); }} 
+                onSave={(url) => { if (typeof window !== "undefined") { localStorage.setItem("asdcar_drive_url", url); } setDriveUrl(url); }} 
                 onClose={() => setShowDriveModal(false)} 
               />
             )}
