@@ -815,14 +815,153 @@ function SelectField({ label, value, onChange, options }: any) { return <div sty
 // ── GERADORES DE DOCUMENTOS COMPLETOS ─────────────────────────────────────
 function generateOSFile(s: any, car: any, email: string) {
   const tBruto = Number(s.partsValue || 0) + Number(s.laborValue || 0);
-  let escopoPrincipal = s.description;
+  let escopoPrincipal = s.description || "";
   let blocoPecasMistas = "";
-  if (s.description?.includes("|| Peças Oficina:")) {
+  if (s.description?.includes("|| Pecas Oficina:") || s.description?.includes("|| Pe")) {
     const blocos = s.description.split("||");
     escopoPrincipal = blocos[0].trim();
-    blocoPecasMistas = `<div style="margin-top:15px; padding:10px; background:#f8fafc; border-radius:4px; border:1px solid #e2e8f0;"><p style="margin-bottom:4px;">⚙️ <strong>Peças fornecidas pela ASDCAR:</strong> ${blocos[1]?.replace("Peças Oficina:", "")?.trim()}</p><p>👤 <strong>Peças trazidas pelo Cliente:</strong> ${blocos[2]?.replace("Peças Cliente:", "")?.trim()} <em>(Cliente forneceu)</em></p></div>`;
-  } else if (s.description?.includes("(Cliente forneceu as peças)")) {
-    escopoPrincipal = s.description.replace("(Cliente forneceu as peças)", "").trim();
-    blocoPecasMistas = `<div style="margin-top:10px; color:#64748b; font-style:italic;">⚠️ Nota: Todas as peças para este serviço foram fornecidas pelo próprio cliente.</div>`;
+    const ofi = (blocos[1] || "").replace("Pecas Oficina:", "").replace("Pe\u00e7as Oficina:", "").trim();
+    const cli = (blocos[2] || "").replace("Pecas Cliente:", "").replace("Pe\u00e7as Cliente:", "").trim();
+    blocoPecasMistas = "<div style=\"margin-top:10px;padding:8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;\"><strong>Pe\u00e7as Oficina:</strong> " + ofi + " | <strong>Pe\u00e7as Cliente:</strong> " + cli + "</div>";
+  } else if (s.description?.includes("(Cliente forneceu as pe")) {
+    escopoPrincipal = s.description.replace("(Cliente forneceu as pe\u00e7as)", "").trim();
+    blocoPecasMistas = "<div style=\"margin-top:8px;color:#64748b;font-style:italic;\">\u26a0\ufe0f Pe\u00e7as fornecidas pelo pr\u00f3prio cliente.</div>";
   }
-  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>O.S. ${s.vehiclePlate}</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:12px;color:#0f172a;padding:40px;}.os-border{border:2px dashed #000;padding:30px;}.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #000;padding-bottom:15px;margin-bottom:20px;}.grid-ficha{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:25px;background:#f8fafc;padding:15px;border:1px solid #e2e8f0;}h2{font-size:13px;text-transform:uppercase;margin:20px 0 10px 0;border-left:4px solid #000;padding-left:8px;}.box-servico{border:1px solid #e2e8f0;padding:15px;min-height:80px;line-height:1.5;background:#fff;margin-bottom:20px;}.termos{font-size:10px;color:#475569;margin:30px 0;text-align:justify;}.assinaturas{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:50px;text-align:center;}.linha-sub{border-top:1px solid #000;padding-top:6px;font-size:11px;font-weight:bold;}.no-print{background:#7c3aed;color:white;padding:14px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:25px;border-radius:8px;border:none;width:100%;font-size:15px;}@media print{.no-print{display:none;}body{padding:0;}.os-border{border:none;}}</style></head><body><button class="no-print" onclick="window.print()">CLIQUE AQUI PARA IMPRIMIR VIA DO CLIENTE</button><div class="os-border"><div class="hdr"><div><strong style="font-size:24px;letter-spacing:1px;">ASDCAR</strong><br/><span style="color:#475569;">Centro Automotivo</span></div><div style="text-align:right;"><strong>ORDEM DE SERVIÇO</strong><br/>Data Entrada: ${fmtDate(s.entryDate)}<br/>Status: <strong>${s.status}</strong></div></div><h2>👤 Ficha do Cliente</h2><div class="grid-ficha"><div>Nome: <strong>${car.owner || '—'}</strong><br/>Telefone: <strong>${car.phone || '—'}</strong></div><div>E-mail: <strong>${email || 'Não informado'}</strong></div></div><h2>🚗 Identificação do Veículo</h2><div class="grid-ficha"><div>Placa: <strong style="text-transform:uppercase;">${s.vehiclePlate}</strong><br/>Modelo: <strong>${s.vehicleBrand || car.brand} ${s.vehicleModel || car.model}</strong></div><div>Ano: <strong>${car.year || '—'}</strong><br/>KM Entrada: <strong>${fmtKm(s.mileage)}</strong></div></div><h2>
+
+  const css = "*{box-sizing:border-box;margin:0;padding:0;}" +
+    "body{font-family:Arial,sans-serif;font-size:12px;color:#0f172a;padding:40px;}" +
+    ".os-border{border:2px dashed #000;padding:30px;}" +
+    ".hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #000;padding-bottom:15px;margin-bottom:20px;}" +
+    ".grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;background:#f8fafc;padding:15px;border:1px solid #e2e8f0;}" +
+    "h2{font-size:13px;text-transform:uppercase;margin:16px 0 8px;border-left:4px solid #000;padding-left:8px;}" +
+    ".box{border:1px solid #e2e8f0;padding:15px;min-height:70px;line-height:1.5;background:#fff;margin-bottom:16px;}" +
+    ".termos{font-size:10px;color:#475569;margin:24px 0;text-align:justify;}" +
+    ".assinaturas{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:48px;text-align:center;}" +
+    ".linha-sub{border-top:1px solid #000;padding-top:6px;font-size:11px;font-weight:bold;}" +
+    ".no-print{background:#7c3aed;color:white;padding:14px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:24px;border-radius:8px;border:none;width:100%;font-size:15px;}" +
+    "@media print{.no-print{display:none;}body{padding:0;}.os-border{border:none;}}";
+
+  const pagamento = s.paymentMethod === "M\u00faltiplo / Misto"
+    ? s.paymentMethod + "<br/>Esp\u00e9cie/Pix: " + fmt(s.mixedCash) + " | Cart\u00e3o (" + s.mixedCardMethod + "): " + fmt(s.mixedCard)
+    : s.paymentMethod;
+
+  const html = "<!DOCTYPE html><html lang=\"pt-BR\"><head><meta charset=\"UTF-8\"/><title>O.S. " + s.vehiclePlate + "</title><style>" + css + "</style></head>" +
+    "<body>" +
+    "<button class=\"no-print\" onclick=\"window.print()\">CLIQUE AQUI PARA IMPRIMIR VIA DO CLIENTE</button>" +
+    "<div class=\"os-border\">" +
+    "<div class=\"hdr\">" +
+    "<div><strong style=\"font-size:22px;letter-spacing:1px;\">ASDCAR</strong><br/><span style=\"color:#475569;\">Centro Automotivo</span></div>" +
+    "<div style=\"text-align:right;\"><strong>ORDEM DE SERVI\u00c7O</strong><br/>Entrada: " + fmtDate(s.entryDate) + "<br/>Status: <strong>" + s.status + "</strong></div>" +
+    "</div>" +
+    "<h2>\ud83d\udc64 Ficha do Cliente</h2>" +
+    "<div class=\"grid\">" +
+    "<div>Nome: <strong>" + (car.owner || "\u2014") + "</strong><br/>Telefone: <strong>" + (car.phone || "\u2014") + "</strong></div>" +
+    "<div>E-mail: <strong>" + (email || "N\u00e3o informado") + "</strong></div>" +
+    "</div>" +
+    "<h2>\ud83d\ude97 Identifica\u00e7\u00e3o do Ve\u00edculo</h2>" +
+    "<div class=\"grid\">" +
+    "<div>Placa: <strong style=\"text-transform:uppercase;\">" + s.vehiclePlate + "</strong><br/>Modelo: <strong>" + (s.vehicleBrand || car.brand) + " " + (s.vehicleModel || car.model) + "</strong></div>" +
+    "<div>Ano: <strong>" + (car.year || "\u2014") + "</strong><br/>KM Entrada: <strong>" + fmtKm(s.mileage) + "</strong></div>" +
+    "</div>" +
+    "<h2>\u2699\ufe0f Servi\u00e7os Solicitados</h2>" +
+    "<div class=\"box\"><strong>" + escopoPrincipal + "</strong>" + blocoPecasMistas + "</div>" +
+    "<h2>\ud83d\udcb0 Valores e Pagamento</h2>" +
+    "<div class=\"grid\">" +
+    "<div>Pe\u00e7as: <strong>" + fmt(s.partsValue) + "</strong><br/>M\u00e3o de Obra: <strong>" + fmt(s.laborValue) + "</strong><br/><span style=\"font-size:14px;\">Total: <strong>" + fmt(tBruto) + "</strong></span></div>" +
+    "<div>Pagamento: <strong>" + pagamento + "</strong></div>" +
+    "</div>" +
+    "<div class=\"termos\">" +
+    "<strong>TERMOS DE GARANTIA:</strong><br/>" +
+    "1. Garantia de 90 dias nos servi\u00e7os executados, cobrindo defeitos de m\u00e3o de obra.<br/>" +
+    "2. Pe\u00e7as fornecidas pelo cliente n\u00e3o possuem garantia pela ASDCAR.<br/>" +
+    "3. Ve\u00edculos n\u00e3o retirados em at\u00e9 5 dias ap\u00f3s a notifica\u00e7\u00e3o de t\u00e9rmino estar\u00e3o sujeitos a taxa de di\u00e1ria." +
+    "</div>" +
+    "<div class=\"assinaturas\">" +
+    "<div><div class=\"linha-sub\">ASDCAR Centro Automotivo</div></div>" +
+    "<div><div class=\"linha-sub\">Assinatura do Cliente / De acordo</div></div>" +
+    "</div>" +
+    "</div>" +
+    "</body></html>";
+
+  const w = window.open("", "_blank");
+  if (w) { w.document.write(html); w.document.close(); }
+}
+
+function generatePDF(vehicles: any[], services: any[], expenses: any[], fromStr: string, toStr: string, viewMode: string) {
+  const from = new Date(fromStr + "T00:00:00");
+  const to = new Date(toStr + "T23:59:59");
+  const relSvcs = services.filter((s: any) => {
+    if (s.status !== "Entregue" || !s.exitDate) return false;
+    const d = new Date(s.exitDate + "T12:00:00");
+    return d >= from && d <= to;
+  });
+  const relExp = expenses.filter((e: any) => {
+    if (!e.expense_date) return false;
+    const d = new Date(e.expense_date + "T12:00:00");
+    return d >= from && d <= to;
+  });
+
+  const totalPecas = relSvcs.reduce((a: any, s: any) => a + (Number(s.partsValue) || 0), 0);
+  const totalMO = relSvcs.reduce((a: any, s: any) => a + (Number(s.laborValue) || 0), 0);
+
+  const faturamentoLiquido = relSvcs.reduce((acc: any, s: any) => {
+    if (s.paymentMethod === "M\u00faltiplo / Misto") {
+      const taxaCard = PAYMENT_METHODS[s.mixedCardMethod] || 0;
+      const cash = Number(s.mixedCash || 0);
+      if (viewMode === "labor") {
+        const bruto = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
+        if (bruto <= 0) return acc;
+        const pct = Number(s.laborValue) / bruto;
+        return acc + (cash * pct) + (Number(s.mixedCard || 0) * pct * (1 - taxaCard / 100));
+      }
+      return acc + cash + (Number(s.mixedCard || 0) * (1 - taxaCard / 100));
+    }
+    const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
+    if (viewMode === "labor") return acc + (Number(s.laborValue || 0) * (1 - taxa / 100));
+    return acc + (s.netValue || 0);
+  }, 0);
+
+  const totalDespesas = relExp.reduce((a: any, e: any) => a + (Number(e.value) || 0), 0);
+  const resultado = faturamentoLiquido - totalDespesas;
+
+  const rows = relSvcs.map((s: any) =>
+    "<tr><td><strong>" + s.vehiclePlate + "</strong><br/>" + s.vehicleBrand + " " + s.vehicleModel + "</td>" +
+    "<td>" + s.description.replace(/\|\|/g, " · ") + "</td>" +
+    "<td>" + s.paymentMethod + "</td>" +
+    "<td>" + fmt(s.partsValue) + "</td>" +
+    "<td>" + fmt(s.laborValue) + "</td>" +
+    "<td>" + fmtDate(s.exitDate) + "</td></tr>"
+  ).join("");
+
+  const expRows = relExp.map((e: any) =>
+    "<tr><td>" + e.description + "</td><td>" + e.category + "</td><td>" + fmtDate(e.expense_date) + "</td><td style=\"color:#ef4444;font-weight:bold;\">-" + fmt(e.value) + "</td></tr>"
+  ).join("");
+
+  const html = "<!DOCTYPE html><html lang=\"pt-BR\"><head><meta charset=\"UTF-8\"/><title>Fechamento ASDCAR</title>" +
+    "<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:11px;color:#0f172a;padding:30px;}" +
+    ".hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #f97316;padding-bottom:12px;margin-bottom:20px;}" +
+    ".kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}" +
+    ".kpi{background:#f8fafc;border:1px solid #e2e8f0;padding:10px;border-radius:6px;}" +
+    ".kpi-lbl{font-size:9px;color:#64748b;text-transform:uppercase;}.kpi-val{font-size:14px;font-weight:bold;margin-top:2px;}" +
+    "table{width:100%;border-collapse:collapse;margin-bottom:20px;}th,td{padding:8px;border:1px solid #e2e8f0;text-align:left;}" +
+    "th{background:#f1f5f9;font-size:9px;text-transform:uppercase;}" +
+    ".no-print{background:#f97316;color:white;padding:12px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:6px;border:none;width:100%;font-size:14px;}" +
+    "@media print{.no-print{display:none;}body{padding:0;}}</style></head>" +
+    "<body><button class=\"no-print\" onclick=\"window.print()\">CLIQUE AQUI PARA IMPRIMIR OU SALVAR EM PDF</button>" +
+    "<div class=\"hdr\"><div><strong style=\"font-size:20px;color:#f97316;\">ASDCAR</strong><br/>Fechamento Comercial</div>" +
+    "<div style=\"text-align:right;\">Per\u00edodo: <strong>" + fmtDate(fromStr) + " at\u00e9 " + fmtDate(toStr) + "</strong></div></div>" +
+    "<div class=\"kpis\">" +
+    "<div class=\"kpi\"><div class=\"kpi-lbl\">Pe\u00e7as</div><div class=\"kpi-val\" style=\"color:#8b5cf6;\">" + fmt(totalPecas) + "</div></div>" +
+    "<div class=\"kpi\"><div class=\"kpi-lbl\">M\u00e3o de Obra</div><div class=\"kpi-val\" style=\"color:#10b981;\">" + fmt(totalMO) + "</div></div>" +
+    "<div class=\"kpi\"><div class=\"kpi-lbl\">Entradas L\u00edquidas</div><div class=\"kpi-val\" style=\"color:#3b82f6;\">" + fmt(faturamentoLiquido) + "</div></div>" +
+    "<div class=\"kpi\"><div class=\"kpi-lbl\">Resultado Real</div><div class=\"kpi-val\" style=\"color:" + (resultado >= 0 ? "#10b981" : "#ef4444") + ";\">" + fmt(resultado) + "</div></div>" +
+    "</div>" +
+    "<h3 style=\"margin-bottom:10px;\">Servi\u00e7os Entregues (" + relSvcs.length + ")</h3>" +
+    "<table><thead><tr><th>Ve\u00edculo</th><th>Descri\u00e7\u00e3o</th><th>Pagamento</th><th>Pe\u00e7as</th><th>M.O.</th><th>Sa\u00edda</th></tr></thead><tbody>" + rows + "</tbody></table>" +
+    "<h3 style=\"margin-bottom:10px;\">Despesas (" + relExp.length + ")</h3>" +
+    "<table><thead><tr><th>Descri\u00e7\u00e3o</th><th>Categoria</th><th>Data</th><th>Valor</th></tr></thead><tbody>" + expRows + "</tbody></table>" +
+    "</body></html>";
+
+  const w = window.open("", "_blank");
+  if (w) { w.document.write(html); w.document.close(); }
+}
