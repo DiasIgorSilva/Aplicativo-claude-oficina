@@ -609,10 +609,11 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
         }
       }
 
-      // 3. Instantly append photo thumbnail to form state (zero annoying alerts)
+      // 3. Instantly append photo thumbnail with fileId to form state
       const newPhoto = {
         url: savedUrl,
         driveLink: driveLink,
+        fileId: data?.fileId || null,
         type: photoType,
         driveSaved: driveSuccess,
         createdAt: new Date().toISOString()
@@ -631,6 +632,20 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
   };
 
   const handleDeletePhoto = (idxToRemove: number) => {
+    const photoToDelete = (form.photos || [])[idxToRemove];
+    if (photoToDelete && driveUrl) {
+      try {
+        fetch(driveUrl, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            action: "delete",
+            fileId: photoToDelete.fileId,
+            fileUrl: photoToDelete.url
+          })
+        }).catch(() => {});
+      } catch (err) {}
+    }
     const updatedPhotos = (form.photos || []).filter((_: any, idx: number) => idx !== idxToRemove);
     setForm({ ...form, photos: updatedPhotos });
   };
