@@ -36,7 +36,7 @@ const mapS = (r: any) => {
   const parts = Number(r.parts_value) || 0;
   const labor = Number(r.labor_value) || 0;
   const net = r.net_value != null ? Number(r.net_value) : (parts + labor);
-  let photosList = [];
+  let photosList: any[] = [];
   try {
     if (r.photos) {
       photosList = typeof r.photos === 'string' ? JSON.parse(r.photos) : r.photos;
@@ -281,9 +281,9 @@ export default function App() {
         {loading ? <div style={{ textAlign: "center", padding: 100 }}>Sincronizando...</div> : (
           <>
             {tab === "dashboard" && <Dashboard services={services} viewMode={globalViewMode} setViewMode={setGlobalViewMode} />}
-            {tab === "services" && <ServicesTab services={services} vehicles={vehicles} loadAll={loadAll} onOpenOS={(s: any) => setShowOSModal(s)} />}
+            {tab === "services" && <ServicesTab services={services} vehicles={vehicles} loadAll={loadAll} onOpenOS={(s: any) => setShowOSModal(s)} driveUrl={driveUrl} onOpenDriveConfig={() => setShowDriveModal(true)} onZoomPhoto={(p: any) => setZoomPhoto(p)} />}
             {tab === "finance" && <FinanceTab services={services} expenses={expenses} loadAll={loadAll} viewMode={globalViewMode} setViewMode={setGlobalViewMode} />}
-            {tab === "vehicles" && <VehiclesTab vehicles={vehicles} services={services} loadAll={loadAll} />}
+            {tab === "vehicles" && <VehiclesTab vehicles={vehicles} services={services} loadAll={loadAll} onZoomPhoto={(p: any) => setZoomPhoto(p)} />}
           </>
         )}
       </main>
@@ -425,7 +425,10 @@ function Dashboard({ services, viewMode, setViewMode }: any) {
 }
 
 // ── ABA OFICINA ────────────────────────────────────────────────────────────
-function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
+function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDriveConfig, onZoomPhoto }: any) {
+  const [photoType, setPhotoType] = useState("Vistoria / Avarias");
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<any>(null);
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
@@ -440,7 +443,7 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
     let initialOwner = "oficina";
     let ofiText = "";
     let cliText = "";
-    let photosList = [];
+    let photosList: any[] = [];
     if (s) {
       if (s.description?.includes("|| Peças Oficina:")) {
         initialOwner = "mista";
@@ -662,85 +665,6 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS }: any) {
               )}
             </div>
           )}
-                    {/* 📷 MÓDULO DE FOTOS & VISTORIA (GOOGLE DRIVE) */}
-          <div style={{ background: "#0d0f14", padding: 14, borderRadius: 10, border: "1px solid #3b82f6", marginTop: 15, marginBottom: 15 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-              <label className="label" style={{ color: "#3b82f6", fontSize: 12, fontWeight: 700, margin: 0 }}>
-                📷 REGISTRO FOTOGRÁFICO (VISTORIA & SERVIÇO)
-              </label>
-              <button 
-                type="button" 
-                className="btn-ghost" 
-                style={{ fontSize: 10, padding: "2px 8px", color: driveUrl ? "#10b981" : "#f59e0b", borderColor: driveUrl ? "#10b981" : "#f59e0b" }} 
-                onClick={onOpenDriveConfig}
-              >
-                {driveUrl ? "☁️ Drive Conectado" : "⚙️ Conectar Drive"}
-              </button>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
-              <select className="input" style={{ fontSize: 11 }} value={photoType} onChange={e => setPhotoType(e.target.value)}>
-                <option value="Vistoria / Avarias">Vistoria / Avarias (Pneus/Riscados)</option>
-                <option value="Diagnóstico / Defeito">Diagnóstico / Peça Com Defeito</option>
-                <option value="Peça Antiga / Nova">Peça Nova vs Antiga</option>
-                <option value="Serviço Concluído">Serviço Concluído</option>
-              </select>
-
-              <input 
-                type="file" 
-                accept="image/*" 
-                capture="environment" 
-                style={{ display: "none" }} 
-                ref={fileInputRef} 
-                onChange={handleUploadPhoto} 
-              />
-
-              <button 
-                type="button" 
-                className="btn-primary" 
-                style={{ background: "#3b82f6", color: "#fff", fontSize: 11, padding: "8px 12px", height: "auto" }}
-                onClick={() => {
-                  if (!form.vehicleId) return alert("Selecione o veículo primeiro para vincular a foto à placa!");
-                  fileInputRef.current?.click();
-                }}
-                disabled={uploadingPhoto}
-              >
-                {uploadingPhoto ? "⏳ Enviando Foto..." : "📷 Tirar Foto / Anexar"}
-              </button>
-            </div>
-
-            {/* Galeria de Thumbnails */}
-            {Array.isArray(form.photos) && form.photos.length > 0 ? (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(75px, 1fr))", gap: 8, marginTop: 10 }}>
-                {form.photos.map((photo: any, idx: number) => (
-                  <div key={idx} style={{ position: "relative", borderRadius: 6, overflow: "hidden", border: "1px solid #1e2736", background: "#000", height: 75 }}>
-                    <img 
-                      src={photo.url} 
-                      alt={photo.type} 
-                      style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "pointer" }} 
-                      onClick={() => onZoomPhoto(photo)}
-                    />
-                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.75)", fontSize: 8, color: "#fff", padding: "2px 4px", textOverflow: "ellipsis", overflow: "hidden", whitespace: "nowrap" }}>
-                      {photo.type?.slice(0, 12)}
-                    </div>
-                    <button 
-                      type="button" 
-                      onClick={(e) => { e.stopPropagation(); handleDeletePhoto(idx); }}
-                      style={{ position: "absolute", top: 2, right: 2, background: "rgba(239,68,68,0.9)", color: "#fff", border: "none", borderRadius: "50%", width: 18, height: 18, fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                      title="Excluir foto"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p style={{ fontSize: 11, color: "#64748b", margin: 0, fontStyle: "italic" }}>
-                Nenhuma foto registrada para este serviço ainda.
-              </p>
-            )}
-          </div>
-
           <button className="btn-primary" style={{ width: "100%", marginTop: 15 }} onClick={save}>Salvar Informações</button>
         </div></div>
       )}
@@ -834,7 +758,7 @@ function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any)
 }
 
 // ── ABA BASE DE VEÍCULOS ──────────────────────────────────────────────────
-function VehiclesTab({ vehicles, services, loadAll }: any) {
+function VehiclesTab({ vehicles, services, loadAll, onZoomPhoto }: any) {
   const [modal, setModal] = useState(false);
   const [historyModal, setHistoryModal] = useState(false);
   const [selectedV, setSelectedV] = useState<any>(null);
@@ -953,151 +877,51 @@ function generateOSFile(s: any, car: any, email: string) {
   const tBruto = Number(s.partsValue || 0) + Number(s.laborValue || 0);
   let escopoPrincipal = s.description || "";
   let blocoPecasMistas = "";
-  if (s.description?.includes("|| Pecas Oficina:") || s.description?.includes("|| Pe")) {
+  if (s.description?.includes("|| Peças Oficina:")) {
     const blocos = s.description.split("||");
     escopoPrincipal = blocos[0].trim();
-    const ofi = (blocos[1] || "").replace("Pecas Oficina:", "").replace("Pe\u00e7as Oficina:", "").trim();
-    const cli = (blocos[2] || "").replace("Pecas Cliente:", "").replace("Pe\u00e7as Cliente:", "").trim();
-    blocoPecasMistas = "<div style=\"margin-top:10px;padding:8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;\"><strong>Pe\u00e7as Oficina:</strong> " + ofi + " | <strong>Pe\u00e7as Cliente:</strong> " + cli + "</div>";
-  } else if (s.description?.includes("(Cliente forneceu as pe")) {
-    escopoPrincipal = s.description.replace("(Cliente forneceu as pe\u00e7as)", "").trim();
-    blocoPecasMistas = "<div style=\"margin-top:8px;color:#64748b;font-style:italic;\">\u26a0\ufe0f Pe\u00e7as fornecidas pelo pr\u00f3prio cliente.</div>";
+    blocoPecasMistas = "<div style=\"margin-top:15px; padding:10px; background:#f8fafc; border-radius:4px; border:1px solid #e2e8f0;\"><p style=\"margin-bottom:4px;\">⚙️ <strong>Peças fornecidas pela ASDCAR:</strong> " + (blocos[1]?.replace("Peças Oficina:", "")?.trim() || "") + "</p><p>👤 <strong>Peças trazidas pelo Cliente:</strong> " + (blocos[2]?.replace("Peças Cliente:", "")?.trim() || "") + " <em>(Cliente forneceu)</em></p></div>";
+  } else if (s.description?.includes("(Cliente forneceu as peças)")) {
+    escopoPrincipal = s.description.replace("(Cliente forneceu as peças)", "").trim();
+    blocoPecasMistas = "<div style=\"margin-top:10px; color:#64748b; font-style:italic;\">⚠️ Nota: Todas as peças para este serviço foram fornecidas pelo próprio cliente.</div>";
   }
 
-  const css = "*{box-sizing:border-box;margin:0;padding:0;}" +
-    "body{font-family:Arial,sans-serif;font-size:12px;color:#0f172a;padding:40px;}" +
-    ".os-border{border:2px dashed #000;padding:30px;}" +
-    ".hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #000;padding-bottom:15px;margin-bottom:20px;}" +
-    ".grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;background:#f8fafc;padding:15px;border:1px solid #e2e8f0;}" +
-    "h2{font-size:13px;text-transform:uppercase;margin:16px 0 8px;border-left:4px solid #000;padding-left:8px;}" +
-    ".box{border:1px solid #e2e8f0;padding:15px;min-height:70px;line-height:1.5;background:#fff;margin-bottom:16px;}" +
-    ".termos{font-size:10px;color:#475569;margin:24px 0;text-align:justify;}" +
-    ".assinaturas{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:48px;text-align:center;}" +
-    ".linha-sub{border-top:1px solid #000;padding-top:6px;font-size:11px;font-weight:bold;}" +
-    ".no-print{background:#7c3aed;color:white;padding:14px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:24px;border-radius:8px;border:none;width:100%;font-size:15px;}" +
-    "@media print{.no-print{display:none;}body{padding:0;}.os-border{border:none;}}";
-
-  const pagamento = s.paymentMethod === "M\u00faltiplo / Misto"
-    ? s.paymentMethod + "<br/>Esp\u00e9cie/Pix: " + fmt(s.mixedCash) + " | Cart\u00e3o (" + s.mixedCardMethod + "): " + fmt(s.mixedCard)
-    : s.paymentMethod;
-
-  const html = "<!DOCTYPE html><html lang=\"pt-BR\"><head><meta charset=\"UTF-8\"/><title>O.S. " + s.vehiclePlate + "</title><style>" + css + "</style></head>" +
-    "<body>" +
-    "<button class=\"no-print\" onclick=\"window.print()\">CLIQUE AQUI PARA IMPRIMIR VIA DO CLIENTE</button>" +
-    "<div class=\"os-border\">" +
-    "<div class=\"hdr\">" +
-    "<div><strong style=\"font-size:22px;letter-spacing:1px;\">ASDCAR</strong><br/><span style=\"color:#475569;\">Centro Automotivo</span></div>" +
-    "<div style=\"text-align:right;\"><strong>ORDEM DE SERVI\u00c7O</strong><br/>Entrada: " + fmtDate(s.entryDate) + "<br/>Status: <strong>" + s.status + "</strong></div>" +
-    "</div>" +
-    "<h2>\ud83d\udc64 Ficha do Cliente</h2>" +
-    "<div class=\"grid\">" +
-    "<div>Nome: <strong>" + (car.owner || "\u2014") + "</strong><br/>Telefone: <strong>" + (car.phone || "\u2014") + "</strong></div>" +
-    "<div>E-mail: <strong>" + (email || "N\u00e3o informado") + "</strong></div>" +
-    "</div>" +
-    "<h2>\ud83d\ude97 Identifica\u00e7\u00e3o do Ve\u00edculo</h2>" +
-    "<div class=\"grid\">" +
-    "<div>Placa: <strong style=\"text-transform:uppercase;\">" + s.vehiclePlate + "</strong><br/>Modelo: <strong>" + (s.vehicleBrand || car.brand) + " " + (s.vehicleModel || car.model) + "</strong></div>" +
-    "<div>Ano: <strong>" + (car.year || "\u2014") + "</strong><br/>KM Entrada: <strong>" + fmtKm(s.mileage) + "</strong></div>" +
-    "</div>" +
-    "<h2>\u2699\ufe0f Servi\u00e7os Solicitados</h2>" +
-    "<div class=\"box\"><strong>" + escopoPrincipal + "</strong>" + blocoPecasMistas + "</div>" +
-    "<h2>\ud83d\udcb0 Valores e Pagamento</h2>" +
-    "<div class=\"grid\">" +
-    "<div>Pe\u00e7as: <strong>" + fmt(s.partsValue) + "</strong><br/>M\u00e3o de Obra: <strong>" + fmt(s.laborValue) + "</strong><br/><span style=\"font-size:14px;\">Total: <strong>" + fmt(tBruto) + "</strong></span></div>" +
-    "<div>Pagamento: <strong>" + pagamento + "</strong></div>" +
-    "</div>" +
-    "<div class=\"termos\">" +
-    "<strong>TERMOS DE GARANTIA:</strong><br/>" +
-    "1. Garantia de 90 dias nos servi\u00e7os executados, cobrindo defeitos de m\u00e3o de obra.<br/>" +
-    "2. Pe\u00e7as fornecidas pelo cliente n\u00e3o possuem garantia pela ASDCAR.<br/>" +
-    "3. Ve\u00edculos n\u00e3o retirados em at\u00e9 5 dias ap\u00f3s a notifica\u00e7\u00e3o de t\u00e9rmino estar\u00e3o sujeitos a taxa de di\u00e1ria." +
-    "</div>" +
-    "<div class=\"assinaturas\">" +
-    "<div><div class=\"linha-sub\">ASDCAR Centro Automotivo</div></div>" +
-    "<div><div class=\"linha-sub\">Assinatura do Cliente / De acordo</div></div>" +
-    "</div>" +
-    "</div>" +
-    "</body></html>";
-
+  const html = "<!DOCTYPE html><html lang=\"pt-BR\"><head><meta charset=\"UTF-8\"/><title>O.S. " + s.vehiclePlate + "</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:12px;color:#0f172a;padding:40px;}.os-border{border:2px dashed #000;padding:30px;}.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #000;padding-bottom:15px;margin-bottom:20px;}.grid-ficha{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:25px;background:#f8fafc;padding:15px;border:1px solid #e2e8f0;}h2{font-size:13px;text-transform:uppercase;margin:20px 0 10px 0;border-left:4px solid #000;padding-left:8px;}.box-servico{border:1px solid #e2e8f0;padding:15px;min-height:80px;line-height:1.5;background:#fff;margin-bottom:20px;}.termos{font-size:10px;color:#475569;margin:30px 0;text-align:justify;}.assinaturas{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:50px;text-align:center;}.linha-sub{border-top:1px solid #000;padding-top:6px;font-size:11px;font-weight:bold;}.no-print{background:#7c3aed;color:white;padding:14px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:25px;border-radius:8px;border:none;width:100%;font-size:15px;}@media print{.no-print{display:none;}body{padding:0;}.os-border{border:none;}}</style></head><body><button class=\"no-print\" onclick=\"window.print()\">CLIQUE AQUI PARA IMPRIMIR VIA DO CLIENTE</button><div class=\"os-border\"><div class=\"hdr\"><div><strong style=\"font-size:24px;letter-spacing:1px;\">ASDCAR</strong><br/><span style=\"color:#475569;\">Centro Automotivo</span></div><div style=\"text-align:right;\"><strong>ORDEM DE SERVIÇO</strong><br/>Data Entrada: " + fmtDate(s.entryDate) + "<br/>Status: <strong>" + s.status + "</strong></div></div><h2>👤 Ficha do Cliente</h2><div class="grid-ficha"><div>Nome: <strong>" + (car.owner || '—') + "</strong><br/>Telefone: <strong>" + (car.phone || '—') + "</strong></div><div>E-mail: <strong>" + (email || 'Não informado') + "</strong></div></div><h2>🚗 Identificação do Veículo</h2><div class="grid-ficha"><div>Placa: <strong style="text-transform:uppercase;">" + s.vehiclePlate + "</strong><br/>Modelo: <strong>" + (s.vehicleBrand || car.brand) + " " + (s.vehicleModel || car.model) + "</strong></div><div>Ano: <strong>" + (car.year || '—') + "</strong><br/>KM Entrada: <strong>" + fmtKm(s.mileage) + "</strong></div></div><h2>⚙️ Serviços Solicitados / Diagnóstico</h2><div class="box-servico"><strong>" + escopoPrincipal + "</strong>" + blocoPecasMistas + "</div><h2>💰 Valores e Condição de Pagamento</h2><div class="grid-ficha"><div>Valor Peças: <strong>" + fmt(s.partsValue) + "</strong><br/>Mão de Obra: <strong>" + fmt(s.laborValue) + "</strong><br/><span style="font-size:14px;color:#000;">Total da O.S.: <strong>" + fmt(tBruto) + "</strong></span></div><div>Forma de Pagamento: <strong>" + s.paymentMethod + "</strong></div></div><div class="termos"><strong>TERMOS DE GARANTIA E CONDIÇÕES:</strong><br/>1. A garantia dos serviços executados é de 90 dias a contar da data de entrega do veículo, cobrindo exclusivamente defeitos de mão de obra.<br/>2. Peças fornecidas pelo cliente não possuem garantia pela oficina ASDCAR.<br/>3. Veículos não retirados em até 5 dias após a notificação de término estarão sujeitos a taxa de diária de permanência.</div><div class="assinaturas"><div><div class="linha-sub">ASDCAR Centro Automotivo</div></div><div><div class="linha-sub">Assinatura do Cliente / De acordo</div></div></div></div></body></html>";
   const w = window.open("", "_blank");
   if (w) { w.document.write(html); w.document.close(); }
 }
 
-function generatePDF(vehicles: any[], services: any[], expenses: any[], fromStr: string, toStr: string, viewMode: string) {
+function generatePDF(vehicles: any[], services: any[], expenses: any[], fromStr: string, toStr: string, viewMode: string = "labor") {
   const from = new Date(fromStr + "T00:00:00");
   const to = new Date(toStr + "T23:59:59");
-  const relSvcs = services.filter((s: any) => {
-    if (s.status !== "Entregue" || !s.exitDate) return false;
-    const d = new Date(s.exitDate + "T12:00:00");
-    return d >= from && d <= to;
-  });
-  const relExp = expenses.filter((e: any) => {
-    if (!e.expense_date) return false;
-    const d = new Date(e.expense_date + "T12:00:00");
-    return d >= from && d <= to;
-  });
+  const relServices = services.filter(s => { if (s.status !== "Entregue" || !s.exitDate) return false; const d = new Date(s.exitDate + "T12:00:00"); return d >= from && d <= to; });
+  const relExpenses = expenses.filter(e => { if (!e.expense_date) return false; const d = new Date(e.expense_date + "T12:00:00"); return d >= from && d <= to; });
 
-  const totalPecas = relSvcs.reduce((a: any, s: any) => a + (Number(s.partsValue) || 0), 0);
-  const totalMO = relSvcs.reduce((a: any, s: any) => a + (Number(s.laborValue) || 0), 0);
+  const totalPecas = relServices.reduce((a, s) => a + (Number(s.partsValue) || 0), 0);
+  const totalMO = relServices.reduce((a, s) => a + (Number(s.laborValue) || 0), 0);
 
-  const faturamentoLiquido = relSvcs.reduce((acc: any, s: any) => {
-    if (s.paymentMethod === "M\u00faltiplo / Misto") {
+  const faturamentoLiquido = relServices.reduce((acc, s) => {
+    if (s.paymentMethod === "Múltiplo / Misto") {
       const taxaCard = PAYMENT_METHODS[s.mixedCardMethod] || 0;
-      const cash = Number(s.mixedCash || 0);
+      const dinheiroPixLivre = Number(s.mixedCash || 0);
       if (viewMode === "labor") {
-        const bruto = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
-        if (bruto <= 0) return acc;
-        const pct = Number(s.laborValue) / bruto;
-        return acc + (cash * pct) + (Number(s.mixedCard || 0) * pct * (1 - taxaCard / 100));
+        const totalBrutoServico = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
+        if (totalBrutoServico <= 0) return acc;
+        const percentualLabor = Number(s.laborValue) / totalBrutoServico;
+        return acc + (dinheiroPixLivre * percentualLabor) + (Number(s.mixedCard || 0) * percentualLabor * (1 - taxaCard / 100));
+      } else {
+        return acc + dinheiroPixLivre + (Number(s.mixedCard || 0) * (1 - taxaCard / 100));
       }
-      return acc + cash + (Number(s.mixedCard || 0) * (1 - taxaCard / 100));
     }
     const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
-    if (viewMode === "labor") return acc + (Number(s.laborValue || 0) * (1 - taxa / 100));
-    return acc + (s.netValue || 0);
+    if (viewMode === "labor") { return acc + (Number(s.laborValue || 0) * (1 - taxa / 100)); }
+    else { return acc + (s.netValue || 0); }
   }, 0);
 
-  const totalDespesas = relExp.reduce((a: any, e: any) => a + (Number(e.value) || 0), 0);
-  const resultado = faturamentoLiquido - totalDespesas;
+  const totalDespesas = relExpenses.reduce((a, e) => a + (Number(e.value) || 0), 0);
+  const resultadoReal = faturamentoLiquido - totalDespesas;
 
-  const rows = relSvcs.map((s: any) =>
-    "<tr><td><strong>" + s.vehiclePlate + "</strong><br/>" + s.vehicleBrand + " " + s.vehicleModel + "</td>" +
-    "<td>" + s.description.replace(/\|\|/g, " · ") + "</td>" +
-    "<td>" + s.paymentMethod + "</td>" +
-    "<td>" + fmt(s.partsValue) + "</td>" +
-    "<td>" + fmt(s.laborValue) + "</td>" +
-    "<td>" + fmtDate(s.exitDate) + "</td></tr>"
-  ).join("");
-
-  const expRows = relExp.map((e: any) =>
-    "<tr><td>" + e.description + "</td><td>" + e.category + "</td><td>" + fmtDate(e.expense_date) + "</td><td style=\"color:#ef4444;font-weight:bold;\">-" + fmt(e.value) + "</td></tr>"
-  ).join("");
-
-  const html = "<!DOCTYPE html><html lang=\"pt-BR\"><head><meta charset=\"UTF-8\"/><title>Fechamento ASDCAR</title>" +
-    "<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:11px;color:#0f172a;padding:30px;}" +
-    ".hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #f97316;padding-bottom:12px;margin-bottom:20px;}" +
-    ".kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}" +
-    ".kpi{background:#f8fafc;border:1px solid #e2e8f0;padding:10px;border-radius:6px;}" +
-    ".kpi-lbl{font-size:9px;color:#64748b;text-transform:uppercase;}.kpi-val{font-size:14px;font-weight:bold;margin-top:2px;}" +
-    "table{width:100%;border-collapse:collapse;margin-bottom:20px;}th,td{padding:8px;border:1px solid #e2e8f0;text-align:left;}" +
-    "th{background:#f1f5f9;font-size:9px;text-transform:uppercase;}" +
-    ".no-print{background:#f97316;color:white;padding:12px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:6px;border:none;width:100%;font-size:14px;}" +
-    "@media print{.no-print{display:none;}body{padding:0;}}</style></head>" +
-    "<body><button class=\"no-print\" onclick=\"window.print()\">CLIQUE AQUI PARA IMPRIMIR OU SALVAR EM PDF</button>" +
-    "<div class=\"hdr\"><div><strong style=\"font-size:20px;color:#f97316;\">ASDCAR</strong><br/>Fechamento Comercial</div>" +
-    "<div style=\"text-align:right;\">Per\u00edodo: <strong>" + fmtDate(fromStr) + " at\u00e9 " + fmtDate(toStr) + "</strong></div></div>" +
-    "<div class=\"kpis\">" +
-    "<div class=\"kpi\"><div class=\"kpi-lbl\">Pe\u00e7as</div><div class=\"kpi-val\" style=\"color:#8b5cf6;\">" + fmt(totalPecas) + "</div></div>" +
-    "<div class=\"kpi\"><div class=\"kpi-lbl\">M\u00e3o de Obra</div><div class=\"kpi-val\" style=\"color:#10b981;\">" + fmt(totalMO) + "</div></div>" +
-    "<div class=\"kpi\"><div class=\"kpi-lbl\">Entradas L\u00edquidas</div><div class=\"kpi-val\" style=\"color:#3b82f6;\">" + fmt(faturamentoLiquido) + "</div></div>" +
-    "<div class=\"kpi\"><div class=\"kpi-lbl\">Resultado Real</div><div class=\"kpi-val\" style=\"color:" + (resultado >= 0 ? "#10b981" : "#ef4444") + ";\">" + fmt(resultado) + "</div></div>" +
-    "</div>" +
-    "<h3 style=\"margin-bottom:10px;\">Servi\u00e7os Entregues (" + relSvcs.length + ")</h3>" +
-    "<table><thead><tr><th>Ve\u00edculo</th><th>Descri\u00e7\u00e3o</th><th>Pagamento</th><th>Pe\u00e7as</th><th>M.O.</th><th>Sa\u00edda</th></tr></thead><tbody>" + rows + "</tbody></table>" +
-    "<h3 style=\"margin-bottom:10px;\">Despesas (" + relExp.length + ")</h3>" +
-    "<table><thead><tr><th>Descri\u00e7\u00e3o</th><th>Categoria</th><th>Data</th><th>Valor</th></tr></thead><tbody>" + expRows + "</tbody></table>" +
-    "</body></html>";
-
+  const html = "<!DOCTYPE html><html lang=\"pt-BR\"><head><meta charset=\"UTF-8\"/><title>Fechamento Comercial ASDCAR</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:11px;color:#0f172a;padding:30px;}.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #f97316;padding-bottom:12px;margin-bottom:20px;}.kpi-box{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}.kpi{background:#f8fafc;border:1px solid #e2e8f0;padding:10px;border-radius:6px;}.kpi-lbl{font-size:9px;color:#64748b;text-transform:uppercase;}.kpi-val{font-size:14px;font-weight:bold;margin-top:2px;}table{width:100%;border-collapse:collapse;margin-bottom:20px;}th,td{padding:8px;border:1px solid #e2e8f0;text-align:left;}th{background:#f1f5f9;font-size:9px;text-transform:uppercase;}.no-print{background:#f97316;color:white;padding:12px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:6px;border:none;width:100%;font-size:14px;}@media print{.no-print{display:none;}body{padding:0;}}</style></head><body><button class=\"no-print\" onclick=\"window.print()\">CLIQUE AQUI PARA IMPRIMIR OU SALVAR EM PDF</button><div class=\"hdr\"><div><strong style=\"font-size:22px;color:#f97316;\">ASDCAR</strong><br/><span>Fechamento Comercial</span></div><div style=\"text-align:right;\">Período: <strong>" + fmtDate(fromStr) + " até " + fmtDate(toStr) + "</strong></div></div><div class=\"kpi-box\"><div class=\"kpi\"><div class=\"kpi-lbl\">Peças Totais</div><div class=\"kpi-val\" style=\"color:#8b5cf6;\">" + fmt(totalPecas) + "</div></div><div class=\"kpi\"><div class=\"kpi-lbl\">Mão de Obra</div><div class=\"kpi-val\" style=\"color:#10b981;\">" + fmt(totalMO) + "</div></div><div class=\"kpi\"><div class=\"kpi-lbl\">Entradas Líquidas</div><div class=\"kpi-val\" style=\"color:#3b82f6;\">" + fmt(faturamentoLiquido) + "</div></div><div class=\"kpi\"><div class=\"kpi-lbl\">Resultado Real</div><div class=\"kpi-val\" style=\"color:" + (resultadoReal >= 0 ? '#10b981' : '#ef4444') + ";\">" + fmt(resultadoReal) + "</div></div></div><h3>📋 Serviços Entregues (" + relServices.length + ")</h3><table><thead><tr><th>Veículo</th><th>Descrição / Obs.</th><th>Forma Pagto</th><th>Peças</th><th>M.O.</th><th>Saída</th></tr></thead><tbody>" + relServices.map(s => "<tr><td><strong>" + s.vehiclePlate + "</strong><br/>" + s.vehicleBrand + " " + s.vehicleModel + "</td><td>" + s.description.replace(/\|\|/g, '<br/>') + "</td><td>" + s.paymentMethod + "</td><td>" + fmt(s.partsValue) + "</td><td>" + fmt(s.laborValue) + "</td><td>" + fmtDate(s.exitDate) + "</td></tr>").join('') + "</tbody></table><h3>💸 Despesas do Período (" + relExpenses.length + ")</h3><table><thead><tr><th>Descrição</th><th>Categoria</th><th>Data</th><th>Valor</th></tr></thead><tbody>" + relExpenses.map(e => "<tr><td>" + e.description + "</td><td>" + e.category + "</td><td>" + fmtDate(e.expense_date) + "</td><td style=\"color:#ef4444;font-weight:bold;\">-" + fmt(e.value) + "</td></tr>").join('') + "</tbody></table></body></html>";
   const w = window.open("", "_blank");
   if (w) { w.document.write(html); w.document.close(); }
 }
