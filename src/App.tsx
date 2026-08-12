@@ -237,6 +237,7 @@ export default function App() {
   const tabs = [
     { id: "dashboard", label: "Início", icon: "🏠" }, 
     { id: "services", label: "Oficina", icon: "🔧" }, 
+    { id: "monthly_history", label: "Passaram no Mês", icon: "📋" }, 
     { id: "finance", label: "Financeiro", icon: "💰" }, 
     { id: "vehicles", label: "Carros", icon: "🚗" }
   ];
@@ -340,6 +341,7 @@ export default function App() {
           <>
             {tab === "dashboard" && <Dashboard services={services} viewMode={globalViewMode} setViewMode={setGlobalViewMode} />}
             {tab === "services" && <ServicesTab services={services} vehicles={vehicles} loadAll={loadAll} onOpenOS={(s: any) => setShowOSModal(s)} driveUrl={driveUrl} onOpenDriveConfig={() => setShowDriveModal(true)} onZoomPhoto={(p: any) => setZoomPhoto(p)} />}
+            {tab === "monthly_history" && <MonthlyHistoryTab services={services} vehicles={vehicles} onOpenOS={(s: any) => setShowOSModal(s)} onZoomPhoto={(p: any) => setZoomPhoto(p)} />}
             {tab === "finance" && <FinanceTab expenses={expenses} services={services} loadAll={loadAll} viewMode={globalViewMode} setViewMode={setGlobalViewMode} />}
             {tab === "vehicles" && <VehiclesTab vehicles={vehicles} services={services} loadAll={loadAll} onZoomPhoto={(p: any) => setZoomPhoto(p)} />}
           </>
@@ -654,9 +656,15 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
   const close = () => { setModal(false); setEditing(null); setForm({}); };
 
   const save = async () => {
-    if (!form.vehicleId || !form.description) return alert("Selecione o carro e descreva o serviço.");
-    const v = vehicles.find((v: any) => v.id === form.vehicleId);
-    let descLimpa = form.description.split("||")[0].replace(/\s*\(Cliente forneceu as peças\)/gi, "").trim();
+    const vId = form.vehicleId || form.vehicle_id || editing?.vehicleId || editing?.vehicle_id;
+    if (!vId || !form.description) return alert("Selecione o veículo e descreva o serviço.");
+
+    const v = vehicles.find((veh: any) => String(veh.id) === String(vId));
+    const plate = v?.plate || form.vehiclePlate || form.vehicle_plate || editing?.vehiclePlate || "";
+    const brand = v?.brand || form.vehicleBrand || form.vehicle_brand || editing?.vehicleBrand || "";
+    const model = v?.model || form.vehicleModel || form.vehicle_model || editing?.vehicleModel || "";
+
+    let descLimpa = (form.description || "").split("||")[0].replace(/\s*\(Cliente forneceu as peças\)/gi, "").trim();
     let finalPartsValue = Number(form.partsValue) || 0;
 
     if (partsOwner === "cliente") {
@@ -676,22 +684,22 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
       const parteCard = Number(form.mixedCard) || 0;
       liquido = parteCash + (parteCard * (1 - taxaCard / 100));
     } else {
-      const taxa = PAYMENT_METHODS[form.paymentMethod] || 0;
+      const taxa = PAYMENT_METHODS[form.paymentMethod || "Dinheiro"] || 0;
       liquido = bruto - (bruto * (taxa / 100));
     }
 
-    const row = { 
-      id: editing?.id || uid(), 
-      vehicle_id: form.vehicleId, 
-      vehicle_plate: v?.plate, 
-      vehicle_brand: v?.brand, 
-      vehicle_model: v?.model, 
+    const row: any = { 
+      id: editing?.id || form.id || uid(), 
+      vehicle_id: vId, 
+      vehicle_plate: plate, 
+      vehicle_brand: brand, 
+      vehicle_model: model, 
       description: descLimpa, 
       parts_value: finalPartsValue, 
       labor_value: Number(form.laborValue) || 0, 
       net_value: liquido, 
-      status: form.status, 
-      entry_date: form.entryDate, 
+      status: form.status || "Aguardando", 
+      entry_date: form.entryDate || today(), 
       exit_date: form.status === "Entregue" ? (form.exitDate || today()) : null, 
       payment_method: form.paymentMethod || "Dinheiro", 
       mileage: Number(form.mileage) || 0,
@@ -701,21 +709,26 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
       photos: JSON.stringify(form.photos || [])
     };
     
-    // Store photos in local storage cache so they are NEVER lost even if Supabase column is missing
+    // Cache photos in local storage so they are NEVER lost even if Supabase column is missing
     if (typeof window !== "undefined" && window.localStorage && form.photos) {
       localStorage.setItem("asdcar_photos_" + row.id, JSON.stringify(form.photos));
     }
 
     let { error } = await supabase.from("services").upsert(row);
 
-    // Fallback: If Supabase table 'services' doesn't have 'photos' column yet, retry saving service details without photos column
+    // Fallback: If Supabase table 'services' doesn't have 'photos' column yet, retry saving without 'photos' field
     if (error && error.message?.includes("photos")) {
       delete row.photos;
       const retry = await supabase.from("services").upsert(row);
       error = retry.error;
     }
 
-    if (!error) { await loadAll(); close(); } else { alert("Erro ao salvar: " + error.message); }
+    if (!error) { 
+      await loadAll(); 
+      close(); 
+    } else { 
+      alert("Erro ao salvar no banco de dados: " + error.message); 
+    }
   };
 
   const filtered = filterStatus ? services.filter((s: any) => s.status === filterStatus) : services;
@@ -946,6 +959,165 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
     </Section>
   );
 }
+
+// ── ABA HISTÓRICO MENSAL (CARROS QUE PASSARAM NA OFICINA NO MÊS) ─────────────
+function MonthlyHistoryTab({ services, vehicles, onOpenOS, onZoomPhoto }: any) {
+  const [selMonth, setSelMonth] = useState(new Date().getMonth());
+  const [selYear, setSelYear] = useState(new Date().getFullYear());
+  const [query, setQuery] = useState("");
+
+  const filteredServices = services.filter((s: any) => {
+    // Service must be delivered or have an entry/exit date in the selected month
+    const d = s.exitDate ? new Date(s.exitDate + "T12:00:00") : new Date(s.entryDate + "T12:00:00");
+    const matchesMonth = d.getMonth() === selMonth && d.getFullYear() === selYear;
+    
+    if (!matchesMonth) return false;
+    if (!query) return true;
+    
+    const q = query.toLowerCase();
+    const plate = (s.vehiclePlate || "").toLowerCase();
+    const model = (s.vehicleModel || "").toLowerCase();
+    const brand = (s.vehicleBrand || "").toLowerCase();
+    const desc = (s.description || "").toLowerCase();
+    return plate.includes(q) || model.includes(q) || brand.includes(q) || desc.includes(q);
+  });
+
+  const totalPecas = filteredServices.reduce((a: any, s: any) => a + (Number(s.partsValue) || 0), 0);
+  const totalMO = filteredServices.reduce((a: any, s: any) => a + (Number(s.laborValue) || 0), 0);
+  const totalGeral = totalPecas + totalMO;
+
+  return (
+    <Section title="Carros Atendidos no Mês">
+      {/* FILTROS E BUSCA */}
+      <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 120px 2fr", gap: 12 }}>
+          <div>
+            <label className="label">MÊS DE REFERÊNCIA</label>
+            <select className="input" value={selMonth} onChange={e => setSelMonth(Number(e.target.value))}>
+              {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">ANO</label>
+            <select className="input" value={selYear} onChange={e => setSelYear(Number(e.target.value))}>
+              {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">BUSCAR VEÍCULO OU PLACA</label>
+            <input 
+              className="input" 
+              placeholder="Digite a placa, modelo ou serviço..." 
+              value={query} 
+              onChange={e => setQuery(e.target.value)} 
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* KPIS DE RESUMO DO MÊS */}
+      <div className="kpi-grid">
+        <div className="kpi-card" style={{ borderColor: "rgba(249, 115, 22, 0.3)" }}>
+          <div className="kpi-icon-badge" style={{ background: "rgba(249, 115, 22, 0.15)", color: "#f97316" }}>🚗</div>
+          <div className="kpi-number">{filteredServices.length}</div>
+          <div className="kpi-label">CARROS ATENDIDOS</div>
+        </div>
+        <div className="kpi-card" style={{ borderColor: "rgba(139, 92, 246, 0.3)" }}>
+          <div className="kpi-icon-badge" style={{ background: "rgba(139, 92, 246, 0.15)", color: "#8b5cf6" }}>🎧</div>
+          <div className="kpi-number">{fmt(totalPecas)}</div>
+          <div className="kpi-label">TOTAL PEÇAS</div>
+        </div>
+        <div className="kpi-card" style={{ borderColor: "rgba(16, 185, 129, 0.3)" }}>
+          <div className="kpi-icon-badge" style={{ background: "rgba(16, 185, 129, 0.15)", color: "#10b981" }}>🔧</div>
+          <div className="kpi-number">{fmt(totalMO)}</div>
+          <div className="kpi-label">TOTAL MÃO DE OBRA</div>
+        </div>
+        <div className="kpi-card" style={{ borderColor: "rgba(59, 130, 246, 0.3)" }}>
+          <div className="kpi-icon-badge" style={{ background: "rgba(59, 130, 246, 0.15)", color: "#3b82f6" }}>💰</div>
+          <div className="kpi-number" style={{ color: "#3b82f6" }}>{fmt(totalGeral)}</div>
+          <div className="kpi-label">FATURAMENTO TOTAL O.S.</div>
+        </div>
+      </div>
+
+      {/* LISTA DETALHADA DOS VEÍCULOS QUE PASSARAM PELA OFICINA */}
+      <div className="card" style={{ padding: 0 }}>
+        <div className="table-wrap">
+          <div className="table-header" style={{ gridTemplateColumns: "1.8fr 1.3fr 1fr 1fr 1fr 110px" }}>
+            <span>Veículo / Placa</span>
+            <span>Serviço Realizado</span>
+            <span>Peças (R$)</span>
+            <span>M.O. (R$)</span>
+            <span>Datas / Pagto</span>
+            <span>Ações</span>
+          </div>
+
+          {filteredServices.length === 0 ? (
+            <div style={{ padding: 40, textAlign: "center", color: "#64748b", fontSize: 13 }}>
+              Nenhum veículo registrado em {MONTHS[selMonth]} de {selYear}.
+            </div>
+          ) : (
+            filteredServices.map((s: any) => {
+              const car = vehicles.find((v: any) => v.id === s.vehicleId || v.plate === s.vehiclePlate) || {};
+              const statusClass = "status-" + (s.status || "Entregue").replace(/ /g, "-");
+              const photosList = Array.isArray(s.photos) ? s.photos : [];
+
+              return (
+                <div key={s.id} className="table-row" style={{ gridTemplateColumns: "1.8fr 1.3fr 1fr 1fr 1fr 110px", alignItems: "flex-start", padding: 14 }}>
+                  {/* Veículo e Placa */}
+                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                    <div className="plate-badge" style={{ width: 75, padding: 0 }}>
+                      <div className="plate-top" style={{ fontSize: 6 }}>BRASIL</div>
+                      <div className="plate-number" style={{ fontSize: 11 }}>{s.vehiclePlate}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc" }}>{s.vehicleBrand} {s.vehicleModel}</div>
+                      <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>
+                        {car.owner ? `👤 ${car.owner}` : ""} {car.phone ? `· 📞 ${car.phone}` : ""}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Descrição do Serviço */}
+                  <div>
+                    <div style={{ fontSize: 12, color: "#f8fafc", fontWeight: 600 }}>{s.description.split("||")[0]}</div>
+                    {photosList.length > 0 && (
+                      <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>
+                        {photosList.slice(0, 3).map((p: any, idx: number) => (
+                          <img key={idx} src={p.url} alt="Foto" style={{ width: 28, height: 28, borderRadius: 4, objectFit: "cover", cursor: "pointer", border: "1px solid #1c2234" }} onClick={() => onZoomPhoto(p)} />
+                        ))}
+                        {photosList.length > 3 && <span style={{ fontSize: 9, color: "#3b82f6", alignSelf: "center" }}>+{photosList.length - 3} fotos</span>}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Peças */}
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#8b5cf6" }}>{fmt(s.partsValue)}</div>
+
+                  {/* Mão de Obra */}
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#10b981" }}>{fmt(s.laborValue)}</div>
+
+                  {/* Datas e Pagamento */}
+                  <div style={{ fontSize: 10, color: "#94a3b8" }}>
+                    <div>Entrada: <strong style={{ color: "#f8fafc" }}>{fmtDate(s.entryDate)}</strong></div>
+                    <div>Saída: <strong style={{ color: "#10b981" }}>{fmtDate(s.exitDate || s.entryDate)}</strong></div>
+                    <div style={{ marginTop: 2, color: "#f59e0b" }}>Pagto: {s.paymentMethod}</div>
+                  </div>
+
+                  {/* Ações */}
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <button onClick={() => onOpenOS(s)} className="btn-primary" style={{ padding: "6px 10px", background: "#7c3aed", color: "#fff", fontSize: 10 }}>📋 O.S</button>
+                    <span className={`status-pill ${statusClass}`} style={{ fontSize: 9, padding: "2px 6px" }}>{s.status}</span>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </Section>
+  );
+}
+
 
 // ── ABA FINANCEIRO ─────────────────────────────────────────────────────────
 function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any) {
