@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const supabase = createClient(
   "https://bofhihxpqmqimkanwkyw.supabase.co",
@@ -40,6 +40,10 @@ const mapS = (r: any) => {
   try {
     if (r.photos) {
       photosList = typeof r.photos === 'string' ? JSON.parse(r.photos) : r.photos;
+    }
+    if ((!photosList || photosList.length === 0) && typeof window !== 'undefined' && window.localStorage) {
+      const localCache = localStorage.getItem("asdcar_photos_" + r.id);
+      if (localCache) photosList = JSON.parse(localCache);
     }
   } catch (e) { photosList = []; }
 
@@ -207,6 +211,7 @@ export default function App() {
   const [driveUrl, setDriveUrl] = useState("");
   const [showDriveModal, setShowDriveModal] = useState(false);
   const [zoomPhoto, setZoomPhoto] = useState<any>(null);
+  const [serviceModalToOpen, setServiceModalToOpen] = useState<any>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.localStorage) {
@@ -231,73 +236,139 @@ export default function App() {
   useEffect(() => { loadAll(); }, []);
 
   const tabs = [
-    { id: "dashboard", label: "Início", icon: "⬡" }, 
+    { id: "dashboard", label: "Início", icon: "🏠" }, 
     { id: "services", label: "Oficina", icon: "🔧" }, 
+    { id: "monthly_history", label: "Passaram no Mês", icon: "📋" }, 
     { id: "finance", label: "Financeiro", icon: "💰" }, 
-    { id: "vehicles", label: "Base Carros", icon: "🚗" }
+    { id: "vehicles", label: "Carros", icon: "🚗" }
   ];
 
+  const handleEditCar = (service: any) => {
+    setTab("services");
+    setServiceModalToOpen(service);
+  };
+
   return (
-    <div style={{ minHeight: "100vh", background: "#0d0f14", color: "#e2e8f0", fontFamily: "'DM Mono', monospace", display: "flex", flexDirection: "column", paddingBottom: 80, width: "100%" }}>
+    <div style={{ minHeight: "100vh", background: "#0b0d14", color: "#f8fafc", fontFamily: "'Plus Jakarta Sans', sans-serif", display: "flex", flexDirection: "column", paddingBottom: 85, width: "100%" }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght=300;400;500&family=Syne:wght=700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap');
         *{box-sizing:border-box;margin:0;padding:0;}
-        body, html { overflow-x: hidden; width: 100%; position: relative; }
-        .card{background:#161b26;border:1px solid #1e2736;border-radius:12px;padding:16px;width:100%;}
-        .btn-primary{background:#f97316;color:#0d0f14;border:none;border-radius:8px;padding:10px 18px;font-weight:800;cursor:pointer;font-size:13px;}
-        .btn-ghost{background:transparent;color:#94a3b8;border:1px solid #1e2736;border-radius:8px;padding:8px 12px;cursor:pointer;}
-        .btn-history{background:rgba(59,130,246,0.1);color:#3b82f6;border:1px solid #3b82f6;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer;margin-bottom:6px;display:inline-block;}
-        .input, .textarea{background:#0d0f14;border:1px solid #1e2736;border-radius:8px;padding:10px 12px;color:#e2e8f0;width:100%;font-family:inherit;font-size:13px;letter-spacing:0.3px;line-height:1.4;}
-        .textarea{resize:vertical;min-height:85px;white-space:pre-wrap;}
-        .label{display:block;font-size:11px;color:#64748b;margin-bottom:5px;text-transform:uppercase;}
-        .badge{display:inline-block;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:600;}
-        .kpi-grid{display:grid;grid-template-columns: 1fr 1fr; gap:12px; width: 100%;}
-        @media(min-width:768px){.kpi-grid{grid-template-columns:repeat(4,1fr);}}
-        .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#0d0f14;border-top:1px solid #1e2736;z-index:50;padding:10px 0 20px;}
-        .nav-item{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;background:none;border:none;color:#475569;font-size:10px;cursor:pointer;}
-        .nav-item.active{color:#f97316;}
-        .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;}
-        .modal{background:#161b26;border:1px solid #1e2736;border-radius:16px;padding:24px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;}
-        .table-wrap{width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 10px;}
-        .table-header, .table-row { min-width: 650px; display: grid; align-items: center; }
-        .table-header{padding:10px 14px;font-size:10px;color:#475569;text-transform:uppercase;border-bottom:1px solid #1e2736;}
-        .table-row{padding:14px; border-bottom:1px solid #1e2736;}
+        body, html { overflow-x: hidden; width: 100%; position: relative; background: #0b0d14; }
+        
+        .header-bar { padding: 12px 20px; border-bottom: 1px solid #1c2234; display: flex; align-items: center; justify-content: space-between; background: #0d101a; position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px); }
+        .logo-box { display: flex; align-items: center; gap: 10px; }
+        .logo-icon { width: 34px; height: 34px; background: linear-gradient(135deg, #f97316, #ea580c); border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3); }
+        .logo-title { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; letter-spacing: 1.5px; color: #ffffff; }
+        
+        .pill-badge { font-size: 11px; padding: 6px 12px; border-radius: 20px; border: 1px solid #1c2234; background: rgba(255,255,255,0.03); color: #94a3b8; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s; }
+        .pill-badge.active-green { border-color: rgba(16,185,129,0.3); color: #10b981; background: rgba(16,185,129,0.08); }
+        .pill-badge.purple-btn { background: #7c3aed; color: #ffffff; border: none; font-weight: 700; }
+
+        .nav-desktop-tabs { display: flex; gap: 6px; }
+        .tab-btn { background: transparent; color: #94a3b8; border: 1px solid #1c2234; border-radius: 20px; padding: 6px 16px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s; }
+        .tab-btn.active { background: #f97316; color: #0d0f14; border-color: #f97316; font-weight: 800; box-shadow: 0 0 14px rgba(249, 115, 22, 0.3); }
+
+        .card { background: #141824; border: 1px solid #1c2234; border-radius: 16px; padding: 18px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.25); }
+        .workshop-car-card { cursor: pointer; transition: all 0.2s ease; }
+        .workshop-car-card:hover { border-color: #f97316 !important; background: #1a2030 !important; transform: translateY(-2px); }
+        .btn-primary { background: linear-gradient(135deg, #f97316, #ea580c); color: #0d0f14; border: none; border-radius: 10px; padding: 10px 18px; font-weight: 800; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s; }
+        .btn-ghost { background: transparent; color: #94a3b8; border: 1px solid #1c2234; border-radius: 10px; padding: 8px 12px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.2s; }
+        .input, .textarea { background: #0b0d14; border: 1px solid #1c2234; border-radius: 10px; padding: 11px 14px; color: #f8fafc; width: 100%; font-family: inherit; font-size: 13px; outline: none; transition: border-color 0.2s; }
+        .input:focus, .textarea:focus { border-color: #f97316; }
+        .textarea { resize: vertical; min-height: 85px; line-height: 1.4; }
+        .label { display: block; font-size: 11px; color: #64748b; margin-bottom: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .plate-badge { display: inline-flex; flex-direction: column; align-items: center; background: #ffffff; color: #000000; border-radius: 4px; border: 1px solid #000000; width: 84px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.4); flex-shrink: 0; }
+        .plate-top { background: #003399; color: #ffffff; font-size: 7px; font-weight: 800; letter-spacing: 1px; width: 100%; text-align: center; padding: 1px 0; }
+        .plate-number { font-size: 13px; font-weight: 900; letter-spacing: 1px; color: #000000; padding: 2px 0; font-family: monospace; }
+
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; width: 100%; }
+        .kpi-card { background: #141824; border: 1px solid #1c2234; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 8px; position: relative; overflow: hidden; }
+        .kpi-icon-badge { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; }
+        .kpi-number { font-size: 20px; font-weight: 800; color: #ffffff; margin-top: 2px; }
+        .kpi-label { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .status-pill { display: inline-flex; align-items: center; justify-content: center; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; border: 1px solid transparent; }
+        .status-Aguardando { background: rgba(245, 158, 11, 0.12); color: #f59e0b; border-color: rgba(245, 158, 11, 0.3); }
+        .status-Em-andamento { background: rgba(59, 130, 246, 0.12); color: #3b82f6; border-color: rgba(59, 130, 246, 0.3); }
+        .status-Pronto { background: rgba(16, 185, 129, 0.12); color: #10b981; border-color: rgba(16, 185, 129, 0.3); }
+        .status-Entregue { background: rgba(100, 116, 139, 0.12); color: #64748b; border-color: rgba(100, 116, 139, 0.3); }
+
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #0d101a; border-top: 1px solid #1c2234; z-index: 100; padding: 8px 0 16px; backdrop-filter: blur(10px); }
+        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; background: none; border: none; color: #64748b; font-size: 10px; font-weight: 700; cursor: pointer; padding: 4px 0; }
+        .nav-item.active { color: #f97316; }
+
+        .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px; backdrop-filter: blur(4px); }
+        .table-wrap { width: 100%; overflow-x: auto; border-radius: 12px; }
+        .table-header { display: grid; grid-template-columns: 2fr 1.3fr 1fr 1fr 110px; padding: 12px 16px; background: #0b0d14; border-bottom: 1px solid #1c2234; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; min-width: 680px; }
+        .table-row { display: grid; grid-template-columns: 2fr 1.3fr 1fr 1fr 110px; padding: 14px 16px; border-bottom: 1px solid #1c2234; align-items: center; min-width: 680px; transition: background 0.2s; }
+        .table-row:last-child { border-bottom: none; }
+        .table-row:hover { background: rgba(255,255,255,0.02); }
+
+        .modal { background: #141824; border: 1px solid #1c2234; border-radius: 20px; padding: 24px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.6); }
+
+        @media (max-width: 767px) {
+          .header-bar { padding: 10px 14px; }
+          .nav-desktop-tabs { display: none; }
+          .kpi-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+          .kpi-number { font-size: 17px; }
+          .card { padding: 14px; border-radius: 12px; }
+        }
       `}</style>
 
-      <header style={{ padding: "14px 20px", borderBottom: "1px solid #1e2736", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0d0f14" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 32, height: 32, background: "#f97316", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🚘</div>
-          <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 18, fontWeight: 800 }}>ASDCAR</div>
+      {/* HEADER NAVEGAÇÃO */}
+      <header className="header-bar">
+        <div className="logo-box">
+          <div className="logo-icon">🚘</div>
+          <div className="logo-title">ASDCAR</div>
         </div>
+
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button className="btn-ghost" style={{ fontSize: 11, padding: "6px 10px" }} onClick={() => setShowDriveModal(true)}>
+          <button className={`pill-badge ${driveUrl ? "active-green" : ""}`} onClick={() => setShowDriveModal(true)}>
             ☁️ {driveUrl ? "Drive Ok" : "Conectar Drive"}
           </button>
-          <button className="btn-primary" style={{ background: "#7c3aed", color: "#fff", fontSize: 11 }} onClick={() => setShowReport(true)}>📄 PDF</button>
+          <button className="pill-badge purple-btn" onClick={() => setShowReport(true)}>📄 Fechamento</button>
+        </div>
+
+        <div className="nav-desktop-tabs">
+          {tabs.map(t => (
+            <button key={t.id} className={`tab-btn ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>
+              <span>{t.icon}</span> {t.label}
+            </button>
+          ))}
         </div>
       </header>
 
-      <main style={{ flex: 1, padding: "16px", width: "100%", maxWidth: 1200, margin: "0 auto" }}>
-        {loading ? <div style={{ textAlign: "center", padding: 100 }}>Sincronizando...</div> : (
+      {/* CONTEÚDO PRINCIPAL */}
+      <main style={{ padding: 16, flex: 1, maxWidth: 1200, margin: "0 auto", width: "100%" }}>
+        {loading ? (
+          <div style={{ padding: 60, textAlign: "center", color: "#f97316", fontSize: 15, fontWeight: 700 }}>
+            🚗 Carregando dados da oficina...
+          </div>
+        ) : (
           <>
-            {tab === "dashboard" && <Dashboard services={services} viewMode={globalViewMode} setViewMode={setGlobalViewMode} />}
-            {tab === "services" && <ServicesTab services={services} vehicles={vehicles} loadAll={loadAll} onOpenOS={(s: any) => setShowOSModal(s)} driveUrl={driveUrl} onOpenDriveConfig={() => setShowDriveModal(true)} onZoomPhoto={(p: any) => setZoomPhoto(p)} />}
-            {tab === "finance" && <FinanceTab services={services} expenses={expenses} loadAll={loadAll} viewMode={globalViewMode} setViewMode={setGlobalViewMode} />}
+            {tab === "dashboard" && <Dashboard services={services} viewMode={globalViewMode} setViewMode={setGlobalViewMode} onEditService={handleEditCar} />}
+            {tab === "services" && <ServicesTab services={services} vehicles={vehicles} loadAll={loadAll} onOpenOS={(s: any) => setShowOSModal(s)} driveUrl={driveUrl} onOpenDriveConfig={() => setShowDriveModal(true)} onZoomPhoto={(p: any) => setZoomPhoto(p)} externalModalService={serviceModalToOpen} onClearExternalModal={() => setServiceModalToOpen(null)} />}
+            {tab === "monthly_history" && <MonthlyHistoryTab services={services} vehicles={vehicles} onOpenOS={(s: any) => setShowOSModal(s)} onZoomPhoto={(p: any) => setZoomPhoto(p)} onEditService={handleEditCar} />}
+            {tab === "finance" && <FinanceTab expenses={expenses} services={services} loadAll={loadAll} viewMode={globalViewMode} setViewMode={setGlobalViewMode} />}
             {tab === "vehicles" && <VehiclesTab vehicles={vehicles} services={services} loadAll={loadAll} onZoomPhoto={(p: any) => setZoomPhoto(p)} />}
           </>
         )}
       </main>
 
+      {/* BARRA INFERIOR MOBILE */}
       <nav className="bottom-nav">
-        <div style={{ display: "flex", justifyContent: "space-around" }}>
+        <div style={{ display: "flex", justifyContent: "space-around", maxWidth: 600, margin: "0 auto" }}>
           {tabs.map(t => (
             <button key={t.id} className={`nav-item ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>
-              <span style={{ fontSize: 22 }}>{t.icon}</span>{t.label}
+              <span style={{ fontSize: 20 }}>{t.icon}</span>
+              <span>{t.label}</span>
             </button>
           ))}
         </div>
       </nav>
 
+      {/* MODAIS */}
       {showReport && <ReportModal services={services} viewMode={globalViewMode} onClose={() => setShowReport(false)} onGenerate={(f:any, t:any) => { generatePDF(vehicles, services, expenses, f, t, globalViewMode); setShowReport(false); }} />}
       {showDriveModal && (
         <DriveModal 
@@ -313,14 +384,16 @@ export default function App() {
 }
 
 // ── ABA INÍCIO ─────────────────────────────────────────────────────────────
-function Dashboard({ services, viewMode, setViewMode }: any) {
+function Dashboard({ services, viewMode, setViewMode, onEditService }: any) {
   const [selMonth, setSelMonth] = useState(new Date().getMonth());
   const [selYear, setSelYear] = useState(new Date().getFullYear());
 
   const activeServices = services.filter((s: any) => s.status !== "Entregue");
   const filteredDelivered = services.filter((s: any) => {
-    if (s.status !== "Entregue" || !s.exitDate) return false;
-    const d = new Date(s.exitDate + "T12:00:00");
+    if (s.status !== "Entregue") return false;
+    const dateStr = s.exitDate || s.entryDate || (s.createdAt ? s.createdAt.slice(0, 10) : null);
+    if (!dateStr) return true;
+    const d = new Date(dateStr + "T12:00:00");
     return d.getMonth() === selMonth && d.getFullYear() === selYear;
   });
 
@@ -336,15 +409,9 @@ function Dashboard({ services, viewMode, setViewMode }: any) {
         const totalBrutoServico = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
         if (totalBrutoServico <= 0) return acc;
         const percentualLabor = Number(s.laborValue) / totalBrutoServico;
-        
-        const cashProporcional = dinheiroPixLivre * percentualLabor;
-        const cardProporcionalBruto = Number(s.mixedCard || 0) * percentualLabor;
-        const cardProporcionalLiquido = cardProporcionalBruto * (1 - taxaCard / 100);
-        
-        return acc + cashProporcional + cardProporcionalLiquido;
+        return acc + (dinheiroPixLivre * percentualLabor) + (Number(s.mixedCard || 0) * percentualLabor * (1 - taxaCard / 100));
       } else {
-        const cardLiquido = Number(s.mixedCard || 0) * (1 - taxaCard / 100);
-        return acc + dinheiroPixLivre + cardLiquido;
+        return acc + dinheiroPixLivre + (Number(s.mixedCard || 0) * (1 - taxaCard / 100));
       }
     }
 
@@ -358,77 +425,155 @@ function Dashboard({ services, viewMode, setViewMode }: any) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10, background: "#1a2030" }}>
-        <div style={{ display: "flex", gap: 10 }}>
-          <div style={{ flex: 1 }}>
-            <label className="label">Mês de Referência</label>
+      {/* FILTROS DO PAINEL */}
+      <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 1.5fr", gap: 12 }}>
+          <div>
+            <label className="label">MÊS DE REFERÊNCIA</label>
             <select className="input" value={selMonth} onChange={(e) => setSelMonth(Number(e.target.value))}>
               {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
             </select>
           </div>
-          <div style={{ width: 100 }}>
-            <label className="label">Ano</label>
+          <div>
+            <label className="label">ANO</label>
             <select className="input" value={selYear} onChange={(e) => setSelYear(Number(e.target.value))}>
               {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
             </select>
           </div>
-        </div>
-        <div>
-          <label className="label">Modelo de Filtro (Painel & PDF)</label>
-          <select className="input" value={viewMode} onChange={(e) => setViewMode(e.target.value)} style={{ marginBottom: 0 }}>
-            <option value="labor">Visualizar Apenas Mão de Obra Líquida</option>
-            <option value="total">Visualizar Faturamento Total Bruto</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="kpi-grid">
-        {[
-          { label: "Na Oficina", value: activeServices.length, icon: "🔧", accent: "#f97316" },
-          { label: `Peças (${MONTHS[selMonth].slice(0,3)})`, value: fmt(tP), icon: "⚙️", accent: "#6366f1" },
-          { label: `M.O. (${MONTHS[selMonth].slice(0,3)})`, value: fmt(tL), icon: "🔧", accent: "#10b981" },
-          { label: viewMode === "labor" ? "Receita (M.O. Líq)" : "Receita Bruta Total", value: fmt(receitaCalculada), icon: "💰", accent: "#3b82f6" },
-        ].map((k, i) => (
-          <div key={i} className="card" style={{ borderLeft: `3px solid ${k.accent}`, padding: 12 }}>
-            <div style={{ fontSize: 16 }}>{k.icon}</div>
-            <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4, color: "#f1f5f9" }}>{k.value}</div>
-            <div style={{ fontSize: 9, color: "#475569", textTransform: "uppercase", marginTop: 2 }}>{k.label}</div>
+          <div>
+            <label className="label">MODELO DE FILTRO (PAINEL & PDF)</label>
+            <select className="input" value={viewMode} onChange={(e) => setViewMode(e.target.value)}>
+              <option value="labor">Mão de Obra Líquida (Desconta taxas de cartão)</option>
+              <option value="total">Bruto Total (M.O. + Peças)</option>
+            </select>
           </div>
-        ))}
+        </div>
       </div>
 
-      <div className="card">
-        <h3 style={{ fontSize: 14, marginBottom: 12, color: "#f97316", fontFamily: "'Syne', sans-serif" }}>🛠️ Carros na Oficina (Ativos)</h3>
-        {activeServices.length === 0 ? <div style={{ fontSize: 12, color: "#475569", textAlign: "center", padding: 10 }}>Pátio vazio no momento.</div> : 
-          activeServices.map((sv: any) => (
-            <div key={sv.id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #1e2736", alignItems: "center" }}>
-              <div style={{ flex: 1, paddingRight: 10 }}><div style={{ fontSize: 12, color: "#e2e8f0", fontWeight: 700 }}>{sv.vehiclePlate} — {sv.vehicleBrand}</div><div style={{ fontSize: 10, color: "#64748b" }}>{sv.description.replace(/\|\|/g, " · ")}</div></div>
-              <StatusBadge status={sv.status} map={STATUS_COLORS} />
-            </div>
-          ))
-        }
+      {/* KPI GRID COM BADGES COLORIDOS */}
+      <div className="kpi-grid">
+        <div className="kpi-card" style={{ borderColor: "rgba(249, 115, 22, 0.3)" }}>
+          <div className="kpi-icon-badge" style={{ background: "rgba(249, 115, 22, 0.15)", color: "#f97316" }}>🔧</div>
+          <div className="kpi-number">{activeServices.length}</div>
+          <div className="kpi-label">PÁTIO OFICINA</div>
+        </div>
+
+        <div className="kpi-card" style={{ borderColor: "rgba(139, 92, 246, 0.3)" }}>
+          <div className="kpi-icon-badge" style={{ background: "rgba(139, 92, 246, 0.15)", color: "#8b5cf6" }}>🎧</div>
+          <div className="kpi-number">{fmt(tP)}</div>
+          <div className="kpi-label">PEÇAS ({MONTHS[selMonth].slice(0,3).toUpperCase()})</div>
+        </div>
+
+        <div className="kpi-card" style={{ borderColor: "rgba(16, 185, 129, 0.3)" }}>
+          <div className="kpi-icon-badge" style={{ background: "rgba(16, 185, 129, 0.15)", color: "#10b981" }}>🔧</div>
+          <div className="kpi-number">{fmt(tL)}</div>
+          <div className="kpi-label">M.O. ({MONTHS[selMonth].slice(0,3).toUpperCase()})</div>
+        </div>
+
+        <div className="kpi-card" style={{ borderColor: "rgba(245, 158, 11, 0.3)" }}>
+          <div className="kpi-icon-badge" style={{ background: "rgba(245, 158, 11, 0.15)", color: "#f59e0b" }}>💳</div>
+          <div className="kpi-number">{fmt(filteredDelivered.length > 0 ? (tL / filteredDelivered.length) : 0)}</div>
+          <div className="kpi-label">TICKET MÉDIO M.O.</div>
+        </div>
+
+        <div className="kpi-card" style={{ borderColor: "rgba(59, 130, 246, 0.3)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div className="kpi-icon-badge" style={{ background: "rgba(59, 130, 246, 0.15)", color: "#3b82f6" }}>💳</div>
+            <span style={{ fontSize: 9, fontWeight: 800, color: "#10b981", letterSpacing: 1 }}>LÍQUIDO</span>
+          </div>
+          <div className="kpi-number" style={{ color: "#10b981" }}>{fmt(receitaCalculada)}</div>
+          <div className="kpi-label">{viewMode === "labor" ? "M.O. LÍQUIDA" : "FATURAMENTO LÍQ."}</div>
+        </div>
       </div>
 
+      {/* LISTA DE VEÍCULOS NO PÁTIO */}
       <div className="card">
-        <h3 style={{ fontSize: 14, marginBottom: 12, color: "#10b981", fontFamily: "'Syne', sans-serif" }}>✅ Entregues em {MONTHS[selMonth]}</h3>
-        {filteredDelivered.length === 0 ? <div style={{ fontSize: 12, color: "#475569", textAlign: "center", padding: 10 }}>Nenhum serviço finalizado neste mês.</div> :
-          filteredDelivered.map((sv: any) => (
-            <div key={sv.id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #1e2736", alignItems: "center" }}>
-              <div style={{ flex: 1 }}><div style={{ fontSize: 12, color: "#e2e8f0" }}>{sv.vehiclePlate} — {sv.vehicleBrand}</div><div style={{ fontSize: 10, color: "#64748b" }}>Entregue: {fmtDate(sv.exitDate)}</div></div>
-              <div style={{ fontSize: 12, fontWeight: 800, color: "#10b981" }}>{fmt((Number(sv.partsValue)||0) + (Number(sv.laborValue)||0))}</div>
-            </div>
-          ))
-        }
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 800, fontFamily: "'Syne', sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
+            🛠️ Carros na Oficina ({activeServices.length})
+          </h3>
+          <span style={{ fontSize: 11, color: "#f97316", fontWeight: 700 }}>💡 Clique no carro para alterar</span>
+        </div>
+        {activeServices.length === 0 ? (
+          <p style={{ fontSize: 12, color: "#64748b" }}>Nenhum veículo em atendimento no momento.</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {activeServices.map((s: any) => {
+              const statusClass = "status-" + (s.status || "Aguardando").replace(/ /g, "-");
+              return (
+                <div 
+                  key={s.id} 
+                  className="workshop-car-card"
+                  onClick={() => onEditService && onEditService(s)}
+                  style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", background: "#0b0d14", borderRadius: 12, border: "1px solid #1c2234" }}
+                  title="Clique para abrir e editar o andamento deste serviço"
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                    <div className="plate-badge">
+                      <div className="plate-top">BRASIL</div>
+                      <div className="plate-number">{s.vehiclePlate}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#f8fafc" }}>{s.vehicleBrand} {s.vehicleModel}</div>
+                      <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{s.description.split("||")[0]}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span className={`status-pill ${statusClass}`}>{s.status}</span>
+                    <button className="btn-ghost" style={{ padding: "6px 10px", fontSize: 11 }}>✏️ Editar</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* LISTA DE ENTREGUES NO MÊS */}
+      <div className="card">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 800, fontFamily: "'Syne', sans-serif", color: "#10b981", display: "flex", alignItems: "center", gap: 8 }}>
+            📋 Carros que Passaram no Mês ({filteredDelivered.length})
+          </h3>
+          <span style={{ fontSize: 11, color: "#10b981", fontWeight: 700 }}>💡 Clique no carro para alterar</span>
+        </div>
+        {filteredDelivered.length === 0 ? (
+          <p style={{ fontSize: 12, color: "#64748b" }}>Nenhum veículo entregue em {MONTHS[selMonth]} de {selYear}.</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {filteredDelivered.map((s: any) => (
+              <div 
+                key={s.id} 
+                className="workshop-car-card"
+                onClick={() => onEditService && onEditService(s)}
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", background: "#0b0d14", borderRadius: 12, border: "1px solid #1c2234" }}
+                title="Clique para abrir e ver/editar detalhes deste serviço"
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <div className="plate-badge">
+                    <div className="plate-top">BRASIL</div>
+                    <div className="plate-number">{s.vehiclePlate}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#f8fafc" }}>{s.vehicleBrand} {s.vehicleModel}</div>
+                    <div style={{ fontSize: 11, color: "#10b981", marginTop: 2 }}>Entregue em: {fmtDate(s.exitDate || s.entryDate)} · {s.description.split("||")[0]}</div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "#10b981" }}>{fmt((Number(s.partsValue)||0) + (Number(s.laborValue)||0))}</div>
+                  <button className="btn-ghost" style={{ padding: "6px 10px", fontSize: 11 }}>✏️ Editar</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
 // ── ABA OFICINA ────────────────────────────────────────────────────────────
-function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDriveConfig, onZoomPhoto }: any) {
-  const [photoType, setPhotoType] = useState("Vistoria / Avarias");
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const fileInputRef = useRef<any>(null);
+function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDriveConfig, onZoomPhoto, externalModalService, onClearExternalModal }: any) {
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState<any>({});
@@ -437,6 +582,18 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
   const [oficinaPartsText, setOficinaPartsText] = useState("");
   const [clientePartsText, setClientePartsText] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+
+  const [photoType, setPhotoType] = useState("Vistoria / Avarias");
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const cameraInputRef = useRef<any>(null);
+  const galleryInputRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (externalModalService) {
+      open(externalModalService);
+      if (onClearExternalModal) onClearExternalModal();
+    }
+  }, [externalModalService]);
 
   const open = (s: any = null) => { 
     setEditing(s); 
@@ -466,61 +623,112 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!driveUrl) {
-      alert("Por favor, conecte a URL do seu Google Drive primeiro no botão ☁️ no topo da tela.");
-      if (onOpenDriveConfig) onOpenDriveConfig();
-      return;
-    }
-
-    const v = vehicles.find((veh: any) => veh.id === form.vehicleId);
-    const plate = v?.plate || form.vehiclePlate || "GERAL";
+    const selectedVehicle = vehicles.find((veh: any) => veh.id === form.vehicleId || veh.id === form.vehicle_id);
+    const rawPlate = form.vehiclePlate || form.vehicle_plate || selectedVehicle?.plate || "GERAL";
+    const cleanPlate = rawPlate.replace(/[^a-zA-Z0-9]/g, "").toUpperCase() || "GERAL";
+    const plate = "PLACA_" + cleanPlate;
 
     setUploadingPhoto(true);
     try {
-      const compressed: any = await compressImage(file, 1600, 0.8);
-      const payload = {
-        folderName: "PLACA_" + plate.toUpperCase(),
-        fileName: `${photoType.replace(/\//g, "_")}_${Date.now()}.jpg`,
-        base64: compressed.base64,
-        mimeType: "image/jpeg"
+      const compressed: any = await compressImage(file, 1400, 0.75);
+
+      let savedUrl = compressed.dataUrl;
+      let driveLink = compressed.dataUrl;
+      let driveFileId: string | null = null;
+      let driveSuccess = false;
+
+      if (driveUrl) {
+        try {
+          const payload = {
+            folderName: plate,
+            fileName: `${photoType.replace(/\//g, "_")}_${Date.now()}.jpg`,
+            base64: compressed.base64,
+            mimeType: "image/jpeg"
+          };
+
+          const res = await fetch(driveUrl, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify(payload)
+          });
+          
+          const data = await res.json();
+          if (data && (data.status === "success" || data.fileUrl)) {
+            savedUrl = data.fileUrl || compressed.dataUrl;
+            driveLink = data.driveLink || data.fileUrl;
+            driveFileId = data.fileId || null;
+            driveSuccess = true;
+          }
+        } catch (driveErr) {
+          try {
+            const payload = {
+              folderName: plate,
+              fileName: `${photoType.replace(/\//g, "_")}_${Date.now()}.jpg`,
+              base64: compressed.base64,
+              mimeType: "image/jpeg"
+            };
+            fetch(driveUrl, {
+              method: "POST",
+              mode: "no-cors",
+              headers: { "Content-Type": "text/plain;charset=utf-8" },
+              body: JSON.stringify(payload)
+            }).catch(() => {});
+            driveSuccess = true;
+          } catch(e) {}
+        }
+      }
+
+      const newPhoto = {
+        url: savedUrl,
+        driveLink: driveLink,
+        fileId: driveFileId,
+        type: photoType,
+        driveSaved: driveSuccess,
+        createdAt: new Date().toISOString()
       };
 
-      const res = await fetch(driveUrl, {
-        method: "POST",
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
+      const updatedPhotos = [...(form.photos || []), newPhoto];
+      setForm({ ...form, photos: updatedPhotos });
 
-      if (data.status === "success") {
-        const newPhoto = {
-          url: data.fileUrl || compressed.dataUrl,
-          driveLink: data.driveLink || data.fileUrl,
-          type: photoType,
-          createdAt: new Date().toISOString()
-        };
-        const updatedPhotos = [...(form.photos || []), newPhoto];
-        setForm({ ...form, photos: updatedPhotos });
-      } else {
-        alert("Erro ao enviar imagem para o Google Drive: " + (data.message || "Erro desconhecido"));
-      }
     } catch (err: any) {
-      alert("Erro no upload: " + err.message);
+      alert("Erro ao carregar imagem: " + (err.message || "Arquivo não suportado"));
     } finally {
       setUploadingPhoto(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      if (cameraInputRef.current) cameraInputRef.current.value = "";
+      if (galleryInputRef.current) galleryInputRef.current.value = "";
     }
   };
 
   const handleDeletePhoto = (idxToRemove: number) => {
+    const photoToDelete = (form.photos || [])[idxToRemove];
+    if (photoToDelete && driveUrl) {
+      try {
+        fetch(driveUrl, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            action: "delete",
+            fileId: photoToDelete.fileId,
+            fileUrl: photoToDelete.url
+          })
+        }).catch(() => {});
+      } catch (err) {}
+    }
     const updatedPhotos = (form.photos || []).filter((_: any, idx: number) => idx !== idxToRemove);
     setForm({ ...form, photos: updatedPhotos });
   };
   const close = () => { setModal(false); setEditing(null); setForm({}); };
 
   const save = async () => {
-    if (!form.vehicleId || !form.description) return alert("Selecione o carro e descreva o serviço.");
-    const v = vehicles.find((v: any) => v.id === form.vehicleId);
-    let descLimpa = form.description.split("||")[0].replace(/\s*\(Cliente forneceu as peças\)/gi, "").trim();
+    const vId = form.vehicleId || form.vehicle_id || editing?.vehicleId || editing?.vehicle_id;
+    if (!vId || !form.description) return alert("Selecione o veículo e descreva o serviço.");
+
+    const v = vehicles.find((veh: any) => String(veh.id) === String(vId));
+    const plate = v?.plate || form.vehiclePlate || form.vehicle_plate || editing?.vehiclePlate || "";
+    const brand = v?.brand || form.vehicleBrand || form.vehicle_brand || editing?.vehicleBrand || "";
+    const model = v?.model || form.vehicleModel || form.vehicle_model || editing?.vehicleModel || "";
+
+    let descLimpa = (form.description || "").split("||")[0].replace(/\s*\(Cliente forneceu as peças\)/gi, "").trim();
     let finalPartsValue = Number(form.partsValue) || 0;
 
     if (partsOwner === "cliente") {
@@ -540,22 +748,22 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
       const parteCard = Number(form.mixedCard) || 0;
       liquido = parteCash + (parteCard * (1 - taxaCard / 100));
     } else {
-      const taxa = PAYMENT_METHODS[form.paymentMethod] || 0;
+      const taxa = PAYMENT_METHODS[form.paymentMethod || "Dinheiro"] || 0;
       liquido = bruto - (bruto * (taxa / 100));
     }
 
-    const row = { 
-      id: editing?.id || uid(), 
-      vehicle_id: form.vehicleId, 
-      vehicle_plate: v?.plate, 
-      vehicle_brand: v?.brand, 
-      vehicle_model: v?.model, 
+    const row: any = { 
+      id: editing?.id || form.id || uid(), 
+      vehicle_id: vId, 
+      vehicle_plate: plate, 
+      vehicle_brand: brand, 
+      vehicle_model: model, 
       description: descLimpa, 
       parts_value: finalPartsValue, 
       labor_value: Number(form.laborValue) || 0, 
       net_value: liquido, 
-      status: form.status, 
-      entry_date: form.entryDate, 
+      status: form.status || "Aguardando", 
+      entry_date: form.entryDate || today(), 
       exit_date: form.status === "Entregue" ? (form.exitDate || today()) : null, 
       payment_method: form.paymentMethod || "Dinheiro", 
       mileage: Number(form.mileage) || 0,
@@ -565,8 +773,24 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
       photos: JSON.stringify(form.photos || [])
     };
     
-    const { error } = await supabase.from("services").upsert(row);
-    if (!error) { await loadAll(); close(); } else { alert("Erro ao salvar: " + error.message); }
+    if (typeof window !== "undefined" && window.localStorage && form.photos) {
+      localStorage.setItem("asdcar_photos_" + row.id, JSON.stringify(form.photos));
+    }
+
+    let { error } = await supabase.from("services").upsert(row);
+
+    if (error && error.message?.includes("photos")) {
+      delete row.photos;
+      const retry = await supabase.from("services").upsert(row);
+      error = retry.error;
+    }
+
+    if (!error) { 
+      await loadAll(); 
+      close(); 
+    } else { 
+      alert("Erro ao salvar no banco de dados: " + error.message); 
+    }
   };
 
   const filtered = filterStatus ? services.filter((s: any) => s.status === filterStatus) : services;
@@ -574,37 +798,53 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
 
   return (
     <Section title="Fluxo Oficina" action={<button className="btn-primary" onClick={() => open()}>+ Entrada</button>}>
-      <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
         {["", ...Object.keys(STATUS_COLORS)].map(s => (
-          <button key={s} onClick={() => setFilterStatus(s)} style={{ background: filterStatus === s ? "#f97316" : "transparent", color: filterStatus === s ? "#0d0f14" : "#64748b", border: `1px solid ${filterStatus === s ? "#f97316" : "#1e2736"}`, borderRadius: 20, padding: "4px 12px", fontSize: 11, cursor: "pointer" }}>{s || "Todos"}</button>
+          <button key={s} onClick={() => setFilterStatus(s)} style={{ background: filterStatus === s ? "#f97316" : "transparent", color: filterStatus === s ? "#0d0f14" : "#94a3b8", border: `1px solid ${filterStatus === s ? "#f97316" : "#1c2234"}`, borderRadius: 20, padding: "6px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>{s || "Todos"}</button>
         ))}
       </div>
+
       <div className="card" style={{ padding: 0 }}>
         <div className="table-wrap">
           <div className="table-header" style={{ gridTemplateColumns: cols }}>
             <span>Serviço</span><span>Veículo</span><span>M.O.</span><span>Status</span><span>Ações</span>
           </div>
-          {filtered.map((s: any) => (
-            <div key={s.id} className="table-row" style={{ gridTemplateColumns: cols }}>
-              <div style={{ fontSize: 12 }}><div style={{ color: "#e2e8f0" }}>{s.description.replace(/\|\|/g, " · ")}</div><div style={{ fontSize: 10, color: "#475569", marginTop: 2 }}>KM: {fmtKm(s.mileage)} · Entrada: {fmtDate(s.entryDate)}</div></div>
-              <div style={{ fontSize: 11 }}><div style={{ fontWeight: 700, color: "#f1f5f9" }}>{s.vehiclePlate}</div><div style={{ fontSize: 9, color: "#64748b" }}>{s.vehicleBrand}</div></div>
-              <div style={{ fontSize: 11, color: "#10b981" }}>{fmt(s.laborValue)}</div>
-              <StatusBadge status={s.status} map={STATUS_COLORS} />
-              <div style={{ display: "flex", gap: 6 }}>
-                <button onClick={() => onOpenOS(s)} className="btn-primary" style={{ padding: "6px 10px", background: "#7c3aed", color: "#fff", fontSize: 10 }}>📋 O.S</button>
-                <button onClick={() => open(s)} className="btn-ghost" style={{ padding: 6 }}>✏️</button>
+          {filtered.map((s: any) => {
+            const statusClass = "status-" + (s.status || "Aguardando").replace(/ /g, "-");
+            return (
+              <div key={s.id} className="table-row workshop-car-card" onClick={() => open(s)} style={{ gridTemplateColumns: cols, cursor: "pointer" }}>
+                <div>
+                  <div style={{ color: "#f8fafc", fontWeight: 700, fontSize: 13 }}>{s.description.split("||")[0]}</div>
+                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>KM: {fmtKm(s.mileage)} · Entrada: {fmtDate(s.entryDate)}</div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div className="plate-badge" style={{ width: 75, padding: 0 }}>
+                    <div className="plate-top" style={{ fontSize: 6 }}>BRASIL</div>
+                    <div className="plate-number" style={{ fontSize: 11 }}>{s.vehiclePlate}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#f8fafc" }}>{s.vehicleModel || s.vehicleBrand}</div>
+                    <div style={{ fontSize: 10, color: "#64748b" }}>{s.vehicleBrand}</div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "#10b981" }}>{fmt(s.laborValue)}</div>
+                <div><span className={`status-pill ${statusClass}`}>{s.status}</span></div>
+                <div style={{ display: "flex", gap: 6 }} onClick={e => e.stopPropagation()}>
+                  <button onClick={() => onOpenOS(s)} className="btn-primary" style={{ padding: "6px 10px", background: "#7c3aed", color: "#fff", fontSize: 10 }}>📋 O.S</button>
+                  <button onClick={() => open(s)} className="btn-ghost" style={{ padding: 6 }}>✏️</button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
       {modal && (
         <div className="modal-bg" onClick={close}><div className="modal" onClick={e => e.stopPropagation()}>
-          <h3>Fluxo de Serviço</h3>
+          <h3 style={{ fontSize: 17, fontWeight: 800, fontFamily: "'Syne', sans-serif", marginBottom: 16 }}>Fluxo de Serviço</h3>
           <VehicleSelector vehicles={vehicles} value={form.vehicleId} onChange={(val: any) => setForm({ ...form, vehicleId: val })} />
           
-          <div style={{ marginBottom: 10 }}>
+          <div style={{ marginBottom: 12 }}>
             <label className="label">Defeito / Serviço Principal *</label>
             <textarea 
               className="textarea"
@@ -623,9 +863,9 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
             </select>
           </div>
           {partsOwner === "mista" && (
-            <div style={{ background: "#0d0f14", padding: 12, borderRadius: 8, marginBottom: 12, border: "1px solid #1e2736" }}>
-              <Field label="O que a ASDCAR comprou?" placeholder="Ex: Óleo e Filtro" value={oficinaPartsText} onChange={oficinaPartsText} />
-              <Field label="O que o Cliente trouxe?" placeholder="Ex: Correia Dentada" value={clientePartsText} onChange={clientePartsText} />
+            <div style={{ background: "#0b0d14", padding: 12, borderRadius: 10, marginBottom: 12, border: "1px solid #1c2234" }}>
+              <Field label="O que a ASDCAR comprou?" placeholder="Ex: Óleo e Filtro" value={oficinaPartsText} onChange={setOficinaPartsText} />
+              <Field label="O que o Cliente trouxe?" placeholder="Ex: Correia Dentada" value={clientePartsText} onChange={setClientePartsText} />
             </div>
           )}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -634,7 +874,7 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <Field label="Mão de Obra (R$)" type="number" value={form.laborValue} onChange={(v: any) => setForm({ ...form, laborValue: v })} />
-            <SelectField label="Status" value={form.status} onChange={(v: any) => setForm({ ...form, status: v })} options={Object.keys(STATUS_COLORS)} />
+            <SelectField label="Status" value={form.status || "Aguardando"} onChange={(v: any) => setForm({ ...form, status: v })} options={Object.keys(STATUS_COLORS)} />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <Field label="Entrada" type="date" value={form.entryDate} onChange={(v: any) => setForm({ ...form, entryDate: v })} />
@@ -642,7 +882,7 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
           </div>
 
           {form.status === "Entregue" && (
-            <div style={{ background: "#0d0f14", padding: 15, borderRadius: 10, border: "1px solid #10b981", marginTop: 10 }}>
+            <div style={{ background: "#0b0d14", padding: 14, borderRadius: 10, border: "1px solid #10b981", marginTop: 10 }}>
               <label className="label">Forma de Pagamento</label>
               <select className="input" value={form.paymentMethod} onChange={e => setForm({ ...form, paymentMethod: e.target.value })}>
                 {Object.keys(PAYMENT_METHODS).map(m => <option key={m} value={m}>{m}</option>)}
@@ -650,10 +890,10 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
               </select>
 
               {form.paymentMethod === "Múltiplo / Misto" && (
-                <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #1e2736" }}>
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #1c2234" }}>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                    <Field label="Parte Pix / Dinheiro (R$)" type="number" value={form.mixedCash} onChange={v => setForm({ ...form, mixedCash: v })} />
-                    <Field label="Parte Cartão (R$)" type="number" value={form.mixedCard} onChange={v => setForm({ ...form, mixedCard: v })} />
+                    <Field label="Parte Pix / Dinheiro (R$)" type="number" value={form.mixedCash} onChange={(v: any) => setForm({ ...form, mixedCash: v })} />
+                    <Field label="Parte Cartão (R$)" type="number" value={form.mixedCard} onChange={(v: any) => setForm({ ...form, mixedCard: v })} />
                   </div>
                   <label className="label">Plano do Cartão (Para calcular a taxa)</label>
                   <select className="input" value={form.mixed_card_method || form.mixedCardMethod || "Débito"} onChange={e => setForm({ ...form, mixed_card_method: e.target.value, mixedCardMethod: e.target.value })}>
@@ -665,9 +905,248 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
               )}
             </div>
           )}
-          <button className="btn-primary" style={{ width: "100%", marginTop: 15 }} onClick={save}>Salvar Informações</button>
+
+          {/* 📷 MÓDULO DE FOTOS & VISTORIA (GOOGLE DRIVE: CÂMERA & GALERIA) */}
+          <div style={{ background: "#0b0d14", padding: 14, borderRadius: 12, border: "1px solid #3b82f6", marginTop: 14, marginBottom: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <label className="label" style={{ color: "#3b82f6", fontSize: 11, fontWeight: 800, margin: 0 }}>
+                📷 REGISTRO FOTOGRÁFICO (GOOGLE DRIVE)
+              </label>
+              <button 
+                type="button" 
+                className="btn-ghost" 
+                style={{ fontSize: 10, padding: "3px 8px", color: driveUrl ? "#10b981" : "#f59e0b", borderColor: driveUrl ? "rgba(16,185,129,0.3)" : "rgba(245,158,11,0.3)" }} 
+                onClick={onOpenDriveConfig}
+              >
+                {driveUrl ? "☁️ Drive Conectado" : "⚙️ Conectar Drive"}
+              </button>
+            </div>
+
+            <div style={{ marginBottom: 10 }}>
+              <label className="label" style={{ fontSize: 10 }}>Tipo da Foto / Etapa</label>
+              <select className="input" style={{ fontSize: 11 }} value={photoType} onChange={e => setPhotoType(e.target.value)}>
+                <option value="Vistoria / Avarias">Vistoria / Avarias (Pneus/Riscados)</option>
+                <option value="Diagnóstico / Defeito">Diagnóstico / Peça Com Defeito</option>
+                <option value="Peça Antiga / Nova">Peça Nova vs Antiga</option>
+                <option value="Serviço Concluído">Serviço Concluído</option>
+              </select>
+            </div>
+
+            <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} ref={cameraInputRef} onChange={handleUploadPhoto} />
+            <input type="file" accept="image/*" style={{ display: "none" }} ref={galleryInputRef} onChange={handleUploadPhoto} />
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
+              <button 
+                type="button" 
+                className="btn-primary" 
+                style={{ background: "#3b82f6", color: "#fff", fontSize: 11, padding: "10px", height: "auto" }}
+                onClick={() => {
+                  if (!form.vehicleId) return alert("Selecione o veículo primeiro para vincular a foto à placa!");
+                  cameraInputRef.current?.click();
+                }}
+                disabled={uploadingPhoto}
+              >
+                {uploadingPhoto ? "⏳ Enviando..." : "📷 Tirar Foto (Câmera)"}
+              </button>
+
+              <button 
+                type="button" 
+                className="btn-primary" 
+                style={{ background: "#8b5cf6", color: "#fff", fontSize: 11, padding: "10px", height: "auto" }}
+                onClick={() => {
+                  if (!form.vehicleId) return alert("Selecione o veículo primeiro para vincular a foto à placa!");
+                  galleryInputRef.current?.click();
+                }}
+                disabled={uploadingPhoto}
+              >
+                {uploadingPhoto ? "⏳ Enviando..." : "🖼️ Escolher da Galeria"}
+              </button>
+            </div>
+
+            {Array.isArray(form.photos) && form.photos.length > 0 ? (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(75px, 1fr))", gap: 8, marginTop: 10 }}>
+                {form.photos.map((photo: any, idx: number) => (
+                  <div key={idx} style={{ position: "relative", borderRadius: 8, overflow: "hidden", border: "1px solid #1c2234", background: "#000", height: 75 }}>
+                    <img 
+                      src={photo.url} 
+                      alt={photo.type} 
+                      style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "pointer" }} 
+                      onClick={() => onZoomPhoto(photo)}
+                    />
+                    <div style={{ position: "absolute", top: 2, left: 2, background: photo.driveSaved || photo.driveLink?.includes("drive") ? "rgba(16,185,129,0.9)" : "rgba(59,130,246,0.9)", color: "#fff", borderRadius: 4, padding: "1px 4px", fontSize: 8, fontWeight: 700 }}>
+                      {photo.driveSaved || photo.driveLink?.includes("drive") ? "☁️ Nuvem" : "📱 App"}
+                    </div>
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.8)", fontSize: 8, color: "#fff", padding: "2px 4px", textOverflow: "ellipsis", overflow: "hidden", whitespace: "nowrap" }}>
+                      {photo.type?.slice(0, 12)}
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={(e) => { e.stopPropagation(); handleDeletePhoto(idx); }}
+                      style={{ position: "absolute", top: 2, right: 2, background: "rgba(239,68,68,0.9)", color: "#fff", border: "none", borderRadius: "50%", width: 18, height: 18, fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                      title="Excluir foto"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ fontSize: 11, color: "#64748b", margin: 0, fontStyle: "italic" }}>
+                Nenhuma foto registrada para este serviço ainda.
+              </p>
+            )}
+          </div>
+
+          <button className="btn-primary" style={{ width: "100%", marginTop: 12, height: 44 }} onClick={save}>Salvar Informações</button>
         </div></div>
       )}
+    </Section>
+  );
+}
+
+// ── ABA HISTÓRICO MENSAL (CARROS QUE PASSARAM NA OFICINA NO MÊS) ─────────────
+function MonthlyHistoryTab({ services, vehicles, onOpenOS, onZoomPhoto, onEditService }: any) {
+  const [selMonth, setSelMonth] = useState(new Date().getMonth());
+  const [selYear, setSelYear] = useState(new Date().getFullYear());
+  const [query, setQuery] = useState("");
+
+  const filteredServices = services.filter((s: any) => {
+    const d = s.exitDate ? new Date(s.exitDate + "T12:00:00") : new Date(s.entryDate + "T12:00:00");
+    const matchesMonth = d.getMonth() === selMonth && d.getFullYear() === selYear;
+    
+    if (!matchesMonth) return false;
+    if (!query) return true;
+    
+    const q = query.toLowerCase();
+    const plate = (s.vehiclePlate || "").toLowerCase();
+    const model = (s.vehicleModel || "").toLowerCase();
+    const brand = (s.vehicleBrand || "").toLowerCase();
+    const desc = (s.description || "").toLowerCase();
+    return plate.includes(q) || model.includes(q) || brand.includes(q) || desc.includes(q);
+  });
+
+  const totalPecas = filteredServices.reduce((a: any, s: any) => a + (Number(s.partsValue) || 0), 0);
+  const totalMO = filteredServices.reduce((a: any, s: any) => a + (Number(s.laborValue) || 0), 0);
+  const totalGeral = totalPecas + totalMO;
+
+  return (
+    <Section title="Carros Atendidos no Mês">
+      <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 120px 2fr", gap: 12 }}>
+          <div>
+            <label className="label">MÊS DE REFERÊNCIA</label>
+            <select className="input" value={selMonth} onChange={e => setSelMonth(Number(e.target.value))}>
+              {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">ANO</label>
+            <select className="input" value={selYear} onChange={e => setSelYear(Number(e.target.value))}>
+              {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">BUSCAR VEÍCULO OU PLACA</label>
+            <input 
+              className="input" 
+              placeholder="Digite a placa, modelo ou serviço..." 
+              value={query} 
+              onChange={e => setQuery(e.target.value)} 
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="kpi-grid">
+        <div className="kpi-card" style={{ borderColor: "rgba(249, 115, 22, 0.3)" }}>
+          <div className="kpi-icon-badge" style={{ background: "rgba(249, 115, 22, 0.15)", color: "#f97316" }}>🚗</div>
+          <div className="kpi-number">{filteredServices.length}</div>
+          <div className="kpi-label">CARROS ATENDIDOS</div>
+        </div>
+        <div className="kpi-card" style={{ borderColor: "rgba(139, 92, 246, 0.3)" }}>
+          <div className="kpi-icon-badge" style={{ background: "rgba(139, 92, 246, 0.15)", color: "#8b5cf6" }}>🎧</div>
+          <div className="kpi-number">{fmt(totalPecas)}</div>
+          <div className="kpi-label">TOTAL PEÇAS</div>
+        </div>
+        <div className="kpi-card" style={{ borderColor: "rgba(16, 185, 129, 0.3)" }}>
+          <div className="kpi-icon-badge" style={{ background: "rgba(16, 185, 129, 0.15)", color: "#10b981" }}>🔧</div>
+          <div className="kpi-number">{fmt(totalMO)}</div>
+          <div className="kpi-label">TOTAL MÃO DE OBRA</div>
+        </div>
+        <div className="kpi-card" style={{ borderColor: "rgba(59, 130, 246, 0.3)" }}>
+          <div className="kpi-icon-badge" style={{ background: "rgba(59, 130, 246, 0.15)", color: "#3b82f6" }}>💰</div>
+          <div className="kpi-number" style={{ color: "#3b82f6" }}>{fmt(totalGeral)}</div>
+          <div className="kpi-label">FATURAMENTO TOTAL O.S.</div>
+        </div>
+      </div>
+
+      <div className="card" style={{ padding: 0 }}>
+        <div className="table-wrap">
+          <div className="table-header" style={{ gridTemplateColumns: "1.8fr 1.3fr 1fr 1fr 1fr 110px" }}>
+            <span>Veículo / Placa</span>
+            <span>Serviço Realizado</span>
+            <span>Peças (R$)</span>
+            <span>M.O. (R$)</span>
+            <span>Datas / Pagto</span>
+            <span>Ações</span>
+          </div>
+
+          {filteredServices.length === 0 ? (
+            <div style={{ padding: 40, textAlign: "center", color: "#64748b", fontSize: 13 }}>
+              Nenhum veículo registrado em {MONTHS[selMonth]} de {selYear}.
+            </div>
+          ) : (
+            filteredServices.map((s: any) => {
+              const car = vehicles.find((v: any) => v.id === s.vehicleId || v.plate === s.vehiclePlate) || {};
+              const statusClass = "status-" + (s.status || "Entregue").replace(/ /g, "-");
+              const photosList = Array.isArray(s.photos) ? s.photos : [];
+
+              return (
+                <div key={s.id} className="table-row workshop-car-card" onClick={() => onEditService && onEditService(s)} style={{ gridTemplateColumns: "1.8fr 1.3fr 1fr 1fr 1fr 110px", alignItems: "flex-start", padding: 14, cursor: "pointer" }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                    <div className="plate-badge" style={{ width: 75, padding: 0 }}>
+                      <div className="plate-top" style={{ fontSize: 6 }}>BRASIL</div>
+                      <div className="plate-number" style={{ fontSize: 11 }}>{s.vehiclePlate}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc" }}>{s.vehicleBrand} {s.vehicleModel}</div>
+                      <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>
+                        {car.owner ? `👤 ${car.owner}` : ""} {car.phone ? `· 📞 ${car.phone}` : ""}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: 12, color: "#f8fafc", fontWeight: 600 }}>{s.description.split("||")[0]}</div>
+                    {photosList.length > 0 && (
+                      <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>
+                        {photosList.slice(0, 3).map((p: any, idx: number) => (
+                          <img key={idx} src={p.url} alt="Foto" style={{ width: 28, height: 28, borderRadius: 4, objectFit: "cover", cursor: "pointer", border: "1px solid #1c2234" }} onClick={(e) => { e.stopPropagation(); onZoomPhoto(p); }} />
+                        ))}
+                        {photosList.length > 3 && <span style={{ fontSize: 9, color: "#3b82f6", alignSelf: "center" }}>+{photosList.length - 3} fotos</span>}
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#8b5cf6" }}>{fmt(s.partsValue)}</div>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: "#10b981" }}>{fmt(s.laborValue)}</div>
+
+                  <div style={{ fontSize: 10, color: "#94a3b8" }}>
+                    <div>Entrada: <strong style={{ color: "#f8fafc" }}>{fmtDate(s.entryDate)}</strong></div>
+                    <div>Saída: <strong style={{ color: "#10b981" }}>{fmtDate(s.exitDate || s.entryDate)}</strong></div>
+                    <div style={{ marginTop: 2, color: "#f59e0b" }}>Pagto: {s.paymentMethod}</div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }} onClick={e => e.stopPropagation()}>
+                    <button onClick={() => onOpenOS(s)} className="btn-primary" style={{ padding: "6px 10px", background: "#7c3aed", color: "#fff", fontSize: 10 }}>📋 O.S</button>
+                    <button onClick={() => onEditService(s)} className="btn-ghost" style={{ padding: 6 }}>✏️</button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
     </Section>
   );
 }
@@ -758,7 +1237,7 @@ function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any)
 }
 
 // ── ABA BASE DE VEÍCULOS ──────────────────────────────────────────────────
-function VehiclesTab({ vehicles, services, loadAll, onZoomPhoto }: any) {
+function VehiclesTab({ vehicles, services, loadAll }: any) {
   const [modal, setModal] = useState(false);
   const [historyModal, setHistoryModal] = useState(false);
   const [selectedV, setSelectedV] = useState<any>(null);
@@ -921,7 +1400,7 @@ function generatePDF(vehicles: any[], services: any[], expenses: any[], fromStr:
   const totalDespesas = relExpenses.reduce((a, e) => a + (Number(e.value) || 0), 0);
   const resultadoReal = faturamentoLiquido - totalDespesas;
 
-  const html = "<!DOCTYPE html><html lang='pt-BR'><head><meta charset='UTF-8'/><title>Fechamento Comercial ASDCAR</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:11px;color:#0f172a;padding:30px;}.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #f97316;padding-bottom:12px;margin-bottom:20px;}.kpi-box{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}.kpi{background:#f8fafc;border:1px solid #e2e8f0;padding:10px;border-radius:6px;}.kpi-lbl{font-size:9px;color:#64748b;text-transform:uppercase;}.kpi-val{font-size:14px;font-weight:bold;margin-top:2px;}table{width:100%;border-collapse:collapse;margin-bottom:20px;}th,td{padding:8px;border:1px solid #e2e8f0;text-align:left;}th{background:#f1f5f9;font-size:9px;text-transform:uppercase;}.no-print{background:#f97316;color:white;padding:12px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:6px;border:none;width:100%;font-size:14px;}@media print{.no-print{display:none;}body{padding:0;}}</style></head><body><button class='no-print' onclick='window.print()'>CLIQUE AQUI PARA IMPRIMIR OU SALVAR EM PDF</button><div class='hdr'><div><strong style='font-size:22px;color:#f97316;'>ASDCAR</strong><br/><span>Fechamento Comercial</span></div><div style='text-align:right;'>Período: <strong>" + fmtDate(fromStr) + " até " + fmtDate(toStr) + "</strong></div></div><div class='kpi-box'><div class='kpi'><div class='kpi-lbl'>Peças Totais</div><div class='kpi-val' style='color:#8b5cf6;'>" + fmt(totalPecas) + "</div></div><div class='kpi'><div class='kpi-lbl'>Mão de Obra</div><div class='kpi-val' style='color:#10b981;'>" + fmt(totalMO) + "</div></div><div class='kpi'><div class='kpi-lbl'>Entradas Líquidas</div><div class='kpi-val' style='color:#3b82f6;'>" + fmt(faturamentoLiquido) + "</div></div><div class='kpi'><div class='kpi-lbl'>Resultado Real</div><div class='kpi-val' style='color:" + (resultadoReal >= 0 ? '#10b981' : '#ef4444') + ";'>" + fmt(resultadoReal) + "</div></div></div><h3>📋 Serviços Entregues (" + relServices.length + ")</h3><table><thead><tr><th>Veículo</th><th>Descrição / Obs.</th><th>Forma Pagto</th><th>Peças</th><th>M.O.</th><th>Saída</th></tr></thead><tbody>" + relServices.map(s => "<tr><td><strong>" + s.vehiclePlate + "</strong><br/>" + s.vehicleBrand + " " + s.vehicleModel + "</td><td>" + s.description.replace(/\|\|/g, '<br/>') + "</td><td>" + s.paymentMethod + "</td><td>" + fmt(s.partsValue) + "</td><td>" + fmt(s.laborValue) + "</td><td>" + fmtDate(s.exitDate) + "</td></tr>").join('') + "</tbody></table><h3>💸 Despesas do Período (" + relExpenses.length + ")</h3><table><thead><tr><th>Descrição</th><th>Categoria</th><th>Data</th><th>Valor</th></tr></thead><tbody>" + relExpenses.map(e => "<tr><td>" + e.description + "</td><td>" + e.category + "</td><td>" + fmtDate(e.expense_date) + "</td><td style='color:#ef4444;font-weight:bold;'>-" + fmt(e.value) + "</td></tr>").join('') + "</tbody></table></body></html>";
+  const html = "<!DOCTYPE html><html lang='pt-BR'><head><meta charset='UTF-8'/><title>Fechamento Comercial ASDCAR</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:11px;color:#0f172a;padding:30px;}.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #f97316;padding-bottom:12px;margin-bottom:20px;}.kpi-box{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}.kpi{background:#f8fafc;border:1px solid #e2e8f0;padding:10px;border-radius:6px;}.kpi-lbl{font-size:9px;color:#64748b;text-transform:uppercase;}.kpi-val{font-size:14px;font-weight:bold;margin-top:2px;}table{width:100%;border-collapse:collapse;margin-bottom:20px;}th,td{padding:8px;border:1px solid #e2e8f0;text-align:left;}th{background:#f1f5f9;font-size:9px;text-transform:uppercase;}.no-print{background:#f97316;color:white;padding:12px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:6px;border:none;width:100%;font-size:14px;}@media print{.no-print{display:none;}body{padding:0;}}</style></head><body><button class='no-print' onclick='window.print()'>CLIQUE AQUI PARA IMPRIMIR OU SALVAR EM PDF</button><div class='hdr'><div><strong style='font-size:22px;color:#f97316;'>ASDCAR</strong><br/><span>Fechamento Comercial</span></div><div style='text-align:right;'>Período: <strong>" + fmtDate(fromStr) + " até " + fmtDate(toStr) + "</strong></div></div><div class='kpi-box'><div class='kpi'><div class='kpi-lbl'>Peças Totais</div><div class='kpi-val' style='color:#8b5cf6;'>" + fmt(totalPecas) + "</div></div><div class='kpi'><div class='kpi-lbl'>Mão de Obra</div><div class='kpi-val' style='color:#10b981;'>" + fmt(totalMO) + "</div></div><div class='kpi'><div class='kpi-lbl'>Entradas Líquidas</div><div class='kpi-val' style='color:#3b82f6;'>" + fmt(faturamentoLiquido) + "</div></div><div class='kpi'><div class='kpi-lbl'>Resultado Real</div><div class='kpi-val' style='color:" + (resultadoReal >= 0 ? '#10b981' : '#ef4444') + ";'>" + fmt(resultadoReal) + "</div></div></div><h3>📋 Serviços Entregues (" + relServices.length + ")</h3><table><thead><tr><th>Veículo</th><th>Descrição / Obs.</th><th>Forma Pagto</th><th>Peças</th><th>M.O.</th><th>Saída</th></tr></thead><tbody>" + relServices.map((s: any) => "<tr><td><strong>" + s.vehiclePlate + "</strong><br/>" + s.vehicleBrand + " " + s.vehicleModel + "</td><td>" + s.description.replace(/\|\|/g, '<br/>') + "</td><td>" + s.paymentMethod + "</td><td>" + fmt(s.partsValue) + "</td><td>" + fmt(s.laborValue) + "</td><td>" + fmtDate(s.exitDate) + "</td></tr>").join('') + "</tbody></table><h3>💸 Despesas do Período (" + relExpenses.length + ")</h3><table><thead><tr><th>Descrição</th><th>Categoria</th><th>Data</th><th>Valor</th></tr></thead><tbody>" + relExpenses.map((e: any) => "<tr><td>" + e.description + "</td><td>" + e.category + "</td><td>" + fmtDate(e.expense_date) + "</td><td style='color:#ef4444;font-weight:bold;'>-" + fmt(e.value) + "</td></tr>").join('') + "</tbody></table></body></html>";
   const w = window.open("", "_blank");
   if (w) { w.document.write(html); w.document.close(); }
 }
