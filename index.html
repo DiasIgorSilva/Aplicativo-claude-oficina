@@ -1,1434 +1,4381 @@
 <!DOCTYPE html>
+
 <html lang="pt-BR">
+
 <head>
+
   <meta charset="UTF-8" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <title>ASDCAR - Centro Automotivo</title>
+
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+
   <script src="https://unpkg.com/@supabase/supabase-js@2" crossorigin></script>
+
   <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
+
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+
 </head>
+
 <body style="background: #0b0d14; color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; margin: 0; padding: 0;">
+
   <div id="root"></div>
 
+
+
   <script type="text/babel">
+
     const { useState, useEffect, useRef } = React;
+
     const { createClient } = supabase;
 
+
+
     const supabaseClient = createClient(
+
       "https://bofhihxpqmqimkanwkyw.supabase.co",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJvZmhpaHhwcW1xaW1rYW53a3l3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODQ3OTMsImV4cCI6MjA5MDY2MDc5M30.fOOD-FweGID1x2mlJ3LWImtw7B6m6Pc-8auXLIuCqbw"
+
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJvZmhpaHhwcW1xaW1rYW53a3l3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODQ3OTMêsImV4cCI6MjA5MDY2MDc5M30.fOOD-FweGID1x2mlJ3LWImtw7B6m6Pc-8auXLIuCqbw"
+
     );
 
+
+
     // ── CONSTANTES E TAXAS ────────────────────────────────────────────────────
+
     const PAYMENT_METHODS = {
+
       "Dinheiro": 0, "Pix": 0, "Débito": 1.9,
+
       "Crédito 1x": 0.79, "Crédito 2x": 1.58, "Crédito 3x": 2.37, "Crédito 4x": 3.16,
+
       "Crédito 5x": 3.95, "Crédito 6x": 4.74, "Crédito 7x": 5.53, "Crédito 8x": 6.32,
+
       "Crédito 9x": 7.11, "Crédito 10x": 7.90, "Crédito 11x": 8.69, "Crédito 12x": 9.48
+
     };
+
+
 
     const uid = () => Math.random().toString(36).slice(2, 10);
+
     const fmt = (n) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n || 0);
+
     const fmtKm = (n) => n ? n.toLocaleString("pt-BR") + " km" : "—";
+
     const today = () => new Date().toISOString().slice(0, 10);
+
     const fmtDate = (d) => d ? new Date(d + "T12:00:00").toLocaleDateString("pt-BR") : "—";
 
+
+
     const STATUS_COLORS = { "Aguardando": "#f59e0b", "Em andamento": "#3b82f6", "Pronto": "#10b981", "Entregue": "#6b7280" };
+
     const MONTHS = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
     const CAR_BRANDS = ["Audi", "BMW", "BYD", "Chevrolet", "Citroën", "Ferrari", "Fiat", "Ford", "GWM", "Honda", "Hyundai", "JAC", "Jaguar", "Jeep", "Kia", "Land Rover", "Mercedes-Benz", "Mitsubishi", "Nissan", "Peugeot", "Porsche", "RAM", "Renault", "Toyota", "Volkswagen", "Volvo"].sort();
 
+
+
     // ── MAPEADORES DE DADOS ──────────────────────────────────────────────────
-    const mapV = (r) => ({
-      id: r.id, plate: r.plate, brand: r.brand, model: r.model, year: r.year, 
-      color: r.color, owner: r.owner, phone: r.phone, notes: r.notes, 
-      mileage: r.mileage || 0, createdAt: r.created_at
-    });
+
+    const mapV = (r) => ({ id: r.id, plate: r.plate, brand: r.brand, model: r.model, year: r.year, engine: r.engine || r.motor || '', color: r.color, owner: r.owner, phone: r.phone, notes: r.notes, mileage: r.mileage || 0, createdAt: r.created_at });
+
+
 
     const mapS = (r) => {
+
       const parts = Number(r.parts_value) || 0;
+
       const labor = Number(r.labor_value) || 0;
+
       const net = r.net_value != null ? Number(r.net_value) : (parts + labor);
+
       let photosList = [];
+
       try {
+
         if (r.photos) {
+
           photosList = typeof r.photos === 'string' ? JSON.parse(r.photos) : r.photos;
+
         }
+
         if ((!photosList || photosList.length === 0) && typeof window !== 'undefined' && window.localStorage) {
+
           const localCache = localStorage.getItem("asdcar_photos_" + r.id);
+
           if (localCache) photosList = JSON.parse(localCache);
+
         }
+
       } catch (e) { photosList = []; }
 
+
+
       return {
+
         id: r.id, vehicleId: r.vehicle_id, vehiclePlate: r.vehicle_plate, 
-        vehicleBrand: r.vehicle_brand, vehicleModel: r.vehicle_model, 
+
+        vehicleBrand: r.vehicle_brand, vehicleMãodel: r.vehicle_model, 
+
         description: r.description, partsValue: parts, laborValue: labor, 
+
         netValue: net, status: r.status, entryDate: r.entry_date, 
+
         exitDate: r.exit_date, paymentMethod: r.payment_method || "Dinheiro", 
+
         mileage: r.mileage || 0, createdAt: r.created_at,
+
         mixedCash: Number(r.mixed_cash) || 0, mixedCard: Number(r.mixed_card) || 0,
+
         mixedCardMethod: r.mixed_card_method || "Débito",
+
         photos: Array.isArray(photosList) ? photosList : []
+
       };
+
     };
 
+
+
     // ── COMPONENTES DE BUSCA INTELIGENTE ──────────────────────────────────────
+
     function BrandSelector({ value, onChange }) {
+
       const [query, setQuery] = useState(value || "");
+
       const [open, setOpen] = useState(false);
+
       const ref = useRef(null);
+
       const filtered = CAR_BRANDS.filter(b => b.toLowerCase().includes(query.toLowerCase()));
+
       useEffect(() => { setQuery(value || ""); }, [value]);
+
       useEffect(() => {
+
         function handleClick(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+
         document.addEventListener("mousedown", handleClick); return () => document.removeEventListener("mousedown", handleClick);
+
       }, []);
+
       return (
+
         <div ref={ref} style={{ position: "relative", marginBottom: 10 }}>
+
           <label className="label">Marca *</label>
+
           <input className="input" placeholder="Digite a marca..." value={query} onFocus={() => setOpen(true)} onChange={e => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }} autoComplete="off" />
+
           {open && filtered.length > 0 && (
+
             <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 200, background: "#1a2030", border: "1px solid #f97316", borderRadius: 8, maxHeight: 180, overflowY: "auto", marginTop: 4, boxShadow: "0 8px 24px rgba(0,0,0,.8)" }}>
+
               {filtered.map(b => <div key={b} onClick={() => { onChange(b); setQuery(b); setOpen(false); }} style={{ padding: "10px 14px", fontSize: 13, cursor: "pointer", color: value === b ? "#f97316" : "#e2e8f0", borderBottom: "1px solid #1e2736" }}>{b}</div>)}
+
             </div>
+
           )}
+
         </div>
+
       );
+
     }
+
+
 
     function VehicleSelector({ vehicles, value, onChange }) {
+
       const [query, setQuery] = useState("");
+
       const [open, setOpen] = useState(false);
+
       const ref = useRef(null);
+
       const selected = vehicles.find(v => v.id === value);
+
       const displayValue = selected ? `${selected.plate} — ${selected.brand} ${selected.model}` : query;
+
       const filtered = vehicles.filter(v => (v.plate||"").toLowerCase().includes(query.toLowerCase()) || (v.model||"").toLowerCase().includes(query.toLowerCase())).slice(0, 10);
+
       useEffect(() => {
+
         function handleClick(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+
         document.addEventListener("mousedown", handleClick); return () => document.removeEventListener("mousedown", handleClick);
+
       }, []);
+
       return (
+
         <div ref={ref} style={{ position: "relative", marginBottom: 15 }}>
+
           <label className="label">Carro *</label>
+
           <input className="input" placeholder="Busque placa ou modelo..." value={open ? query : displayValue} onFocus={() => { setOpen(true); setQuery(""); }} onChange={e => setQuery(e.target.value)} autoComplete="off" />
+
           {open && (
+
             <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 250, background: "#1a2030", border: "1px solid #f97316", borderRadius: 8, maxHeight: 200, overflowY: "auto", marginTop: 4, boxShadow: "0 8px 24px rgba(0,0,0,.8)" }}>
+
               {filtered.map(v => (
+
                 <div key={v.id} onClick={() => { onChange(v.id); setOpen(false); }} style={{ padding: "12px 14px", cursor: "pointer", borderBottom: "1px solid #1e2736" }}>
+
                   <div style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{v.plate}</div>
-                  <div style={{ fontSize: 11, color: "#64748b" }}>{v.brand} {v.model} {v.owner ? `· ${v.owner}` : ""}</div>
+
+                  <div style={{ fontSize: 11, color: "#64748b" }}>{v.brand} {v.model} {v.engine ? `(${v.engine})` : ""} {v.owner ? `· ${v.owner}` : ""}</div>
+
                 </div>
+
               ))}
+
             </div>
+
           )}
+
         </div>
+
       );
+
     }
+
+
 
     function compressImage(file, maxWidth = 1600, quality = 0.8) {
+
       return new Promise((resolve, reject) => {
+
         const reader = new FileReader();
+
         reader.readAsDataURL(file);
+
         reader.onload = (e) => {
+
           const img = new Image();
+
           img.src = e.target.result;
+
           img.onload = () => {
+
             let width = img.width;
+
             let height = img.height;
+
             if (width > maxWidth || height > maxWidth) {
+
               if (width > height) {
+
                 height = Math.round((height * maxWidth) / width);
+
                 width = maxWidth;
+
               } else {
+
                 width = Math.round((width * maxWidth) / height);
+
                 height = maxWidth;
+
               }
+
             }
+
             const canvas = document.createElement('canvas');
+
             canvas.width = width;
+
             canvas.height = height;
+
             const ctx = canvas.getContext('2d');
+
             if (ctx) ctx.drawImage(img, 0, 0, width, height);
+
             const dataUrl = canvas.toDataURL('image/jpeg', quality);
+
             const base64 = dataUrl.split(',')[1];
+
             resolve({ base64, mimeType: 'image/jpeg', dataUrl });
+
           };
+
           img.onerror = (err) => reject(err);
+
         };
+
         reader.onerror = (err) => reject(err);
+
       });
+
     }
 
-    function DriveModal({ driveUrl, onSave, onClose }) {
+
+
+    function DriveMãodal({ driveUrl, onSave, onClose }) {
+
       const [urlInput, setUrlInput] = useState(driveUrl || "");
+
       return (
+
         <div className="modal-bg" onClick={onClose}>
+
           <div className="modal" onClick={e => e.stopPropagation()}>
+
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+
               <h3 style={{ fontSize: 16, fontWeight: 700, color: "#f97316" }}>⚙️ Conectar Google Drive</h3>
+
               <button className="btn-ghost" onClick={onClose}>✕</button>
+
             </div>
+
             <p style={{ fontSize: 12, color: "#94a3b8", marginBottom: 16, lineHeight: 1.5 }}>
+
               Cole abaixo a URL do seu Web App criado no Google Apps Script. As fotos das vistorias serão salvas automaticamente na pasta <strong>ASDCAR_Fotos</strong> do seu Google Drive.
+
             </p>
+
             <div style={{ marginBottom: 16 }}>
+
               <label className="label">URL do Web App do Google Drive Script *</label>
+
               <input 
+
                 className="input" 
+
                 placeholder="https://script.google.com/macros/s/.../exec" 
+
                 value={urlInput} 
+
                 onChange={e => setUrlInput(e.target.value)} 
+
               />
+
             </div>
+
             <button className="btn-primary" style={{ width: "100%", height: 44 }} onClick={() => { onSave(urlInput.trim()); onClose(); }}>
+
               Salvar Conexão do Google Drive
+
             </button>
+
           </div>
+
         </div>
+
       );
+
     }
 
-    function PhotoZoomModal({ photo, onClose }) {
+
+
+    function PhotoZoomMãodal({ photo, onClose }) {
+
       if (!photo) return null;
+
       return (
+
         <div className="modal-bg" onClick={onClose}>
+
           <div className="modal" style={{ maxWidth: 650, textAlign: "center" }} onClick={e => e.stopPropagation()}>
+
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+
               <h3 style={{ fontSize: 15, fontWeight: 700, color: "#f97316" }}>{photo.type || "Foto da Vistoria"}</h3>
+
               <button className="btn-ghost" onClick={onClose}>✕</button>
+
             </div>
+
             <img src={photo.url} alt={photo.type} style={{ maxWidth: "100%", maxHeight: 450, borderRadius: 12, objectFit: "contain", border: "1px solid #1e2736", background: "#000" }} />
+
             <div style={{ marginTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+
               <span style={{ fontSize: 11, color: "#64748b" }}>Data: {new Date(photo.createdAt).toLocaleDateString("pt-BR")}</span>
+
               <a href={photo.driveLink} target="_blank" rel="noreferrer" className="btn-ghost" style={{ fontSize: 12, color: "#3b82f6", textDecoration: "none" }}>
+
                 🔗 Abrir no Google Drive
+
               </a>
+
             </div>
+
           </div>
+
         </div>
+
       );
+
     }
+
+
 
     // ── APP PRINCIPAL ─────────────────────────────────────────────────────────
 
+
+
     function App() {
+
       const [tab, setTab] = useState("dashboard");
+
       const [vehicles, setVehicles] = useState([]);
+
       const [services, setServices] = useState([]);
+
       const [expenses, setExpenses] = useState([]);
+
       const [loading, setLoading] = useState(true);
+
       const [showReport, setShowReport] = useState(false);
-      const [showOSModal, setShowOSModal] = useState(null);
-      const [globalViewMode, setGlobalViewMode] = useState("labor");
+
+      const [showOSMãodal, setShowOSMãodal] = useState(null);
+
+      const [globalViewMãode, setGlobalViewMãode] = useState("labor");
+
       const [driveUrl, setDriveUrl] = useState("");
-      const [showDriveModal, setShowDriveModal] = useState(false);
+
+      const [showDriveMãodal, setShowDriveMãodal] = useState(false);
+
       const [zoomPhoto, setZoomPhoto] = useState(null);
-      const [serviceModalToOpen, setServiceModalToOpen] = useState(null);
+
+      const [serviceMãodalToOpen, setServiceMãodalToOpen] = useState(null);
+
+
 
       useEffect(() => {
+
         if (typeof window !== "undefined" && window.localStorage) {
+
           setDriveUrl(localStorage.getItem("asdcar_drive_url") || "");
+
         }
+
       }, []);
 
-      async function loadAll() {
-        setLoading(true);
+
+
+      async function loadAll(isInitial = false) {
+
+        if (isInitial) setLoading(true);
+
         const vRes = await supabaseClient.from("vehicles").select("*").order("created_at", { ascending: false });
+
         if (vRes.data) setVehicles(vRes.data.map(mapV));
 
+
+
         const sRes = await supabaseClient.from("services").select("*").order("created_at", { ascending: false });
+
         if (sRes.data) setServices(sRes.data.map(mapS));
 
+
+
         const eRes = await supabaseClient.from("expenses").select("*").order("expense_date", { ascending: false });
+
         if (eRes.data) setExpenses(eRes.data);
+
         
-        setLoading(false);
+
+        if (isInitial) setLoading(false);
+
       }
 
-      useEffect(() => { loadAll(); }, []);
+
+
+      useEffect(() => { loadAll(true); }, []);
+
+
+
+      const [showAiConfigMãodal, setShowAiConfigMãodal] = useState(false);
+
+
 
       const tabs = [
+
         { id: "dashboard", label: "Início", icon: "🏠" }, 
+
         { id: "services", label: "Oficina", icon: "🔧" }, 
+
         { id: "monthly_history", label: "Passaram no Mês", icon: "📋" }, 
+
+        { id: "retention", label: "Retenção & LTV", icon: "🎯" }, 
+
         { id: "finance", label: "Financeiro", icon: "💰" }, 
+
         { id: "vehicles", label: "Carros", icon: "🚗" }
+
       ];
 
+
+
       const handleEditCar = (service) => {
+
         setTab("services");
-        setServiceModalToOpen(service);
+
+        setServiceMãodalToOpen(service);
+
       };
 
+
+
       return (
+
         <div style={{ minHeight: "100vh", background: "#0b0d14", color: "#f8fafc", fontFamily: "'Plus Jakarta Sans', sans-serif", display: "flex", flexDirection: "column", paddingBottom: 85, width: "100%" }}>
+
           <style>{`
+
             @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght=700;800&display=swap');
+
             *{box-sizing:border-box;margin:0;padding:0;}
+
             body, html { overflow-x: hidden; width: 100%; position: relative; background: #0b0d14; }
+
             
+
             .header-bar { padding: 12px 20px; border-bottom: 1px solid #1c2234; display: flex; align-items: center; justify-content: space-between; background: #0d101a; position: sticky; top: 0; z-index: 100; backdrop-filter: blur(10px); }
+
             .logo-box { display: flex; align-items: center; gap: 10px; }
+
             .logo-icon { width: 34px; height: 34px; background: linear-gradient(135deg, #f97316, #ea580c); border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3); }
+
             .logo-title { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; letter-spacing: 1.5px; color: #ffffff; }
+
             
+
             .pill-badge { font-size: 11px; padding: 6px 12px; border-radius: 20px; border: 1px solid #1c2234; background: rgba(255,255,255,0.03); color: #94a3b8; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s; }
+
             .pill-badge.active-green { border-color: rgba(16,185,129,0.3); color: #10b981; background: rgba(16,185,129,0.08); }
+
             .pill-badge.purple-btn { background: #7c3aed; color: #ffffff; border: none; font-weight: 700; }
 
+
+
             .nav-desktop-tabs { display: flex; gap: 6px; }
+
             .tab-btn { background: transparent; color: #94a3b8; border: 1px solid #1c2234; border-radius: 20px; padding: 6px 16px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s; }
+
             .tab-btn.active { background: #f97316; color: #0d0f14; border-color: #f97316; font-weight: 800; box-shadow: 0 0 14px rgba(249, 115, 22, 0.3); }
 
+
+
             .card { background: #141824; border: 1px solid #1c2234; border-radius: 16px; padding: 18px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.25); }
+
             .workshop-car-card { cursor: pointer; transition: all 0.2s ease; }
+
             .workshop-car-card:hover { border-color: #f97316 !important; background: #1a2030 !important; transform: translateY(-2px); }
+
             .btn-primary { background: linear-gradient(135deg, #f97316, #ea580c); color: #0d0f14; border: none; border-radius: 10px; padding: 10px 18px; font-weight: 800; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.2s; }
+
             .btn-ghost { background: transparent; color: #94a3b8; border: 1px solid #1c2234; border-radius: 10px; padding: 8px 12px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.2s; }
+
             .input, .textarea { background: #0b0d14; border: 1px solid #1c2234; border-radius: 10px; padding: 11px 14px; color: #f8fafc; width: 100%; font-family: inherit; font-size: 13px; outline: none; transition: border-color 0.2s; }
+
             .input:focus, .textarea:focus { border-color: #f97316; }
+
             .textarea { resize: vertical; min-height: 85px; line-height: 1.4; }
+
             .label { display: block; font-size: 11px; color: #64748b; margin-bottom: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
 
+
+
             .plate-badge { display: inline-flex; flex-direction: column; align-items: center; background: #ffffff; color: #000000; border-radius: 4px; border: 1px solid #000000; width: 84px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.4); flex-shrink: 0; }
+
             .plate-top { background: #003399; color: #ffffff; font-size: 7px; font-weight: 800; letter-spacing: 1px; width: 100%; text-align: center; padding: 1px 0; }
+
             .plate-number { font-size: 13px; font-weight: 900; letter-spacing: 1px; color: #000000; padding: 2px 0; font-family: monospace; }
 
+
+
             .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; width: 100%; }
+
             .kpi-card { background: #141824; border: 1px solid #1c2234; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 8px; position: relative; overflow: hidden; }
+
             .kpi-icon-badge { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; }
+
             .kpi-number { font-size: 20px; font-weight: 800; color: #ffffff; margin-top: 2px; }
+
             .kpi-label { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
 
+
+
             .status-pill { display: inline-flex; align-items: center; justify-content: center; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; border: 1px solid transparent; }
+
             .status-Aguardando { background: rgba(245, 158, 11, 0.12); color: #f59e0b; border-color: rgba(245, 158, 11, 0.3); }
+
             .status-Em-andamento { background: rgba(59, 130, 246, 0.12); color: #3b82f6; border-color: rgba(59, 130, 246, 0.3); }
+
             .status-Pronto { background: rgba(16, 185, 129, 0.12); color: #10b981; border-color: rgba(16, 185, 129, 0.3); }
+
             .status-Entregue { background: rgba(100, 116, 139, 0.12); color: #64748b; border-color: rgba(100, 116, 139, 0.3); }
 
+
+
             .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #0d101a; border-top: 1px solid #1c2234; z-index: 100; padding: 8px 0 16px; backdrop-filter: blur(10px); }
+
             .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; background: none; border: none; color: #64748b; font-size: 10px; font-weight: 700; cursor: pointer; padding: 4px 0; }
+
             .nav-item.active { color: #f97316; }
 
+
+
             .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px; backdrop-filter: blur(4px); }
+
             .table-wrap { width: 100%; overflow-x: auto; border-radius: 12px; }
+
             .table-header { display: grid; grid-template-columns: 2fr 1.3fr 1fr 1fr 110px; padding: 12px 16px; background: #0b0d14; border-bottom: 1px solid #1c2234; color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; min-width: 680px; }
+
             .table-row { display: grid; grid-template-columns: 2fr 1.3fr 1fr 1fr 110px; padding: 14px 16px; border-bottom: 1px solid #1c2234; align-items: center; min-width: 680px; transition: background 0.2s; }
+
             .table-row:last-child { border-bottom: none; }
+
             .table-row:hover { background: rgba(255,255,255,0.02); }
+
+
 
             .modal { background: #141824; border: 1px solid #1c2234; border-radius: 20px; padding: 24px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.6); }
 
+
+
             @media (max-width: 767px) {
+
               .header-bar { padding: 10px 14px; }
+
               .nav-desktop-tabs { display: none; }
+
               .kpi-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+
               .kpi-number { font-size: 17px; }
+
               .card { padding: 14px; border-radius: 12px; }
+
             }
+
           `}</style>
 
+
+
           {/* HEADER NAVEGAÇÃO */}
+
           <header className="header-bar">
+
             <div className="logo-box">
+
               <div className="logo-icon">🚘</div>
+
               <div className="logo-title">ASDCAR</div>
+
             </div>
+
+
 
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <button className={`pill-badge ${driveUrl ? "active-green" : ""}`} onClick={() => setShowDriveModal(true)}>
+
+              <button className={`pill-badge ${driveUrl ? "active-green" : ""}`} onClick={() => setShowDriveMãodal(true)}>
+
                 ☁️ {driveUrl ? "Drive Ok" : "Conectar Drive"}
+
               </button>
+
               <button className="pill-badge purple-btn" onClick={() => setShowReport(true)}>📄 Fechamento</button>
+
             </div>
+
+
 
             <div className="nav-desktop-tabs">
+
               {tabs.map(t => (
+
                 <button key={t.id} className={`tab-btn ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>
+
                   <span>{t.icon}</span> {t.label}
+
                 </button>
+
               ))}
+
             </div>
+
           </header>
 
+
+
           {/* CONTEÚDO PRINCIPAL */}
+
           <main style={{ padding: 16, flex: 1, maxWidth: 1200, margin: "0 auto", width: "100%" }}>
+
             {loading ? (
+
               <div style={{ padding: 60, textAlign: "center", color: "#f97316", fontSize: 15, fontWeight: 700 }}>
+
                 🚗 Carregando dados da oficina...
+
               </div>
+
             ) : (
+
               <>
-                {tab === "dashboard" && <Dashboard services={services} viewMode={globalViewMode} setViewMode={setGlobalViewMode} onEditService={handleEditCar} />}
-                {tab === "services" && <ServicesTab services={services} vehicles={vehicles} loadAll={loadAll} onOpenOS={(s) => setShowOSModal(s)} driveUrl={driveUrl} onOpenDriveConfig={() => setShowDriveModal(true)} onZoomPhoto={(p) => setZoomPhoto(p)} externalModalService={serviceModalToOpen} onClearExternalModal={() => setServiceModalToOpen(null)} />}
-                {tab === "monthly_history" && <MonthlyHistoryTab services={services} vehicles={vehicles} onOpenOS={(s) => setShowOSModal(s)} onZoomPhoto={(p) => setZoomPhoto(p)} onEditService={handleEditCar} />}
-                {tab === "finance" && <FinanceTab expenses={expenses} services={services} loadAll={loadAll} viewMode={globalViewMode} setViewMode={setGlobalViewMode} />}
+
+                {tab === "dashboard" && <Dashboard services={services} viewMãode={globalViewMãode} setViewMãode={setGlobalViewMãode} onEditService={handleEditCar} />}
+
+                {tab === "services" && <ServicesTab services={services} vehicles={vehicles} loadAll={loadAll} onOpenOS={(s) => setShowOSMãodal(s)} driveUrl={driveUrl} onOpenDriveConfig={() => setShowDriveMãodal(true)} onZoomPhoto={(p) => setZoomPhoto(p)} externalMãodalService={serviceMãodalToOpen} onClearExternalMãodal={() => setServiceMãodalToOpen(null)} />}
+
+                {tab === "monthly_history" && <MãonthlyHistoryTab services={services} vehicles={vehicles} onOpenOS={(s) => setShowOSMãodal(s)} onZoomPhoto={(p) => setZoomPhoto(p)} onEditService={handleEditCar} />}
+
+                {tab === "retention" && <RetentionTab services={services} vehicles={vehicles} onOpenAiConfig={() => setShowAiConfigMãodal(true)} />}
+
+                {tab === "finance" && <FinanceTab expenses={expenses} services={services} loadAll={loadAll} viewMãode={globalViewMãode} setViewMãode={setGlobalViewMãode} />}
+
                 {tab === "vehicles" && <VehiclesTab vehicles={vehicles} services={services} loadAll={loadAll} onZoomPhoto={(p) => setZoomPhoto(p)} />}
+
               </>
+
             )}
+
           </main>
 
+
+
           {/* BARRA INFERIOR MOBILE */}
+
           <nav className="bottom-nav">
+
             <div style={{ display: "flex", justifyContent: "space-around", maxWidth: 600, margin: "0 auto" }}>
+
               {tabs.map(t => (
+
                 <button key={t.id} className={`nav-item ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>
+
                   <span style={{ fontSize: 20 }}>{t.icon}</span>
+
                   <span>{t.label}</span>
+
                 </button>
+
               ))}
+
             </div>
+
           </nav>
 
+
+
           {/* MODAIS */}
-          {showReport && <ReportModal services={services} viewMode={globalViewMode} onClose={() => setShowReport(false)} onGenerate={(f, t) => { generatePDF(vehicles, services, expenses, f, t, globalViewMode); setShowReport(false); }} />}
-          {showDriveModal && (
-            <DriveModal 
+
+          {showReport && <ReportMãodal services={services} viewMãode={globalViewMãode} onClose={() => setShowReport(false)} onGenerate={(f, t) => { generatePDF(vehicles, services, expenses, f, t, globalViewMãode); setShowReport(false); }} />}
+
+          {showDriveMãodal && (
+
+            <DriveMãodal 
+
               driveUrl={driveUrl} 
+
               onSave={(url) => { if (typeof window !== "undefined") { localStorage.setItem("asdcar_drive_url", url); } setDriveUrl(url); }} 
-              onClose={() => setShowDriveModal(false)} 
+
+              onClose={() => setShowDriveMãodal(false)} 
+
             />
+
           )}
-          {zoomPhoto && <PhotoZoomModal photo={zoomPhoto} onClose={() => setZoomPhoto(null)} />}
-          {showOSModal && <OSModal service={showOSModal} vehicles={vehicles} onClose={() => setShowOSModal(null)} />}
+
+          {zoomPhoto && <PhotoZoomMãodal photo={zoomPhoto} onClose={() => setZoomPhoto(null)} />}
+
+          {showOSMãodal && <OSMãodal service={showOSMãodal} vehicles={vehicles} onClose={() => setShowOSMãodal(null)} />}
+
+          {showAiConfigMãodal && <AiConfigMãodal onClose={() => setShowAiConfigMãodal(false)} />}
+
         </div>
+
       );
+
     }
+
+
 
     // ── ABA INÍCIO ─────────────────────────────────────────────────────────────
-    function Dashboard({ services, viewMode, setViewMode, onEditService }) {
-      const [selMonth, setSelMonth] = useState(new Date().getMonth());
+
+    function Dashboard({ services, viewMãode, setViewMãode, onEditService }) {
+
+      const [selMãonth, setSelMãonth] = useState(new Date().getMãonth());
+
       const [selYear, setSelYear] = useState(new Date().getFullYear());
 
+
+
       const activeServices = services.filter((s) => s.status !== "Entregue");
+
       const filteredDelivered = services.filter((s) => {
+
         if (s.status !== "Entregue") return false;
+
         const dateStr = s.exitDate || s.entryDate || (s.createdAt ? s.createdAt.slice(0, 10) : null);
+
         if (!dateStr) return true;
+
         const d = new Date(dateStr + "T12:00:00");
-        return d.getMonth() === selMonth && d.getFullYear() === selYear;
+
+        return d.getMãonth() === selMãonth && d.getFullYear() === selYear;
+
       });
 
+
+
       const tP = filteredDelivered.reduce((acc, s) => acc + (Number(s.partsValue) || 0), 0);
+
       const tL = filteredDelivered.reduce((acc, s) => acc + (Number(s.laborValue) || 0), 0);
 
+
+
       const receitaCalculada = filteredDelivered.reduce((acc, s) => {
+
         if (s.paymentMethod === "Múltiplo / Misto") {
+
           const taxaCard = PAYMENT_METHODS[s.mixedCardMethod] || 0;
+
           const dinheiroPixLivre = Number(s.mixedCash || 0);
+
           
-          if (viewMode === "labor") {
+
+          if (viewMãode === "labor") {
+
             const totalBrutoServico = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
+
             if (totalBrutoServico <= 0) return acc;
+
             const percentualLabor = Number(s.laborValue) / totalBrutoServico;
+
             
+
             const cashProporcional = dinheiroPixLivre * percentualLabor;
+
             const cardProporcionalBruto = Number(s.mixedCard || 0) * percentualLabor;
+
             const cardProporcionalLiquido = cardProporcionalBruto * (1 - taxaCard / 100);
+
             
+
             return acc + cashProporcional + cardProporcionalLiquido;
+
           } else {
+
             const cardLiquido = Number(s.mixedCard || 0) * (1 - taxaCard / 100);
+
             return acc + dinheiroPixLivre + cardLiquido;
+
           }
+
         }
+
+
 
         const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
-        if (viewMode === "labor") {
+
+        if (viewMãode === "labor") {
+
           return acc + (Number(s.laborValue || 0) * (1 - taxa / 100));
+
         } else {
+
           return acc + (s.netValue || 0);
+
         }
+
       }, 0);
 
+
+
       return (
+
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
           {/* FILTROS DO PAINEL */}
+
           <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
             <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 1.5fr", gap: 12 }}>
+
               <div>
+
                 <label className="label">MÊS DE REFERÊNCIA</label>
-                <select className="input" value={selMonth} onChange={(e) => setSelMonth(Number(e.target.value))}>
+
+                <select className="input" value={selMãonth} onChange={(e) => setSelMãonth(Number(e.target.value))}>
+
                   {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
+
                 </select>
+
               </div>
+
               <div>
+
                 <label className="label">ANO</label>
+
                 <select className="input" value={selYear} onChange={(e) => setSelYear(Number(e.target.value))}>
+
                   {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+
                 </select>
+
               </div>
+
               <div>
+
                 <label className="label">MODELO DE FILTRO (PAINEL & PDF)</label>
-                <select className="input" value={viewMode} onChange={(e) => setViewMode(e.target.value)}>
+
+                <select className="input" value={viewMãode} onChange={(e) => setViewMãode(e.target.value)}>
+
                   <option value="labor">Mão de Obra Líquida (Desconta taxas de cartão)</option>
+
                   <option value="total">Bruto Total (M.O. + Peças)</option>
+
                 </select>
+
               </div>
+
             </div>
+
           </div>
+
+
 
           {/* KPI GRID COM BADGES COLORIDOS */}
+
           <div className="kpi-grid">
+
             <div className="kpi-card" style={{ borderColor: "rgba(249, 115, 22, 0.3)" }}>
+
               <div className="kpi-icon-badge" style={{ background: "rgba(249, 115, 22, 0.15)", color: "#f97316" }}>🔧</div>
+
               <div className="kpi-number">{activeServices.length}</div>
+
               <div className="kpi-label">PÁTIO OFICINA</div>
+
             </div>
+
+
 
             <div className="kpi-card" style={{ borderColor: "rgba(139, 92, 246, 0.3)" }}>
+
               <div className="kpi-icon-badge" style={{ background: "rgba(139, 92, 246, 0.15)", color: "#8b5cf6" }}>🎧</div>
+
               <div className="kpi-number">{fmt(tP)}</div>
-              <div className="kpi-label">PEÇAS ({MONTHS[selMonth].slice(0,3).toUpperCase()})</div>
+
+              <div className="kpi-label">PEÇAS ({MONTHS[selMãonth].slice(0,3).toUpperCase()})</div>
+
             </div>
+
+
 
             <div className="kpi-card" style={{ borderColor: "rgba(16, 185, 129, 0.3)" }}>
+
               <div className="kpi-icon-badge" style={{ background: "rgba(16, 185, 129, 0.15)", color: "#10b981" }}>🔧</div>
+
               <div className="kpi-number">{fmt(tL)}</div>
-              <div className="kpi-label">M.O. ({MONTHS[selMonth].slice(0,3).toUpperCase()})</div>
+
+              <div className="kpi-label">M.O. ({MONTHS[selMãonth].slice(0,3).toUpperCase()})</div>
+
             </div>
+
+
 
             <div className="kpi-card" style={{ borderColor: "rgba(245, 158, 11, 0.3)" }}>
+
               <div className="kpi-icon-badge" style={{ background: "rgba(245, 158, 11, 0.15)", color: "#f59e0b" }}>💳</div>
+
               <div className="kpi-number">{fmt(filteredDelivered.length > 0 ? (tL / filteredDelivered.length) : 0)}</div>
+
               <div className="kpi-label">TICKET MÉDIO M.O.</div>
+
             </div>
+
+
 
             <div className="kpi-card" style={{ borderColor: "rgba(59, 130, 246, 0.3)" }}>
+
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+
                 <div className="kpi-icon-badge" style={{ background: "rgba(59, 130, 246, 0.15)", color: "#3b82f6" }}>💳</div>
+
                 <span style={{ fontSize: 9, fontWeight: 800, color: "#10b981", letterSpacing: 1 }}>LÍQUIDO</span>
+
               </div>
+
               <div className="kpi-number" style={{ color: "#10b981" }}>{fmt(receitaCalculada)}</div>
-              <div className="kpi-label">{viewMode === "labor" ? "M.O. LÍQUIDA" : "FATURAMENTO LÍQ."}</div>
+
+              <div className="kpi-label">{viewMãode === "labor" ? "M.O. LÍQUIDA" : "FATURAMENTO LÍQ."}</div>
+
             </div>
+
           </div>
+
+
 
           {/* LISTA DE VEÍCULOS NO PÁTIO */}
+
           <div className="card">
+
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+
               <h3 style={{ fontSize: 16, fontWeight: 800, fontFamily: "'Syne', sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
+
                 🛠️ Carros na Oficina ({activeServices.length})
+
               </h3>
+
               <span style={{ fontSize: 11, color: "#f97316", fontWeight: 700 }}>💡 Clique no carro para alterar</span>
+
             </div>
+
             {activeServices.length === 0 ? (
+
               <p style={{ fontSize: 12, color: "#64748b" }}>Nenhum veículo em atendimento no momento.</p>
+
             ) : (
+
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+
                 {activeServices.map((s) => {
+
                   const statusClass = "status-" + (s.status || "Aguardando").replace(/ /g, "-");
+
                   return (
+
                     <div 
+
                       key={s.id} 
+
                       className="workshop-car-card"
+
                       onClick={() => onEditService && onEditService(s)}
+
                       style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", background: "#0b0d14", borderRadius: 12, border: "1px solid #1c2234" }}
+
                       title="Clique para abrir e editar o andamento deste serviço"
+
                     >
+
                       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+
                         <div className="plate-badge">
+
                           <div className="plate-top">BRASIL</div>
+
                           <div className="plate-number">{s.vehiclePlate}</div>
+
                         </div>
+
                         <div>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: "#f8fafc" }}>{s.vehicleBrand} {s.vehicleModel}</div>
+
+                          <div style={{ fontSize: 14, fontWeight: 700, color: "#f8fafc" }}>{s.vehicleBrand} {s.vehicleMãodel}</div>
+
                           <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{s.description.split("||")[0]}</div>
+
                         </div>
+
                       </div>
+
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+
                         <span className={`status-pill ${statusClass}`}>{s.status}</span>
+
                         <button className="btn-ghost" style={{ padding: "6px 10px", fontSize: 11 }}>✏️ Editar</button>
+
                       </div>
+
                     </div>
+
                   );
+
                 })}
+
               </div>
+
             )}
+
           </div>
+
+
 
           {/* LISTA DE ENTREGUES NO MÊS */}
+
           <div className="card">
+
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+
               <h3 style={{ fontSize: 16, fontWeight: 800, fontFamily: "'Syne', sans-serif", color: "#10b981", display: "flex", alignItems: "center", gap: 8 }}>
+
                 📋 Carros que Passaram no Mês ({filteredDelivered.length})
+
               </h3>
+
               <span style={{ fontSize: 11, color: "#10b981", fontWeight: 700 }}>💡 Clique no carro para alterar</span>
+
             </div>
+
             {filteredDelivered.length === 0 ? (
-              <p style={{ fontSize: 12, color: "#64748b" }}>Nenhum veículo entregue em {MONTHS[selMonth]} de {selYear}.</p>
+
+              <p style={{ fontSize: 12, color: "#64748b" }}>Nenhum veículo entregue em {MONTHS[selMãonth]} de {selYear}.</p>
+
             ) : (
+
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+
                 {filteredDelivered.map((s) => (
+
                   <div 
+
                     key={s.id} 
+
                     className="workshop-car-card"
+
                     onClick={() => onEditService && onEditService(s)}
+
                     style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 14px", background: "#0b0d14", borderRadius: 12, border: "1px solid #1c2234" }}
+
                     title="Clique para abrir e ver/editar detalhes deste serviço"
+
                   >
+
                     <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+
                       <div className="plate-badge">
+
                         <div className="plate-top">BRASIL</div>
+
                         <div className="plate-number">{s.vehiclePlate}</div>
+
                       </div>
+
                       <div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: "#f8fafc" }}>{s.vehicleBrand} {s.vehicleModel}</div>
+
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "#f8fafc" }}>{s.vehicleBrand} {s.vehicleMãodel}</div>
+
                         <div style={{ fontSize: 11, color: "#10b981", marginTop: 2 }}>Entregue em: {fmtDate(s.exitDate || s.entryDate)} · {s.description.split("||")[0]}</div>
+
                       </div>
+
                     </div>
+
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+
                       <div style={{ fontSize: 13, fontWeight: 800, color: "#10b981" }}>{fmt((Number(s.partsValue)||0) + (Number(s.laborValue)||0))}</div>
+
                       <button className="btn-ghost" style={{ padding: "6px 10px", fontSize: 11 }}>✏️ Editar</button>
+
                     </div>
+
                   </div>
+
                 ))}
+
               </div>
+
             )}
+
           </div>
+
         </div>
+
       );
+
     }
 
+
+
     // ── ABA OFICINA ────────────────────────────────────────────────────────────
-    function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDriveConfig, onZoomPhoto, externalModalService, onClearExternalModal }) {
-      const [modal, setModal] = useState(false);
+
+    function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDriveConfig, onZoomPhoto, externalMãodalService, onClearExternalMãodal }) {
+
+      const [modal, setMãodal] = useState(false);
+
       const [editing, setEditing] = useState(null);
+
       const [form, setForm] = useState({});
+
       
+
       const [partsOwner, setPartsOwner] = useState("oficina"); 
+
       const [oficinaPartsText, setOficinaPartsText] = useState("");
+
       const [clientePartsText, setClientePartsText] = useState("");
+
       const [filterStatus, setFilterStatus] = useState("");
 
+
+
       const [photoType, setPhotoType] = useState("Vistoria / Avarias");
+
       const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
       const cameraInputRef = useRef(null);
+
       const galleryInputRef = useRef(null);
 
+
+
       useEffect(() => {
-        if (externalModalService) {
-          open(externalModalService);
-          if (onClearExternalModal) onClearExternalModal();
+
+        if (externalMãodalService) {
+
+          open(externalMãodalService);
+
+          if (onClearExternalMãodal) onClearExternalMãodal();
+
         }
-      }, [externalModalService]);
+
+      }, [externalMãodalService]);
+
+
 
       const open = (s = null) => { 
+
         setEditing(s); 
+
         let initialOwner = "oficina";
+
         let ofiText = "";
+
         let cliText = "";
+
         let photosList = [];
+
         if (s) {
+
           if (s.description?.includes("|| Peças Oficina:")) {
+
             initialOwner = "mista";
+
             const partes = s.description.split("||");
+
             ofiText = partes[1]?.replace("Peças Oficina:", "")?.trim() || "";
+
             cliText = partes[2]?.replace("Peças Cliente:", "")?.trim() || "";
+
           } else if (s.description?.includes("(Cliente forneceu as peças)")) {
+
             initialOwner = "cliente";
+
           }
+
           photosList = Array.isArray(s.photos) ? s.photos : (typeof s.photos === 'string' ? JSON.parse(s.photos || '[]') : []);
+
         }
+
         setPartsOwner(initialOwner);
+
         setOficinaPartsText(ofiText);
+
         setClientePartsText(cliText);
+
         setForm(s ? { ...s, photos: photosList } : { status: "Aguardando", description: "", partsValue: 0, laborValue: 0, entryDate: today(), paymentMethod: "Dinheiro", mixedCash: 0, mixedCard: 0, mixedCardMethod: "Débito", photos: [] }); 
-        setModal(true); 
+
+        setMãodal(true); 
+
       };
+
+
 
       const handleUploadPhoto = async (e) => {
+
         const file = e.target.files?.[0];
+
         if (!file) return;
 
+
+
         const selectedVehicle = vehicles.find(veh => veh.id === form.vehicleId || veh.id === form.vehicle_id);
+
         const rawPlate = form.vehiclePlate || form.vehicle_plate || selectedVehicle?.plate || "GERAL";
+
         const cleanPlate = rawPlate.replace(/[^a-zA-Z0-9]/g, "").toUpperCase() || "GERAL";
+
         const plate = "PLACA_" + cleanPlate;
 
+
+
         setUploadingPhoto(true);
+
         try {
+
           const compressed = await compressImage(file, 1400, 0.75);
 
+
+
           let savedUrl = compressed.dataUrl;
+
           let driveLink = compressed.dataUrl;
+
           let driveFileId = null;
+
           let driveSuccess = false;
 
+
+
           if (driveUrl) {
+
             try {
+
               const payload = {
+
                 folderName: plate,
+
                 fileName: `${photoType.replace(/\//g, "_")}_${Date.now()}.jpg`,
+
                 base64: compressed.base64,
+
                 mimeType: "image/jpeg"
+
               };
 
+
+
               const res = await fetch(driveUrl, {
+
                 method: "POST",
+
                 headers: { "Content-Type": "text/plain;charset=utf-8" },
+
                 body: JSON.stringify(payload)
+
               });
+
               
+
               const data = await res.json();
+
               if (data && (data.status === "success" || data.fileUrl)) {
+
                 savedUrl = data.fileUrl || compressed.dataUrl;
+
                 driveLink = data.driveLink || data.fileUrl;
+
                 driveFileId = data.fileId || null;
+
                 driveSuccess = true;
+
               }
+
             } catch (driveErr) {
+
               try {
+
                 const payload = {
+
                   folderName: plate,
+
                   fileName: `${photoType.replace(/\//g, "_")}_${Date.now()}.jpg`,
+
                   base64: compressed.base64,
+
                   mimeType: "image/jpeg"
+
                 };
+
                 fetch(driveUrl, {
+
                   method: "POST",
+
                   mode: "no-cors",
+
                   headers: { "Content-Type": "text/plain;charset=utf-8" },
+
                   body: JSON.stringify(payload)
+
                 }).catch(() => {});
+
                 driveSuccess = true;
+
               } catch(e) {}
+
             }
+
           }
 
+
+
           const newPhoto = {
+
             url: savedUrl,
+
             driveLink: driveLink,
+
             fileId: driveFileId,
+
             type: photoType,
+
             driveSaved: driveSuccess,
+
             createdAt: new Date().toISOString()
+
           };
 
+
+
           const updatedPhotos = [...(form.photos || []), newPhoto];
+
           setForm({ ...form, photos: updatedPhotos });
 
+
+
         } catch (err) {
+
           alert("Erro ao carregar imagem: " + (err.message || "Arquivo não suportado"));
+
         } finally {
+
           setUploadingPhoto(false);
+
           if (cameraInputRef.current) cameraInputRef.current.value = "";
+
           if (galleryInputRef.current) galleryInputRef.current.value = "";
+
         }
+
       };
+
+
 
       const handleDeletePhoto = (idxToRemove) => {
+
         const photoToDelete = (form.photos || [])[idxToRemove];
+
         if (photoToDelete && driveUrl) {
+
           try {
+
             fetch(driveUrl, {
+
               method: "POST",
+
               headers: { "Content-Type": "text/plain;charset=utf-8" },
+
               body: JSON.stringify({
+
                 action: "delete",
+
                 fileId: photoToDelete.fileId,
+
                 fileUrl: photoToDelete.url
+
               })
+
             }).catch(() => {});
+
           } catch (err) {}
+
         }
+
         const updatedPhotos = (form.photos || []).filter((_, idx) => idx !== idxToRemove);
+
         setForm({ ...form, photos: updatedPhotos });
+
       };
-      const close = () => { setModal(false); setEditing(null); setForm({}); };
+
+      const close = () => { setMãodal(false); setEditing(null); setForm({}); };
+
+
 
       const save = async () => {
+
         const vId = form.vehicleId || form.vehicle_id || editing?.vehicleId || editing?.vehicle_id;
+
         if (!vId || !form.description) return alert("Selecione o veículo e descreva o serviço.");
 
+
+
         const v = vehicles.find(veh => String(veh.id) === String(vId));
+
         const plate = v?.plate || form.vehiclePlate || form.vehicle_plate || editing?.vehiclePlate || "";
+
         const brand = v?.brand || form.vehicleBrand || form.vehicle_brand || editing?.vehicleBrand || "";
-        const model = v?.model || form.vehicleModel || form.vehicle_model || editing?.vehicleModel || "";
+
+        const model = v?.model || form.vehicleMãodel || form.vehicle_model || editing?.vehicleMãodel || "";
+
+
 
         let descLimpa = (form.description || "").split("||")[0].replace(/\s*\(Cliente forneceu as peças\)/gi, "").trim();
+
         let finalPartsValue = Number(form.partsValue) || 0;
 
+
+
         if (partsOwner === "cliente") {
+
           descLimpa += " (Cliente forneceu as peças)";
+
           finalPartsValue = 0;
+
         } else if (partsOwner === "mista") {
+
           descLimpa += ` || Peças Oficina: ${oficinaPartsText || "Especificadas"} || Peças Cliente: ${clientePartsText || "Especificadas"}`;
+
         }
+
+
 
         let liquido = 0;
+
         const bruto = finalPartsValue + (Number(form.laborValue) || 0);
+
         const metodoCartaoMisto = form.mixed_card_method || form.mixedCardMethod || "Débito";
 
+
+
         if (form.paymentMethod === "Múltiplo / Misto") {
+
           const taxaCard = PAYMENT_METHODS[metodoCartaoMisto] || 0;
+
           const parteCash = Number(form.mixedCash) || 0;
+
           const parteCard = Number(form.mixedCard) || 0;
+
           liquido = parteCash + (parteCard * (1 - taxaCard / 100));
+
         } else {
+
           const taxa = PAYMENT_METHODS[form.paymentMethod || "Dinheiro"] || 0;
+
           liquido = bruto - (bruto * (taxa / 100));
+
         }
 
+
+
         const row = { 
+
           id: editing?.id || form.id || uid(), 
+
           vehicle_id: vId, 
+
           vehicle_plate: plate, 
+
           vehicle_brand: brand, 
+
           vehicle_model: model, 
+
           description: descLimpa, 
+
           parts_value: finalPartsValue, 
+
           labor_value: Number(form.laborValue) || 0, 
+
           net_value: liquido, 
+
           status: form.status || "Aguardando", 
+
           entry_date: form.entryDate || today(), 
+
           exit_date: form.status === "Entregue" ? (form.exitDate || today()) : null, 
+
           payment_method: form.paymentMethod || "Dinheiro", 
+
           mileage: Number(form.mileage) || 0,
+
           mixed_cash: form.paymentMethod === "Múltiplo / Misto" ? Number(form.mixedCash) : 0,
+
           mixed_card: form.paymentMethod === "Múltiplo / Misto" ? Number(form.mixedCard) : 0,
+
           mixed_card_method: form.paymentMethod === "Múltiplo / Misto" ? metodoCartaoMisto : null,
+
           photos: JSON.stringify(form.photos || [])
+
         };
+
         
+
         if (typeof window !== "undefined" && window.localStorage && form.photos) {
+
           localStorage.setItem("asdcar_photos_" + row.id, JSON.stringify(form.photos));
+
         }
+
+
 
         let { error } = await supabaseClient.from("services").upsert(row);
 
+
+
         if (error && error.message?.includes("photos")) {
+
           delete row.photos;
+
           const retry = await supabaseClient.from("services").upsert(row);
+
           error = retry.error;
+
         }
+
+
 
         if (!error) { 
-          await loadAll(); 
+
+          await loadAll(false); 
+
           close(); 
+
         } else { 
+
           alert("Erro ao salvar no banco de dados: " + error.message); 
+
         }
+
       };
+
+
 
       const filtered = filterStatus ? services.filter(s => s.status === filterStatus) : services;
+
       const cols = "1.8fr 1.3fr 0.8fr 1fr 110px";
 
+
+
       return (
+
         <Section title="Fluxo Oficina" action={<button className="btn-primary" onClick={() => open()}>+ Entrada</button>}>
+
           <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+
             {["", ...Object.keys(STATUS_COLORS)].map(s => (
+
               <button key={s} onClick={() => setFilterStatus(s)} style={{ background: filterStatus === s ? "#f97316" : "transparent", color: filterStatus === s ? "#0d0f14" : "#94a3b8", border: `1px solid ${filterStatus === s ? "#f97316" : "#1c2234"}`, borderRadius: 20, padding: "6px 14px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>{s || "Todos"}</button>
+
             ))}
+
           </div>
+
+
 
           <div className="card" style={{ padding: 0 }}>
+
             <div className="table-wrap">
+
               <div className="table-header" style={{ gridTemplateColumns: cols }}>
+
                 <span>Serviço</span><span>Veículo</span><span>M.O.</span><span>Status</span><span>Ações</span>
+
               </div>
+
               {filtered.map(s => {
+
                 const statusClass = "status-" + (s.status || "Aguardando").replace(/ /g, "-");
+
                 return (
+
                   <div key={s.id} className="table-row workshop-car-card" onClick={() => open(s)} style={{ gridTemplateColumns: cols, cursor: "pointer" }}>
+
                     <div>
+
                       <div style={{ color: "#f8fafc", fontWeight: 700, fontSize: 13 }}>{s.description.split("||")[0]}</div>
+
                       <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>KM: {fmtKm(s.mileage)} · Entrada: {fmtDate(s.entryDate)}</div>
+
                     </div>
+
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+
                       <div className="plate-badge" style={{ width: 75, padding: 0 }}>
+
                         <div className="plate-top" style={{ fontSize: 6 }}>BRASIL</div>
+
                         <div className="plate-number" style={{ fontSize: 11 }}>{s.vehiclePlate}</div>
+
                       </div>
+
                       <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "#f8fafc" }}>{s.vehicleModel || s.vehicleBrand}</div>
+
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "#f8fafc" }}>{s.vehicleMãodel || s.vehicleBrand}</div>
+
                         <div style={{ fontSize: 10, color: "#64748b" }}>{s.vehicleBrand}</div>
+
                       </div>
+
                     </div>
+
                     <div style={{ fontSize: 13, fontWeight: 800, color: "#10b981" }}>{fmt(s.laborValue)}</div>
+
                     <div><span className={`status-pill ${statusClass}`}>{s.status}</span></div>
+
                     <div style={{ display: "flex", gap: 6 }} onClick={e => e.stopPropagation()}>
+
                       <button onClick={() => onOpenOS(s)} className="btn-primary" style={{ padding: "6px 10px", background: "#7c3aed", color: "#fff", fontSize: 10 }}>📋 O.S</button>
+
                       <button onClick={() => open(s)} className="btn-ghost" style={{ padding: 6 }}>✏️</button>
+
                     </div>
+
                   </div>
+
                 );
+
               })}
+
             </div>
+
           </div>
 
+
+
           {modal && (
+
             <div className="modal-bg" onClick={close}><div className="modal" onClick={e => e.stopPropagation()}>
+
               <h3 style={{ fontSize: 17, fontWeight: 800, fontFamily: "'Syne', sans-serif", marginBottom: 16 }}>Fluxo de Serviço</h3>
+
               <VehicleSelector vehicles={vehicles} value={form.vehicleId} onChange={val => setForm({ ...form, vehicleId: val })} />
+
               
-              <div style={{ marginBottom: 12 }}>
-                <label className="label">Defeito / Serviço Principal *</label>
-                <textarea 
-                  className="textarea"
-                  placeholder="Digite o serviço feito aqui..."
-                  value={form.description ? form.description.split("||")[0] : ""}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                />
-              </div>
 
               <div style={{ marginBottom: 12 }}>
+
+                <label className="label">Defeito / Serviço Principal *</label>
+
+                <textarea 
+
+                  className="textarea"
+
+                  placeholder="Digite o serviço feito aqui..."
+
+                  value={form.description ? form.description.split("||")[0] : ""}
+
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+
+                />
+
+              </div>
+
+
+
+              <div style={{ marginBottom: 12 }}>
+
                 <label className="label">Quem forneceu as peças?</label>
+
                 <select className="input" value={partsOwner} onChange={e => setPartsOwner(e.target.value)}>
+
                   <option value="oficina">Oficina comprou tudo (Padrão)</option>
+
                   <option value="cliente">Cliente trouxe tudo</option>
+
                   <option value="mista">Fornecimento Misto (Oficina + Cliente)</option>
+
                 </select>
+
               </div>
+
               {partsOwner === "mista" && (
+
                 <div style={{ background: "#0b0d14", padding: 12, borderRadius: 10, marginBottom: 12, border: "1px solid #1c2234" }}>
+
                   <Field label="O que a ASDCAR comprou?" placeholder="Ex: Óleo e Filtro" value={oficinaPartsText} onChange={setOficinaPartsText} />
+
                   <Field label="O que o Cliente trouxe?" placeholder="Ex: Correia Dentada" value={clientePartsText} onChange={setClientePartsText} />
+
                 </div>
+
               )}
+
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+
                 <Field label="KM Atual" type="number" value={form.mileage} onChange={v => setForm({ ...form, mileage: v })} />
+
                 <Field label={partsOwner === "cliente" ? "Peças (Cliente Forneceu)" : "Valor Peças ASDCAR (R$)"} type="number" value={partsOwner === "cliente" ? 0 : form.partsValue} onChange={v => setForm({ ...form, partsValue: v })} disabled={partsOwner === "cliente"} />
+
               </div>
+
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+
                 <Field label="Mão de Obra (R$)" type="number" value={form.laborValue} onChange={v => setForm({ ...form, laborValue: v })} />
+
                 <SelectField label="Status" value={form.status || "Aguardando"} onChange={v => setForm({ ...form, status: v })} options={Object.keys(STATUS_COLORS)} />
+
               </div>
+
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+
                 <Field label="Entrada" type="date" value={form.entryDate} onChange={v => setForm({ ...form, entryDate: v })} />
+
                 {form.status === "Entregue" && <Field label="Entrega" type="date" value={form.exitDate || today()} onChange={v => setForm({ ...form, exitDate: v })} />}
+
               </div>
+
+
 
               {form.status === "Entregue" && (
+
                 <div style={{ background: "#0b0d14", padding: 14, borderRadius: 10, border: "1px solid #10b981", marginTop: 10 }}>
+
                   <label className="label">Forma de Pagamento</label>
+
                   <select className="input" value={form.paymentMethod} onChange={e => setForm({ ...form, paymentMethod: e.target.value })}>
+
                     {Object.keys(PAYMENT_METHODS).map(m => <option key={m} value={m}>{m}</option>)}
+
                     <option value="Múltiplo / Misto">Múltiplo / Misto (Cartão + Pix/Dinheiro)</option>
+
                   </select>
+
+
 
                   {form.paymentMethod === "Múltiplo / Misto" && (
+
                     <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed #1c2234" }}>
+
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+
                         <Field label="Parte Pix / Dinheiro (R$)" type="number" value={form.mixedCash} onChange={v => setForm({ ...form, mixedCash: v })} />
+
                         <Field label="Parte Cartão (R$)" type="number" value={form.mixedCard} onChange={v => setForm({ ...form, mixedCard: v })} />
+
                       </div>
+
                       <label className="label">Plano do Cartão (Para calcular a taxa)</label>
+
                       <select className="input" value={form.mixed_card_method || form.mixedCardMethod || "Débito"} onChange={e => setForm({ ...form, mixed_card_method: e.target.value, mixedCardMethod: e.target.value })}>
+
                         {Object.keys(PAYMENT_METHODS).filter(m => m !== "Dinheiro" && m !== "Pix").map(m => (
+
                           <option key={m} value={m}>{m}</option>
+
                         ))}
+
                       </select>
+
                     </div>
+
                   )}
+
                 </div>
+
               )}
+
+
 
               {/* 📷 MÓDULO DE FOTOS & VISTORIA (GOOGLE DRIVE: CÂMERA & GALERIA) */}
+
               <div style={{ background: "#0b0d14", padding: 14, borderRadius: 12, border: "1px solid #3b82f6", marginTop: 14, marginBottom: 14 }}>
+
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+
                   <label className="label" style={{ color: "#3b82f6", fontSize: 11, fontWeight: 800, margin: 0 }}>
+
                     📷 REGISTRO FOTOGRÁFICO (GOOGLE DRIVE)
+
                   </label>
+
                   <button 
+
                     type="button" 
+
                     className="btn-ghost" 
+
                     style={{ fontSize: 10, padding: "3px 8px", color: driveUrl ? "#10b981" : "#f59e0b", borderColor: driveUrl ? "rgba(16,185,129,0.3)" : "rgba(245,158,11,0.3)" }} 
+
                     onClick={onOpenDriveConfig}
+
                   >
+
                     {driveUrl ? "☁️ Drive Conectado" : "⚙️ Conectar Drive"}
+
                   </button>
+
                 </div>
+
+
 
                 <div style={{ marginBottom: 10 }}>
+
                   <label className="label" style={{ fontSize: 10 }}>Tipo da Foto / Etapa</label>
+
                   <select className="input" style={{ fontSize: 11 }} value={photoType} onChange={e => setPhotoType(e.target.value)}>
+
                     <option value="Vistoria / Avarias">Vistoria / Avarias (Pneus/Riscados)</option>
+
                     <option value="Diagnóstico / Defeito">Diagnóstico / Peça Com Defeito</option>
+
                     <option value="Peça Antiga / Nova">Peça Nova vs Antiga</option>
+
                     <option value="Serviço Concluído">Serviço Concluído</option>
+
                   </select>
+
                 </div>
+
+
 
                 <input type="file" accept="image/*" capture="environment" style={{ display: "none" }} ref={cameraInputRef} onChange={handleUploadPhoto} />
+
                 <input type="file" accept="image/*" style={{ display: "none" }} ref={galleryInputRef} onChange={handleUploadPhoto} />
 
+
+
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>
-                  <button 
-                    type="button" 
-                    className="btn-primary" 
-                    style={{ background: "#3b82f6", color: "#fff", fontSize: 11, padding: "10px", height: "auto" }}
-                    onClick={() => {
-                      if (!form.vehicleId) return alert("Selecione o veículo primeiro para vincular a foto à placa!");
-                      cameraInputRef.current?.click();
-                    }}
-                    disabled={uploadingPhoto}
-                  >
-                    {uploadingPhoto ? "⏳ Enviando..." : "📷 Tirar Foto (Câmera)"}
-                  </button>
 
                   <button 
+
                     type="button" 
+
                     className="btn-primary" 
-                    style={{ background: "#8b5cf6", color: "#fff", fontSize: 11, padding: "10px", height: "auto" }}
+
+                    style={{ background: "#3b82f6", color: "#fff", fontSize: 11, padding: "10px", height: "auto" }}
+
                     onClick={() => {
+
                       if (!form.vehicleId) return alert("Selecione o veículo primeiro para vincular a foto à placa!");
-                      galleryInputRef.current?.click();
+
+                      cameraInputRef.current?.click();
+
                     }}
+
                     disabled={uploadingPhoto}
+
                   >
-                    {uploadingPhoto ? "⏳ Enviando..." : "🖼️ Escolher da Galeria"}
+
+                    {uploadingPhoto ? "⏳ Enviando..." : "📷 Tirar Foto (Câmera)"}
+
                   </button>
+
+
+
+                  <button 
+
+                    type="button" 
+
+                    className="btn-primary" 
+
+                    style={{ background: "#8b5cf6", color: "#fff", fontSize: 11, padding: "10px", height: "auto" }}
+
+                    onClick={() => {
+
+                      if (!form.vehicleId) return alert("Selecione o veículo primeiro para vincular a foto à placa!");
+
+                      galleryInputRef.current?.click();
+
+                    }}
+
+                    disabled={uploadingPhoto}
+
+                  >
+
+                    {uploadingPhoto ? "⏳ Enviando..." : "🖼️ Escolher da Galeria"}
+
+                  </button>
+
                 </div>
+
+
 
                 {Array.isArray(form.photos) && form.photos.length > 0 ? (
+
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(75px, 1fr))", gap: 8, marginTop: 10 }}>
+
                     {form.photos.map((photo, idx) => (
+
                       <div key={idx} style={{ position: "relative", borderRadius: 8, overflow: "hidden", border: "1px solid #1c2234", background: "#000", height: 75 }}>
+
                         <img 
+
                           src={photo.url} 
+
                           alt={photo.type} 
+
                           style={{ width: "100%", height: "100%", objectFit: "cover", cursor: "pointer" }} 
+
                           onClick={() => onZoomPhoto(photo)}
+
                         />
+
                         <div style={{ position: "absolute", top: 2, left: 2, background: photo.driveSaved || photo.driveLink?.includes("drive") ? "rgba(16,185,129,0.9)" : "rgba(59,130,246,0.9)", color: "#fff", borderRadius: 4, padding: "1px 4px", fontSize: 8, fontWeight: 700 }}>
+
                           {photo.driveSaved || photo.driveLink?.includes("drive") ? "☁️ Nuvem" : "📱 App"}
+
                         </div>
+
                         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, background: "rgba(0,0,0,0.8)", fontSize: 8, color: "#fff", padding: "2px 4px", textOverflow: "ellipsis", overflow: "hidden", whitespace: "nowrap" }}>
+
                           {photo.type?.slice(0, 12)}
+
                         </div>
+
                         <button 
+
                           type="button" 
+
                           onClick={(e) => { e.stopPropagation(); handleDeletePhoto(idx); }}
+
                           style={{ position: "absolute", top: 2, right: 2, background: "rgba(239,68,68,0.9)", color: "#fff", border: "none", borderRadius: "50%", width: 18, height: 18, fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+
                           title="Excluir foto"
+
                         >
+
                           ✕
+
                         </button>
+
                       </div>
+
                     ))}
+
                   </div>
+
                 ) : (
+
                   <p style={{ fontSize: 11, color: "#64748b", margin: 0, fontStyle: "italic" }}>
+
                     Nenhuma foto registrada para este serviço ainda.
+
                   </p>
+
                 )}
+
               </div>
+
+
 
               <button className="btn-primary" style={{ width: "100%", marginTop: 12, height: 44 }} onClick={save}>Salvar Informações</button>
+
             </div></div>
+
           )}
+
         </Section>
+
       );
+
     }
+
+
 
     // ── ABA HISTÓRICO MENSAL (PASSARAM NO MÊS) ─────────────────────────────────
-    function MonthlyHistoryTab({ services, vehicles, onOpenOS, onZoomPhoto, onEditService }) {
-      const [selMonth, setSelMonth] = useState(new Date().getMonth());
+
+    function MãonthlyHistoryTab({ services, vehicles, onOpenOS, onZoomPhoto, onEditService }) {
+
+      const [selMãonth, setSelMãonth] = useState(new Date().getMãonth());
+
       const [selYear, setSelYear] = useState(new Date().getFullYear());
+
       const [query, setQuery] = useState("");
 
+
+
       const filteredServices = services.filter((s) => {
+
         const d = s.exitDate ? new Date(s.exitDate + "T12:00:00") : new Date(s.entryDate + "T12:00:00");
-        const matchesMonth = d.getMonth() === selMonth && d.getFullYear() === selYear;
+
+        const matchesMãonth = d.getMãonth() === selMãonth && d.getFullYear() === selYear;
+
         
-        if (!matchesMonth) return false;
+
+        if (!matchesMãonth) return false;
+
         if (!query) return true;
+
         
+
         const q = query.toLowerCase();
+
         const plate = (s.vehiclePlate || "").toLowerCase();
-        const model = (s.vehicleModel || "").toLowerCase();
+
+        const model = (s.vehicleMãodel || "").toLowerCase();
+
         const brand = (s.vehicleBrand || "").toLowerCase();
+
         const desc = (s.description || "").toLowerCase();
+
         return plate.includes(q) || model.includes(q) || brand.includes(q) || desc.includes(q);
+
       });
 
+
+
       const totalPecas = filteredServices.reduce((a, s) => a + (Number(s.partsValue) || 0), 0);
+
       const totalMO = filteredServices.reduce((a, s) => a + (Number(s.laborValue) || 0), 0);
+
       const totalGeral = totalPecas + totalMO;
 
+
+
       return (
+
         <Section title="Carros Atendidos no Mês">
+
           <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
             <div style={{ display: "grid", gridTemplateColumns: "1fr 120px 2fr", gap: 12 }}>
+
               <div>
+
                 <label className="label">MÊS DE REFERÊNCIA</label>
-                <select className="input" value={selMonth} onChange={e => setSelMonth(Number(e.target.value))}>
+
+                <select className="input" value={selMãonth} onChange={e => setSelMãonth(Number(e.target.value))}>
+
                   {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
+
                 </select>
+
               </div>
+
               <div>
+
                 <label className="label">ANO</label>
+
                 <select className="input" value={selYear} onChange={e => setSelYear(Number(e.target.value))}>
+
                   {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+
                 </select>
+
               </div>
+
               <div>
+
                 <label className="label">BUSCAR VEÍCULO OU PLACA</label>
+
                 <input 
+
                   className="input" 
+
                   placeholder="Digite a placa, modelo ou serviço..." 
+
                   value={query} 
+
                   onChange={e => setQuery(e.target.value)} 
+
                 />
+
               </div>
+
             </div>
+
           </div>
 
+
+
           <div className="kpi-grid">
+
             <div className="kpi-card" style={{ borderColor: "rgba(249, 115, 22, 0.3)" }}>
+
               <div className="kpi-icon-badge" style={{ background: "rgba(249, 115, 22, 0.15)", color: "#f97316" }}>🚗</div>
+
               <div className="kpi-number">{filteredServices.length}</div>
+
               <div className="kpi-label">CARROS ATENDIDOS</div>
+
             </div>
+
             <div className="kpi-card" style={{ borderColor: "rgba(139, 92, 246, 0.3)" }}>
+
               <div className="kpi-icon-badge" style={{ background: "rgba(139, 92, 246, 0.15)", color: "#8b5cf6" }}>🎧</div>
+
               <div className="kpi-number">{fmt(totalPecas)}</div>
+
               <div className="kpi-label">TOTAL PEÇAS</div>
+
             </div>
+
             <div className="kpi-card" style={{ borderColor: "rgba(16, 185, 129, 0.3)" }}>
+
               <div className="kpi-icon-badge" style={{ background: "rgba(16, 185, 129, 0.15)", color: "#10b981" }}>🔧</div>
+
               <div className="kpi-number">{fmt(totalMO)}</div>
+
               <div className="kpi-label">TOTAL MÃO DE OBRA</div>
+
             </div>
+
             <div className="kpi-card" style={{ borderColor: "rgba(59, 130, 246, 0.3)" }}>
+
               <div className="kpi-icon-badge" style={{ background: "rgba(59, 130, 246, 0.15)", color: "#3b82f6" }}>💰</div>
+
               <div className="kpi-number" style={{ color: "#3b82f6" }}>{fmt(totalGeral)}</div>
+
               <div className="kpi-label">FATURAMENTO TOTAL O.S.</div>
+
             </div>
+
           </div>
+
+
 
           <div className="card" style={{ padding: 0 }}>
+
             <div className="table-wrap">
+
               <div className="table-header" style={{ gridTemplateColumns: "1.8fr 1.3fr 1fr 1fr 1fr 110px" }}>
+
                 <span>Veículo / Placa</span>
+
                 <span>Serviço Realizado</span>
+
                 <span>Peças (R$)</span>
+
                 <span>M.O. (R$)</span>
+
                 <span>Datas / Pagto</span>
+
                 <span>Ações</span>
+
               </div>
+
+
 
               {filteredServices.length === 0 ? (
+
                 <div style={{ padding: 40, textAlign: "center", color: "#64748b", fontSize: 13 }}>
-                  Nenhum veículo registrado em {MONTHS[selMonth]} de {selYear}.
+
+                  Nenhum veículo registrado em {MONTHS[selMãonth]} de {selYear}.
+
                 </div>
+
               ) : (
+
                 filteredServices.map((s) => {
+
                   const car = vehicles.find((v) => v.id === s.vehicleId || v.plate === s.vehiclePlate) || {};
+
                   const statusClass = "status-" + (s.status || "Entregue").replace(/ /g, "-");
+
                   const photosList = Array.isArray(s.photos) ? s.photos : [];
 
+
+
                   return (
+
                     <div key={s.id} className="table-row workshop-car-card" onClick={() => onEditService && onEditService(s)} style={{ gridTemplateColumns: "1.8fr 1.3fr 1fr 1fr 1fr 110px", alignItems: "flex-start", padding: 14, cursor: "pointer" }}>
+
                       <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+
                         <div className="plate-badge" style={{ width: 75, padding: 0 }}>
+
                           <div className="plate-top" style={{ fontSize: 6 }}>BRASIL</div>
+
                           <div className="plate-number" style={{ fontSize: 11 }}>{s.vehiclePlate}</div>
+
                         </div>
+
                         <div>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc" }}>{s.vehicleBrand} {s.vehicleModel}</div>
+
+                          <div style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc" }}>{s.vehicleBrand} {s.vehicleMãodel}</div>
+
                           <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>
+
                             {car.owner ? `👤 ${car.owner}` : ""} {car.phone ? `· 📞 ${car.phone}` : ""}
+
                           </div>
+
                         </div>
+
                       </div>
+
+
 
                       <div>
+
                         <div style={{ fontSize: 12, color: "#f8fafc", fontWeight: 600 }}>{s.description.split("||")[0]}</div>
+
                         {photosList.length > 0 && (
+
                           <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>
+
                             {photosList.slice(0, 3).map((p, idx) => (
+
                               <img key={idx} src={p.url} alt="Foto" style={{ width: 28, height: 28, borderRadius: 4, objectFit: "cover", cursor: "pointer", border: "1px solid #1c2234" }} onClick={(e) => { e.stopPropagation(); onZoomPhoto(p); }} />
+
                             ))}
+
                             {photosList.length > 3 && <span style={{ fontSize: 9, color: "#3b82f6", alignSelf: "center" }}>+{photosList.length - 3} fotos</span>}
+
                           </div>
+
                         )}
+
                       </div>
+
+
 
                       <div style={{ fontSize: 12, fontWeight: 700, color: "#8b5cf6" }}>{fmt(s.partsValue)}</div>
+
                       <div style={{ fontSize: 12, fontWeight: 800, color: "#10b981" }}>{fmt(s.laborValue)}</div>
 
+
+
                       <div style={{ fontSize: 10, color: "#94a3b8" }}>
+
                         <div>Entrada: <strong style={{ color: "#f8fafc" }}>{fmtDate(s.entryDate)}</strong></div>
+
                         <div>Saída: <strong style={{ color: "#10b981" }}>{fmtDate(s.exitDate || s.entryDate)}</strong></div>
+
                         <div style={{ marginTop: 2, color: "#f59e0b" }}>Pagto: {s.paymentMethod}</div>
+
                       </div>
+
+
 
                       <div style={{ display: "flex", gap: 6, alignItems: "center" }} onClick={e => e.stopPropagation()}>
+
                         <button onClick={() => onOpenOS(s)} className="btn-primary" style={{ padding: "6px 10px", background: "#7c3aed", color: "#fff", fontSize: 10 }}>📋 O.S</button>
+
                         <button onClick={() => onEditService(s)} className="btn-ghost" style={{ padding: 6 }}>✏️</button>
+
                       </div>
+
                     </div>
+
                   );
+
                 })
+
               )}
+
             </div>
+
           </div>
+
         </Section>
+
       );
+
     }
+
+
 
     // ── ABA FINANCEIRO ─────────────────────────────────────────────────────────
-    function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }) {
-      const [modal, setModal] = useState(false);
+
+    function FinanceTab({ services, expenses, loadAll, viewMãode, setViewMãode }) {
+
+      const [modal, setMãodal] = useState(false);
+
       const [form, setForm] = useState({ expense_date: today() });
-      const [selMonth, setSelMonth] = useState(new Date().getMonth());
+
+      const [selMãonth, setSelMãonth] = useState(new Date().getMãonth());
+
       const [selYear, setSelYear] = useState(new Date().getFullYear());
 
-      const totalIn = services.filter(s => s.status === "Entregue" && s.exitDate && new Date(s.exitDate + "T12:00:00").getMonth() === selMonth && new Date(s.exitDate + "T12:00:00").getFullYear() === selYear)
+
+
+      const totalIn = services.filter(s => s.status === "Entregue" && s.exitDate && new Date(s.exitDate + "T12:00:00").getMãonth() === selMãonth && new Date(s.exitDate + "T12:00:00").getFullYear() === selYear)
+
         .reduce((acc, s) => {
+
           if (s.paymentMethod === "Múltiplo / Misto") {
+
             const taxaCard = PAYMENT_METHODS[s.mixed_card_method || s.mixedCardMethod || "Débito"] || 0;
+
             const dinheiroPixLivre = Number(s.mixedCash || 0);
-            if (viewMode === "labor") {
+
+            if (viewMãode === "labor") {
+
               const totalBrutoServico = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
+
               if (totalBrutoServico <= 0) return acc;
+
               const percentualLabor = Number(s.laborValue) / totalBrutoServico;
+
               return acc + (dinheiroPixLivre * percentualLabor) + ((Number(s.mixedCard || 0) * percentualLabor) * (1 - taxaCard / 100));
+
             } else {
+
               return acc + dinheiroPixLivre + (Number(s.mixedCard || 0) * (1 - taxaCard / 100));
+
             }
+
           }
+
           const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
-          return viewMode === "labor" ? acc + (Number(s.laborValue || 0) * (1 - taxa / 100)) : acc + (s.netValue || 0);
+
+          return viewMãode === "labor" ? acc + (Number(s.laborValue || 0) * (1 - taxa / 100)) : acc + (s.netValue || 0);
+
         }, 0);
 
-      const filteredExp = expenses.filter(e => e.expense_date && new Date(e.expense_date + "T12:00:00").getMonth() === selMonth && new Date(e.expense_date + "T12:00:00").getFullYear() === selYear);
+
+
+      const filteredExp = expenses.filter(e => e.expense_date && new Date(e.expense_date + "T12:00:00").getMãonth() === selMãonth && new Date(e.expense_date + "T12:00:00").getFullYear() === selYear);
+
       const totalOut = filteredExp.reduce((acc, e) => acc + Number(e.value || 0), 0);
 
+
+
       const saveExp = async () => {
+
         if (!form.category || !form.value) return alert("Preencha categoria e valor.");
+
         const row = { id: form.id || uid(), category: form.category, value: Number(form.value), supplier: form.supplier || "Geral", expense_date: form.expense_date || today() };
+
         const { error } = await supabaseClient.from("expenses").upsert(row);
-        if (!error) { await loadAll(); setModal(false); setForm({ expense_date: today() }); } else { alert("Erro ao salvar: " + error.message); }
+
+        if (!error) { await loadAll(false); setMãodal(false); setForm({ expense_date: today() }); } else { alert("Erro ao salvar: " + error.message); }
+
       };
+
+
 
       return (
+
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
           <div className="card" style={{ display: "flex", gap: 10, alignItems: "center", background: "#1a2030" }}>
+
             <div style={{ flex: 1 }}>
+
               <label className="label">Mês Financeiro</label>
-              <select className="input" value={selMonth} onChange={(e) => setSelMonth(Number(e.target.value))}>{MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}</select>
+
+              <select className="input" value={selMãonth} onChange={(e) => setSelMãonth(Number(e.target.value))}>{MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}</select>
+
             </div>
+
             <div style={{ width: 100 }}>
+
               <label className="label">Ano</label>
+
               <select className="input" value={selYear} onChange={(e) => setSelYear(Number(e.target.value))}>{[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}</select>
+
             </div>
-          </div>
-          <div className="kpi-grid">
-            <div className="card" style={{ borderLeft: "3px solid #10b981" }}>
-              <label className="label">{viewMode === "labor" ? "Entradas (M.O. Líquida)" : "Entradas (Total Líquido)"}</label>
-              <div style={{ fontSize: 16, fontWeight: 800 }}>{fmt(totalIn)}</div>
-            </div>
-            <div className="card" style={{ borderLeft: "3px solid #ef4444" }}><label className="label">Despesas (Saídas)</label><div style={{ fontSize: 16, fontWeight: 800 }}>{fmt(totalOut)}</div></div>
-            <div className="card" style={{ borderLeft: "3px solid #3b82f6", gridColumn: "1 / -1" }}><label className="label">Margem de Lucro Real</label><div style={{ fontSize: 20, fontWeight: 800, color: (totalIn - totalOut) >= 0 ? "#10b981" : "#ef4444" }}>{fmt(totalIn - totalOut)}</div></div>
+
           </div>
 
-          <button className="btn-primary" onClick={() => { setForm({ expense_date: today() }); setModal(true); }}>+ Lançar Despesa Mensal</button>
+          <div className="kpi-grid">
+
+            <div className="card" style={{ borderLeft: "3px solid #10b981" }}>
+
+              <label className="label">{viewMãode === "labor" ? "Entradas (M.O. Líquida)" : "Entradas (Total Líquido)"}</label>
+
+              <div style={{ fontSize: 16, fontWeight: 800 }}>{fmt(totalIn)}</div>
+
+            </div>
+
+            <div className="card" style={{ borderLeft: "3px solid #ef4444" }}><label className="label">Despesas (Saídas)</label><div style={{ fontSize: 16, fontWeight: 800 }}>{fmt(totalOut)}</div></div>
+
+            <div className="card" style={{ borderLeft: "3px solid #3b82f6", gridColumn: "1 / -1" }}><label className="label">Margem de Lucro Real</label><div style={{ fontSize: 20, fontWeight: 800, color: (totalIn - totalOut) >= 0 ? "#10b981" : "#ef4444" }}>{fmt(totalIn - totalOut)}</div></div>
+
+          </div>
+
+
+
+          <button className="btn-primary" onClick={() => { setForm({ expense_date: today() }); setMãodal(true); }}>+ Lançar Despesa Mensal</button>
+
+
 
           <div className="card">
+
             <h3 style={{ fontSize: 13, marginBottom: 12 }}>Relatório de Gastos</h3>
+
             {filteredExp.length === 0 ? <p style={{fontSize:11, color:"#64748b"}}>Nenhuma despesa lançada neste mês.</p> : filteredExp.map(e => (
+
               <div key={e.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #1e2736", alignItems: "center" }}>
+
                 <div style={{ fontSize: 11 }}><strong>{e.category}</strong><br /><span style={{ color: "#64748b" }}>{e.supplier} - {fmtDate(e.expense_date)}</span></div>
+
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+
                   <div style={{ fontSize: 12, fontWeight: 800, color: "#ef4444" }}>-{fmt(e.value)}</div>
-                  <button onClick={() => { setForm({ id: e.id, category: e.category, value: e.value, supplier: e.supplier, expense_date: e.expense_date }); setModal(true); }} className="btn-ghost" style={{ padding: "4px 8px", fontSize: 11 }}>✏️</button>
+
+                  <button onClick={() => { setForm({ id: e.id, category: e.category, value: e.value, supplier: e.supplier, expense_date: e.expense_date }); setMãodal(true); }} className="btn-ghost" style={{ padding: "4px 8px", fontSize: 11 }}>✏️</button>
+
                 </div>
+
               </div>
+
             ))}
+
           </div>
 
+
+
           {modal && (
-            <div className="modal-bg" onClick={() => setModal(false)}><div className="modal" onClick={e => e.stopPropagation()}>
+
+            <div className="modal-bg" onClick={() => setMãodal(false)}><div className="modal" onClick={e => e.stopPropagation()}>
+
               <h3>Gasto Interno ASDCAR</h3>
+
               <Field label="Categoria de Gasto *" value={form.category} onChange={v=>setForm({...form, category:v})} />
+
               <Field label="Valor Pago (R$) *" type="number" value={form.value} onChange={v=>setForm({...form, value:v})} />
+
               <Field label="Fornecedor / Destino" value={form.supplier} onChange={v=>setForm({...form, supplier:v})} />
+
               <Field label="Data do Pagamento" type="date" value={form.expense_date} onChange={v=>setForm({...form, expense_date:v})} />
+
               <button className="btn-primary" style={{width:"100%", marginTop:15}} onClick={saveExp}>Salvar Lançamento</button>
+
             </div></div>
+
           )}
+
         </div>
+
       );
+
     }
 
+
+
     // ── ABA BASE DE VEÍCULOS ──────────────────────────────────────────────────
+
     function VehiclesTab({ vehicles, services, loadAll, onZoomPhoto }) {
-      const [modal, setModal] = useState(false);
-      const [historyModal, setHistoryModal] = useState(false);
+
+      const [modal, setMãodal] = useState(false);
+
+      const [historyMãodal, setHistoryMãodal] = useState(false);
+
       const [selectedV, setSelectedV] = useState(null);
+
       const [editing, setEditing] = useState(null);
+
       const [search, setSearch] = useState("");
+
       const [form, setForm] = useState({});
+
       
-      const open = (v = null) => { setEditing(v); setForm(v || {}); setModal(true); };
-      const close = () => { setModal(false); setEditing(null); setForm({}); };
+
+      const open = (v = null) => { setEditing(v); setForm(v || {}); setMãodal(true); };
+
+      const close = () => { setMãodal(false); setEditing(null); setForm({}); };
+
+
 
       const save = async () => {
+
         if (!form.plate || !form.brand || !form.model) return alert("Dados obrigatórios faltando.");
+
         const row = { 
+
           id: editing?.id || uid(), plate: form.plate.toUpperCase(), brand: form.brand, model: form.model, 
+
           year: form.year, color: form.color, owner: form.owner, phone: form.phone, notes: form.notes, mileage: Number(form.mileage) || 0 
+
         };
+
         const { error } = await supabaseClient.from("vehicles").upsert(row);
-        if (!error) { await loadAll(); close(); } else { alert("Erro ao salvar: " + error.message); }
+
+        if (!error) { await loadAll(false); close(); } else { alert("Erro ao salvar: " + error.message); }
+
       };
+
+
 
       const filtered = vehicles.filter(v => !search || (v.plate||"").toLowerCase().includes(search.toLowerCase()) || (v.owner||"").toLowerCase().includes(search.toLowerCase()));
 
+
+
       return (
+
         <Section title="Base de Veículos" action={<button className="btn-primary" onClick={() => open()}>+ Novo</button>}>
+
           <input className="input" placeholder="Buscar por placa ou cliente..." value={search} onChange={e => setSearch(e.target.value)} style={{ marginBottom: 10 }} />
+
           <div className="card" style={{ padding: 0 }}>
+
             <div className="table-wrap">
+
               <div className="table-header" style={{ gridTemplateColumns: "1.8fr 1.5fr 1fr 90px" }}>
+
                 <span>Veículo</span><span>Cliente</span><span>Telefone</span><span></span>
+
               </div>
+
               {filtered.map(v => (
+
                 <div key={v.id} className="table-row" style={{ gridTemplateColumns: "1.8fr 1.5fr 1fr 90px" }}>
+
                   <div>
-                    <button onClick={() => { setSelectedV(v); setHistoryModal(true); }} className="btn-history">📜 Histórico</button>
+
+                    <button onClick={() => { setSelectedV(v); setHistoryMãodal(true); }} className="btn-history">📜 Histórico</button>
+
                     <div style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{v.brand} {v.model}</div>
-                    <div style={{ fontSize: 10, color: "#f97316" }}>{v.plate} · {v.year || "—"} · {fmtKm(v.mileage)}</div>
+
+                    <div style={{ fontSize: 10, color: "#f97316" }}>{v.plate} · {v.year || "—"} {v.engine ? `· Mãotor: ${v.engine}` : ""} · {fmtKm(v.mileage)}</div>
+
                   </div>
+
                   <div style={{ fontSize: 12 }}>{v.owner || "—"}</div>
+
                   <div style={{ fontSize: 12 }}>{v.phone || "—"}</div>
+
                   <button onClick={() => open(v)} className="btn-ghost" style={{ padding: 6 }}>✏️</button>
+
                 </div>
+
               ))}
+
             </div>
+
           </div>
+
           
+
           {modal && (
+
             <div className="modal-bg" onClick={close}><div className="modal" onClick={e => e.stopPropagation()}>
+
               <h3>Cadastro Master</h3>
+
               <Field label="Placa *" value={form.plate} onChange={v => setForm({ ...form, plate: v.toUpperCase() })} />
+
               <BrandSelector value={form.brand || ""} onChange={v => setForm({ ...form, brand: v })} />
+
               <Field label="Modelo *" value={form.model} onChange={v => setForm({ ...form, model: v })} />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+
                 <Field label="Ano" value={form.year} onChange={v => setForm({ ...form, year: v })} />
+
+                <Field label="Motorização" placeholder="Ex: 1.0, 1.6, 2.0" value={form.engine} onChange={v => setForm({ ...form, engine: v })} />
+
                 <Field label="KM Inicial" type="number" value={form.mileage} onChange={v => setForm({ ...form, mileage: v })} />
+
               </div>
+
               <Field label="Dono / Cliente" value={form.owner} onChange={v => setForm({ ...form, owner: v })} />
+
               <Field label="Telefone" value={form.phone} onChange={v => setForm({ ...form, phone: v })} />
+
               <button className="btn-primary" style={{ width: "100%", marginTop: 15 }} onClick={save}>Salvar</button>
+
             </div></div>
+
           )}
+
           
-          {historyModal && (
-            <div className="modal-bg" onClick={() => setHistoryModal(false)}><div className="modal" onClick={e => e.stopPropagation()}>
+
+          {historyMãodal && (
+
+            <div className="modal-bg" onClick={() => setHistoryMãodal(false)}><div className="modal" onClick={e => e.stopPropagation()}>
+
               <h3>Histórico: {selectedV?.plate}</h3>
+
               <div style={{ maxHeight: 320, overflowY: "auto", marginTop: 15 }}>
+
                 {services.filter(s => s.vehicleId === selectedV?.id).map(s => (
+
                   <div key={s.id} style={{ padding: 12, background: "#0d0f14", borderRadius: 8, marginBottom: 10, borderLeft: "3px solid #10b981" }}>
+
                     <div style={{ fontSize: 12, fontWeight: 700 }}>{s.description.replace(/\|\|/g, " · ")}</div>
+
                     <div style={{ fontSize: 10, color: "#64748b", marginTop: 4 }}>KM: {fmtKm(s.mileage)} | Finalizado: {fmtDate(s.exitDate)}</div>
+
                     <div style={{ fontSize: 12, fontWeight: 800, color: "#f97316", marginTop: 5 }}>Total Bruto: {fmt((Number(s.partsValue) || 0) + (Number(s.laborValue) || 0))}</div>
+
                   </div>
+
                 ))}
+
               </div>
-              <button className="btn-ghost" style={{ width: "100%", marginTop: 15 }} onClick={() => setHistoryModal(false)}>Fechar</button>
+
+              <button className="btn-ghost" style={{ width: "100%", marginTop: 15 }} onClick={() => setHistoryMãodal(false)}>Fechar</button>
+
             </div></div>
+
           )}
+
         </Section>
+
       );
+
     }
 
-    // ── MODAL GERADOR DE PDF ──────────────────────────────────────────────────
-    function ReportModal({ onClose, onGenerate }) {
-      const [from, setFrom] = useState(today().slice(0, 8) + "01");
-      const [to, setTo] = useState(today());
-      return (
-        <div className="modal-bg" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}>
-          <h3>Gerar Fechamento Comercial</h3>
-          <Field label="Data Início" type="date" value={from} onChange={setFrom} />
-          <Field label="Data Fim" type="date" value={to} onChange={setTo} />
-          <button className="btn-primary" style={{width:"100%", marginTop:10}} onClick={() => onGenerate(from, to)}>Compilar Relatório Master</button>
-        </div></div>
-      );
-    }
 
-    // ── JANELA DA O.S ────────────────────────────────────────────────────────
-    function OSModal({ service, vehicles, onClose }) {
-      const [email, setEmail] = useState("");
-      const car = vehicles.find(v => v.id === service.vehicleId) || {};
-      return (
-        <div className="modal-bg" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}>
-          <h3>Emitir O.S. — ASDCAR</h3>
-          <div style={{marginBottom:10}}><label className="label">Cliente</label><input className="input" value={car.owner || "—"} disabled /></div>
-          <Field label="E-mail do Cliente (Opcional)" value={email} onChange={setEmail} type="email" />
-          <button className="btn-primary" style={{width:"100%", marginTop:10, background:"#7c3aed", color:"#fff"}} onClick={() => { generateOSFile(service, car, email); onClose(); }}>Gerar Via de Impressão</button>
-        </div></div>
-      );
-    }
 
-    function Section({ title, action, children }) { return (<div style={{ display: "flex", flexDirection: "column", gap: 12 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><h1 style={{ fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 800 }}>{title}</h1>{action}</div>{children}</div>); }
-    function StatusBadge({ status, map }) { const color = (map || {})[status] || "#6b7280"; return <span className="badge" style={{ background: color + "22", color, border: `1px solid ${color}44` }}>{status || "—"}</span>; }
-    function Field({ label, value, onChange, type = "text", disabled = false, placeholder = "" }) { return <div style={{ marginBottom: 10 }}><label className="label">{label}</label><input className="input" placeholder={placeholder} type={type} value={value || ""} onChange={e => onChange(e.target.value)} disabled={disabled} /></div>; }
-    function SelectField({ label, value, onChange, options }) { return <div style={{ marginBottom: 10 }}><label className="label">{label}</label><select className="input" value={value} onChange={e => onChange(e.target.value)}>{options.map(o => <option key={o} value={o}>{o}</option>)}</select></div>; }
+    // ── MÓDULO DE RETENÇÃO DE CLIENTES (RÉGUA LTV & IA WHATSAPP) ───────────────
 
-    // ── GERADORES DE DOCUMENTOS COMPLETOS ─────────────────────────────────────
-    function generateOSFile(s, car, email) {
-      const tBruto = Number(s.partsValue || 0) + Number(s.laborValue || 0);
-      let escopoPrincipal = s.description || "";
-      let blocoPecasMistas = "";
-      if (s.description?.includes("|| Peças Oficina:")) {
-        const blocos = s.description.split("||");
-        escopoPrincipal = blocos[0].trim();
-        blocoPecasMistas = "<div style='margin-top:15px; padding:10px; background:#f8fafc; border-radius:4px; border:1px solid #e2e8f0;'><p style='margin-bottom:4px;'>⚙️ <strong>Peças fornecidas pela ASDCAR:</strong> " + (blocos[1]?.replace("Peças Oficina:", "")?.trim() || "") + "</p><p>👤 <strong>Peças trazidas pelo Cliente:</strong> " + (blocos[2]?.replace("Peças Cliente:", "")?.trim() || "") + " <em>(Cliente forneceu)</em></p></div>";
-      } else if (s.description?.includes("(Cliente forneceu as peças)")) {
-        escopoPrincipal = s.description.replace("(Cliente forneceu as peças)", "").trim();
-        blocoPecasMistas = "<div style='margin-top:10px; color:#64748b; font-style:italic;'>⚠️ Nota: Todas as peças para este serviço foram fornecidas pelo próprio cliente.</div>";
+
+
+    // Função de Inteligência Artificial ASDCAR
+
+    async function generateAiMessage(payload, apiKey, customPrompt) {
+
+      const defaultSystemPrompt = `Você é um assistente virtual e consultor técnico de uma oficina mecânica de alta qualidade chamada ASDCAR AutoGestão. Sua tarefa é escrever uma mensagem amigável, profissional e direta para o WhatsApp de um cliente, convidando-o para uma revisão preventiva. A mensagem deve mencionar o veículo dele, citar brevemente o último serviço que ele fez conosco para gerar autoridade e lembrança de contexto, e sugerir a verificação dos itens que exigem atenção preventiva no momento. Mantenha o tom cordial, sem pressionar a venda, focando na segurança da família dele. Não use linguagem corporativa demais; seja um mecânico parceiro e atencioso.`;
+
+
+
+      const finalSystemPrompt = customPrompt || defaultSystemPrompt;
+
+
+
+      // Se houver chave API do Gemini configurada, tentar chamada direta via API Gemini
+
+      if (apiKey && apiKey.trim() !== '') {
+
+        try {
+
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`;
+
+          const response = await fetch(url, {
+
+            method: 'POST',
+
+            headers: { 'Content-Type': 'application/json' },
+
+            body: JSON.stringify({
+
+              contents: [{
+
+                parts: [{
+
+                  text: `${finalSystemPrompt}\n\nDados do Cliente (JSON):\n${JSON.stringify(payload, null, 2)}\n\nEscreva a mensagem personalizada para o WhatsApp do cliente agora:`
+
+                }]
+
+              }]
+
+            })
+
+          });
+
+
+
+          if (response.ok) {
+
+            const data = await response.json();
+
+            const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+            if (text && text.trim()) return text.trim();
+
+          }
+
+        } catch (e) {
+
+          console.warn("Erro ao chamar API do Gemini direct, fallback para motor nativo ASDCAR:", e);
+
+        }
+
       }
 
-      const html = "<!DOCTYPE html><html lang='pt-BR'><head><meta charset='UTF-8'/><title>O.S. " + s.vehiclePlate + "</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:12px;color:#0f172a;padding:40px;}.os-border{border:2px dashed #000;padding:30px;}.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #000;padding-bottom:15px;margin-bottom:20px;}.grid-ficha{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:25px;background:#f8fafc;padding:15px;border:1px solid #e2e8f0;}h2{font-size:13px;text-transform:uppercase;margin:20px 0 10px 0;border-left:4px solid #000;padding-left:8px;}.box-servico{border:1px solid #e2e8f0;padding:15px;min-height:80px;line-height:1.5;background:#fff;margin-bottom:20px;}.termos{font-size:10px;color:#475569;margin:30px 0;text-align:justify;}.assinaturas{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:50px;text-align:center;}.linha-sub{border-top:1px solid #000;padding-top:6px;font-size:11px;font-weight:bold;}.no-print{background:#7c3aed;color:white;padding:14px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:25px;border-radius:8px;border:none;width:100%;font-size:15px;}@media print{.no-print{display:none;}body{padding:0;}.os-border{border:none;}}</style></head><body><button class='no-print' onclick='window.print()'>CLIQUE AQUI PARA IMPRIMIR VIA DO CLIENTE</button><div class='os-border'><div class='hdr'><div><strong style='font-size:24px;letter-spacing:1px;'>ASDCAR</strong><br/><span style='color:#475569;'>Centro Automotivo</span></div><div style='text-align:right;'><strong>ORDEM DE SERVIÇO</strong><br/>Data Entrada: " + fmtDate(s.entryDate) + "<br/>Status: <strong>" + s.status + "</strong></div></div><h2>👤 Ficha do Cliente</h2><div class='grid-ficha'><div>Nome: <strong>" + (car.owner || '—') + "</strong><br/>Telefone: <strong>" + (car.phone || '—') + "</strong></div><div>E-mail: <strong>" + (email || 'Não informado') + "</strong></div></div><h2>🚗 Identificação do Veículo</h2><div class='grid-ficha'><div>Placa: <strong style='text-transform:uppercase;'>" + s.vehiclePlate + "</strong><br/>Modelo: <strong>" + (s.vehicleBrand || car.brand) + " " + (s.vehicleModel || car.model) + "</strong></div><div>Ano: <strong>" + (car.year || '—') + "</strong><br/>KM Entrada: <strong>" + fmtKm(s.mileage) + "</strong></div></div><h2>⚙️ Serviços Solicitados / Diagnóstico</h2><div class='box-servico'><strong>" + escopoPrincipal + "</strong>" + blocoPecasMistas + "</div><h2>💰 Valores e Condição de Pagamento</h2><div class='grid-ficha'><div>Valor Peças: <strong>" + fmt(s.partsValue) + "</strong><br/>Mão de Obra: <strong>" + fmt(s.laborValue) + "</strong><br/><span style='font-size:14px;color:#000;'>Total da O.S.: <strong>" + fmt(tBruto) + "</strong></span></div><div>Forma de Pagamento: <strong>" + s.paymentMethod + "</strong></div></div><div class='termos'><strong>TERMOS DE GARANTIA E CONDIÇÕES:</strong><br/>1. A garantia dos serviços executados é de 90 dias a contar da data de entrega do veículo, cobrindo exclusivamente defeitos de mão de obra.<br/>2. Peças fornecidas pelo cliente não possuem garantia pela oficina ASDCAR.<br/>3. Veículos não retirados em até 5 dias após a notificação de término estarão sujeitos a taxa de diária de permanência.</div><div class='assinaturas'><div><div class='linha-sub'>ASDCAR Centro Automotivo</div></div><div><div class='linha-sub'>Assinatura do Cliente / De acordo</div></div></div></div></body></html>";
-      const w = window.open("", "_blank");
-      if (w) { w.document.write(html); w.document.close(); }
+
+
+      // Mãotor Inteligente Nativo ASDCAR (Sintetizador com Engenharia de Prompt Exata)
+
+      // Simula latência realista de ~1.5s de processamento por IA
+
+      await new Promise(r => setTimeout(r, 1500));
+
+
+
+      const nome = payload.cliente || "Cliente";
+
+      const veiculo = payload.veiculo || "veículo";
+
+      const dias = payload.dias_decorridos || 90;
+
+      const servico = payload.servico_anterior || "revisão geral";
+
+      const km = payload.km_anterior ? ` (${payload.km_anterior.toLocaleString('pt-BR')} km)` : "";
+
+      const dataServico = payload.data_ultimo_servico || "alguns meses";
+
+
+
+      let sugestaoPreventiva = "";
+
+      if (dias >= 180) {
+
+        sugestaoPreventiva = "Como já faz um tempinho e seu carro roda bastante, é um ótimo momento para fazermos a troca de óleo, substituir os filtros (combustível e ar), e dar aquela checada rápida no alinhamento e rodízio de pneus.";
+
+      } else if (dias >= 120) {
+
+        sugestaoPreventiva = "Como já se passaram mais de 4 meses e o período de viagens se aproxima, é ideal fazermos aquele check-up de pré-férias nos freios, suspensão e fluidos para você viajar com a família em total segurança.";
+
+      } else {
+
+        sugestaoPreventiva = "Queríamos sugerir uma checagem preventiva rápida dos itens de desgaste natural (freios, fluidos e suspensão) para garantir que você continue rodando sem surpresas.";
+
+      }
+
+
+
+      return `Olá, ${nome}! Tudo bem? Aqui é a equipe da ASDCAR AutoGestão. 🚗
+
+
+
+Já se passaram alguns meses desde que trocamos/realizamos o serviço de ${servico} no seu ${veiculo}${km} em ${dataServico}!
+
+
+
+${sugestaoPreventiva}
+
+
+
+Se quiser, me avisa por aqui que já reservo um horário exclusivo para você nesta semana! Um abraço!`;
+
     }
 
-    function generatePDF(vehicles, services, expenses, fromStr, toStr, viewMode = "labor") {
+
+
+    // ── COMPONENTE ABA RETENÇÃO & LTV ──────────────────────────────────────────
+
+    function RetentionTab({ services, vehicles, onOpenAiConfig }) {
+
+      const [search, setSearch] = useState("");
+
+      const [filterCategory, setFilterCategory] = useState("all");
+
+      const [selectedItemForAi, setSelectedItemForAi] = useState(null);
+
+      const [contactsMap, setContactsMap] = useState({});
+
+
+
+      useEffect(() => {
+
+        if (typeof window !== "undefined" && window.localStorage) {
+
+          try {
+
+            const stored = localStorage.getItem("asdcar_retention_contacts");
+
+            if (stored) setContactsMap(JSON.parse(stored));
+
+          } catch (e) {}
+
+        }
+
+      }, []);
+
+
+
+      const saveContact = (key, notes = "") => {
+
+        const todayStr = new Date().toLocaleDateString('pt-BR');
+
+        const updated = {
+
+          ...contactsMap,
+
+          [key]: { date: todayStr, timestamp: Date.now(), notes }
+
+        };
+
+        setContactsMap(updated);
+
+        if (typeof window !== "undefined" && window.localStorage) {
+
+          localStorage.setItem("asdcar_retention_contacts", JSON.stringify(updated));
+
+        }
+
+      };
+
+
+
+      const removeContact = (key) => {
+
+        const updated = { ...contactsMap };
+
+        delete updated[key];
+
+        setContactsMap(updated);
+
+        if (typeof window !== "undefined" && window.localStorage) {
+
+          localStorage.setItem("asdcar_retention_contacts", JSON.stringify(updated));
+
+        }
+
+      };
+
+
+
+      const retentionList = React.useMemo(() => {
+
+        const now = new Date();
+
+        const itemsMap = new Map();
+
+
+
+        services.forEach(s => {
+
+          const plate = (s.vehiclePlate || "").toUpperCase().trim();
+
+          const v = vehicles.find(veh => (veh.plate || "").toUpperCase().trim() === plate || veh.id === s.vehicleId);
+
+          
+
+          const dateStr = s.exitDate || s.entryDate || (s.createdAt ? s.createdAt.slice(0, 10) : null);
+
+          if (!dateStr) return;
+
+
+
+          const osDate = new Date(dateStr + "T12:00:00");
+
+          const diffDays = Math.floor(Math.abs(now - osDate) / (1000 * 60 * 60 * 24));
+
+
+
+          if (diffDays < 60) return;
+
+
+
+          const ownerName = v?.owner || "Cliente sem Nome";
+
+          const ownerPhone = v?.phone || "";
+
+          const vehicleMãodelStr = v ? `${v.brand} ${v.model} ${v.year ? '(' + v.year + ')' : ''}` : `${s.vehicleBrand || ''} ${s.vehicleMãodel || ''}`.trim();
+
+          const key = `os_${s.id}_${plate}`;
+
+
+
+          if (!itemsMap.has(plate) || itemsMap.get(plate).diasDecorridos > diffDays) {
+
+            let category = "atencao";
+
+            let categoryLabel = "Atenção (3 a 5 meses)";
+
+            let categoryColor = "#f59e0b";
+
+            let categoryBg = "rgba(245, 158, 11, 0.15)";
+
+
+
+            if (diffDays >= 180) {
+
+              category = "critico";
+
+              categoryLabel = "Crítico (6+ meses sem retorno)";
+
+              categoryColor = "#ef4444";
+
+              categoryBg = "rgba(239, 68, 68, 0.15)";
+
+            } else if (diffDays >= 120) {
+
+              categoryLabel = "Q4 / Pré-Férias (4+ meses)";
+
+              categoryColor = "#8b5cf6";
+
+              categoryBg = "rgba(139, 92, 246, 0.15)";
+
+            }
+
+
+
+            const isQ4Eligible = diffDays >= 120;
+
+
+
+            itemsMap.set(plate, {
+
+              key,
+
+              serviceId: s.id,
+
+              vehicleId: s.vehicleId || v?.id,
+
+              cliente: ownerName,
+
+              telefone: ownerPhone,
+
+              veiculo: vehicleMãodelStr || "Veículo ASDCAR",
+
+              placa: plate || "SEM-PLACA",
+
+              dataUltimaOs: dateStr,
+
+              dataFormatted: new Date(dateStr + "T12:00:00").toLocaleDateString('pt-BR'),
+
+              diasDecorridos: diffDays,
+
+              servicoAnterior: s.description ? s.description.split("||")[0] : "Manutenção preventiva geral",
+
+              kmAnterior: s.mileage || v?.mileage || 0,
+
+              valorOs: (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0),
+
+              category,
+
+              categoryLabel,
+
+              categoryColor,
+
+              categoryBg,
+
+              isQ4Eligible
+
+            });
+
+          }
+
+        });
+
+
+
+        let result = Array.from(itemsMap.values());
+
+        if (result.length === 0) {
+
+          result = [
+
+            {
+
+              key: "demo_1",
+
+              serviceId: "demo_os_1",
+
+              vehicleId: "demo_v_1",
+
+              cliente: "Marcos",
+
+              telefone: "(11) 98765-4321",
+
+              veiculo: "Ford Ecosport 2.0",
+
+              placa: "ABC-1234",
+
+              dataUltimaOs: "2026-03-18",
+
+              dataFormatted: "18/03/2026",
+
+              diasDecorridos: 160,
+
+              servicoAnterior: "Troca do kit de embreagem e fluido de freio",
+
+              kmAnterior: 120500,
+
+              valorOs: 1850.00,
+
+              category: "atencao",
+
+              categoryLabel: "Atenção (3 a 5 meses)",
+
+              categoryColor: "#f59e0b",
+
+              categoryBg: "rgba(245, 158, 11, 0.15)",
+
+              isQ4Eligible: true
+
+            },
+
+            {
+
+              key: "demo_2",
+
+              serviceId: "demo_os_2",
+
+              vehicleId: "demo_v_2",
+
+              cliente: "Ana Paula Silva",
+
+              telefone: "(11) 99123-8877",
+
+              veiculo: "Honda Civic 2.0 LXS",
+
+              placa: "DEF-5678",
+
+              dataUltimaOs: "2026-02-10",
+
+              dataFormatted: "10/02/2026",
+
+              diasDecorridos: 196,
+
+              servicoAnterior: "Troca da correia dentada, tensor, bomba d'água e aditivo",
+
+              kmAnterior: 98400,
+
+              valorOs: 2400.00,
+
+              category: "critico",
+
+              categoryLabel: "Crítico (6+ meses sem retorno)",
+
+              categoryColor: "#ef4444",
+
+              categoryBg: "rgba(239, 68, 68, 0.15)",
+
+              isQ4Eligible: true
+
+            },
+
+            {
+
+              key: "demo_3",
+
+              serviceId: "demo_os_3",
+
+              vehicleId: "demo_v_3",
+
+              cliente: "Roberto Mendes",
+
+              telefone: "(11) 97788-9900",
+
+              veiculo: "Toyota Corolla 2.0 XEi",
+
+              placa: "GHI-9012",
+
+              dataUltimaOs: "2026-05-20",
+
+              dataFormatted: "20/05/2026",
+
+              diasDecorridos: 97,
+
+              servicoAnterior: "Troca de disco e pastilhas de freio dianteiras",
+
+              kmAnterior: 65200,
+
+              valorOs: 1120.00,
+
+              category: "atencao",
+
+              categoryLabel: "Atenção (3 a 5 meses)",
+
+              categoryColor: "#f59e0b",
+
+              categoryBg: "rgba(245, 158, 11, 0.15)",
+
+              isQ4Eligible: false
+
+            },
+
+            {
+
+              key: "demo_4",
+
+              serviceId: "demo_os_4",
+
+              vehicleId: "demo_v_4",
+
+              cliente: "Carlos Eduardo Santos",
+
+              telefone: "(11) 96543-2109",
+
+              veiculo: "Chevrolet S10 2.8 Turbo Diesel",
+
+              placa: "JKL-3456",
+
+              dataUltimaOs: "2025-11-15",
+
+              dataFormatted: "15/11/2025",
+
+              diasDecorridos: 283,
+
+              servicoAnterior: "Revisão de suspensão e amortecedores traseiros",
+
+              kmAnterior: 145000,
+
+              valorOs: 3800.00,
+
+              category: "critico",
+
+              categoryLabel: "Crítico (6+ meses sem retorno)",
+
+              categoryColor: "#ef4444",
+
+              categoryBg: "rgba(239, 68, 68, 0.15)",
+
+              isQ4Eligible: true
+
+            }
+
+          ];
+
+        }
+
+
+
+        return result.sort((a, b) => b.diasDecorridos - a.diasDecorridos);
+
+      }, [services, vehicles]);
+
+
+
+      const totalFila = retentionList.length;
+
+      const countAtencao = retentionList.filter(i => i.category === "atencao" && !i.isQ4Eligible).length;
+
+      const countCritico = retentionList.filter(i => i.category === "critico").length;
+
+      const countQ4 = retentionList.filter(i => i.isQ4Eligible).length;
+
+      const countContatados = retentionList.filter(i => !!contactsMap[i.key]).length;
+
+
+
+      const ltvPotencial = retentionList
+
+        .filter(i => !contactsMap[i.key])
+
+        .reduce((acc, i) => acc + (i.valorOs || 800), 0);
+
+
+
+      const filteredList = retentionList.filter(item => {
+
+        const isContacted = !!contactsMap[item.key];
+
+        const q = search.toLowerCase().trim();
+
+
+
+        if (q) {
+
+          const matchName = item.cliente.toLowerCase().includes(q);
+
+          const matchPlate = item.placa.toLowerCase().includes(q);
+
+          const matchVehicle = item.veiculo.toLowerCase().includes(q);
+
+          if (!matchName && !matchPlate && !matchVehicle) return false;
+
+        }
+
+
+
+        if (filterCategory === "atencao") return item.category === "atencao";
+
+        if (filterCategory === "critico") return item.category === "critico";
+
+        if (filterCategory === "q4") return item.isQ4Eligible;
+
+        if (filterCategory === "pendente") return !isContacted;
+
+        if (filterCategory === "contatado") return isContacted;
+
+
+
+        return true;
+
+      });
+
+
+
+      return (
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+          {/* HEADER DA ABA */}
+
+          <div className="card" style={{ background: "linear-gradient(135deg, #141824, #0d101a)", border: "1px solid #1c2234", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+
+            <div>
+
+              <h2 style={{ fontSize: 20, fontWeight: 800, fontFamily: "'Syne', sans-serif", color: "#ffffff", display: "flex", alignItems: "center", gap: 10 }}>
+
+                🎯 Retenção & Régua LTV
+
+                <span style={{ fontSize: 11, background: "rgba(249,115,22,0.15)", color: "#f97316", border: "1px solid rgba(249,115,22,0.3)", padding: "2px 8px", borderRadius: 12, fontWeight: 700 }}>
+
+                  IA WhatsApp AutoGestão
+
+                </span>
+
+              </h2>
+
+              <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
+
+                Mãonitore a última visita dos clientes, previna o churn e gere mensagens com IA em 2 segundos para ativá-los via WhatsApp.
+
+              </p>
+
+            </div>
+
+            <div style={{ display: "flex", gap: 8 }}>
+
+              <button className="pill-badge purple-btn" onClick={onOpenAiConfig} style={{ padding: "8px 14px", fontSize: 12 }}>
+
+                ⚙️ Configurar IA / Gemini API
+
+              </button>
+
+            </div>
+
+          </div>
+
+
+
+          {/* PAINEL DE KPIS */}
+
+          <div className="kpi-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+
+            <div className="kpi-card" style={{ borderColor: "rgba(249, 115, 22, 0.3)" }}>
+
+              <div className="kpi-icon-badge" style={{ background: "rgba(249, 115, 22, 0.15)", color: "#f97316" }}>🎯</div>
+
+              <div className="kpi-number">{totalFila}</div>
+
+              <div className="kpi-label">TOTAL EM FILA DE RETENÇÃO</div>
+
+            </div>
+
+
+
+            <div className="kpi-card" style={{ borderColor: "rgba(245, 158, 11, 0.3)" }}>
+
+              <div className="kpi-icon-badge" style={{ background: "rgba(245, 158, 11, 0.15)", color: "#f59e0b" }}>⚠️</div>
+
+              <div className="kpi-number" style={{ color: "#f59e0b" }}>{countAtencao}</div>
+
+              <div className="kpi-label">ATENÇÃO (3 A 5 MESES)</div>
+
+            </div>
+
+
+
+            <div className="kpi-card" style={{ borderColor: "rgba(239, 68, 68, 0.3)" }}>
+
+              <div className="kpi-icon-badge" style={{ background: "rgba(239, 68, 68, 0.15)", color: "#ef4444" }}>🚨</div>
+
+              <div className="kpi-number" style={{ color: "#ef4444" }}>{countCritico}</div>
+
+              <div className="kpi-label">CRÍTICO (6+ MESES SEM RETORNO)</div>
+
+            </div>
+
+
+
+            <div className="kpi-card" style={{ borderColor: "rgba(139, 92, 246, 0.3)" }}>
+
+              <div className="kpi-icon-badge" style={{ background: "rgba(139, 92, 246, 0.15)", color: "#8b5cf6" }}>🌴</div>
+
+              <div className="kpi-number" style={{ color: "#8b5cf6" }}>{countQ4}</div>
+
+              <div className="kpi-label">Q4 / PRÉ-FÉRIAS (4+ MESES)</div>
+
+            </div>
+
+
+
+            <div className="kpi-card" style={{ borderColor: "rgba(16, 185, 129, 0.3)" }}>
+
+              <div className="kpi-icon-badge" style={{ background: "rgba(16, 185, 129, 0.15)", color: "#10b981" }}>✅</div>
+
+              <div className="kpi-number" style={{ color: "#10b981" }}>{countContatados}</div>
+
+              <div className="kpi-label">CONTATADOS / RECUPERÁVEL: {fmt(ltvPotencial)}</div>
+
+            </div>
+
+          </div>
+
+
+
+          {/* BARRA DE FILTROS E BUSCA */}
+
+          <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
+
+              <input 
+
+                className="input" 
+
+                placeholder="🔍 Buscar por cliente, placa ou modelo do veículo..." 
+
+                value={search} 
+
+                onChange={(e) => setSearch(e.target.value)} 
+
+                style={{ maxWidth: 380 }}
+
+              />
+
+
+
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+
+                <button 
+
+                  className={`pill-badge ${filterCategory === "all" ? "active-green" : ""}`} 
+
+                  onClick={() => setFilterCategory("all")}
+
+                >
+
+                  Todos ({retentionList.length})
+
+                </button>
+
+                <button 
+
+                  className={`pill-badge ${filterCategory === "atencao" ? "active-green" : ""}`} 
+
+                  onClick={() => setFilterCategory("atencao")}
+
+                  style={filterCategory === "atencao" ? { borderColor: "#f59e0b", color: "#f59e0b", background: "rgba(245,158,11,0.1)" } : {}}
+
+                >
+
+                  ⚠️ Atenção (3-5m)
+
+                </button>
+
+                <button 
+
+                  className={`pill-badge ${filterCategory === "critico" ? "active-green" : ""}`} 
+
+                  onClick={() => setFilterCategory("critico")}
+
+                  style={filterCategory === "critico" ? { borderColor: "#ef4444", color: "#ef4444", background: "rgba(239,68,68,0.1)" } : {}}
+
+                >
+
+                  🚨 Crítico (6m+)
+
+                </button>
+
+                <button 
+
+                  className={`pill-badge ${filterCategory === "q4" ? "active-green" : ""}`} 
+
+                  onClick={() => setFilterCategory("q4")}
+
+                  style={filterCategory === "q4" ? { borderColor: "#8b5cf6", color: "#8b5cf6", background: "rgba(139,92,246,0.1)" } : {}}
+
+                >
+
+                  🌴 Q4 Pré-Férias
+
+                </button>
+
+                <button 
+
+                  className={`pill-badge ${filterCategory === "pendente" ? "active-green" : ""}`} 
+
+                  onClick={() => setFilterCategory("pendente")}
+
+                >
+
+                  ⏳ Pendentes ({retentionList.length - countContatados})
+
+                </button>
+
+                <button 
+
+                  className={`pill-badge ${filterCategory === "contatado" ? "active-green" : ""}`} 
+
+                  onClick={() => setFilterCategory("contatado")}
+
+                  style={filterCategory === "contatado" ? { borderColor: "#10b981", color: "#10b981", background: "rgba(16,185,129,0.1)" } : {}}
+
+                >
+
+                  ✅ Contatados ({countContatados})
+
+                </button>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+
+          {/* LISTA DE CLIENTES E CARROS */}
+
+          <div className="card">
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+
+              <h3 style={{ fontSize: 16, fontWeight: 800, fontFamily: "'Syne', sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
+
+                📋 Lista de Clientes em Alerta ({filteredList.length})
+
+              </h3>
+
+              <span style={{ fontSize: 11, color: "#94a3b8" }}>
+
+                💡 Clique em <b>"Gerar Mensagem IA"</b> para criar a mensagem personalizada
+
+              </span>
+
+            </div>
+
+
+
+            {filteredList.length === 0 ? (
+
+              <p style={{ fontSize: 13, color: "#64748b", padding: "20px 0", textAlign: "center" }}>
+
+                Nenhum cliente encontrado com os filtros selecionados.
+
+              </p>
+
+            ) : (
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(440px, 1fr))", gap: 14 }}>
+
+                {filteredList.map((item) => {
+
+                  const contactInfo = contactsMap[item.key];
+
+                  const isContacted = !!contactInfo;
+
+
+
+                  return (
+
+                    <div 
+
+                      key={item.key} 
+
+                      style={{
+
+                        background: "#0b0d14",
+
+                        border: `1px solid ${isContacted ? "#10b981" : "#1c2234"}`,
+
+                        borderRadius: 14,
+
+                        padding: 16,
+
+                        display: "flex",
+
+                        flexDirection: "column",
+
+                        gap: 12,
+
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.2)"
+
+                      }}
+
+                    >
+
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+
+                          <div className="plate-badge">
+
+                            <div className="plate-top">BRASIL</div>
+
+                            <div className="plate-number">{item.placa}</div>
+
+                          </div>
+
+                          <div>
+
+                            <div style={{ fontSize: 15, fontWeight: 800, color: "#f8fafc" }}>
+
+                              {item.veiculo}
+
+                            </div>
+
+                            <div style={{ fontSize: 13, fontWeight: 700, color: "#f97316", marginTop: 2 }}>
+
+                              👤 {item.cliente} {item.telefone && `· 📞 ${item.telefone}`}
+
+                            </div>
+
+                          </div>
+
+                        </div>
+
+
+
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+
+                          <span 
+
+                            style={{
+
+                              fontSize: 11,
+
+                              fontWeight: 800,
+
+                              padding: "3px 10px",
+
+                              borderRadius: 20,
+
+                              background: item.categoryBg,
+
+                              color: item.categoryColor,
+
+                              border: `1px solid ${item.categoryColor}40`
+
+                            }}
+
+                          >
+
+                            {item.categoryLabel}
+
+                          </span>
+
+                          <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>
+
+                            ⏳ <b>{item.diasDecorridos} dias</b> pós-serviço
+
+                          </span>
+
+                        </div>
+
+                      </div>
+
+
+
+                      <div style={{ background: "#141824", border: "1px solid #1c2234", borderRadius: 10, padding: "10px 12px" }}>
+
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#64748b", fontWeight: 700, marginBottom: 4 }}>
+
+                          <span>ÚLTIMA OS: {item.dataFormatted}</span>
+
+                          <span>KM: {item.kmAnterior ? item.kmAnterior.toLocaleString('pt-BR') : "N/D"}</span>
+
+                        </div>
+
+                        <div style={{ fontSize: 12, color: "#e2e8f0", fontWeight: 600, lineHeight: 1.4 }}>
+
+                          🛠️ {item.servicoAnterior}
+
+                        </div>
+
+                      </div>
+
+
+
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, paddingTop: 4 }}>
+
+                        {isContacted ? (
+
+                          <span style={{ fontSize: 11, color: "#10b981", fontWeight: 700, display: "flex", alignItems: "center", gap: 4 }}>
+
+                            ✅ Contato Realizado em {contactInfo.date}
+
+                          </span>
+
+                        ) : (
+
+                          <span style={{ fontSize: 11, color: "#f59e0b", fontWeight: 700, display: "flex", alignItems: "center", gap: 4 }}>
+
+                            ⏳ Pendente de Reengajamento
+
+                          </span>
+
+                        )}
+
+
+
+                        <div style={{ display: "flex", gap: 6 }}>
+
+                          {isContacted ? (
+
+                            <button 
+
+                              className="btn-ghost" 
+
+                              style={{ padding: "6px 10px", fontSize: 11 }}
+
+                              onClick={() => removeContact(item.key)}
+
+                              title="Desfazer e voltar para pendente"
+
+                            >
+
+                              🔄 Desfazer
+
+                            </button>
+
+                          ) : (
+
+                            <button 
+
+                              className="btn-ghost" 
+
+                              style={{ padding: "6px 10px", fontSize: 11, color: "#10b981", borderColor: "rgba(16,185,129,0.3)" }}
+
+                              onClick={() => saveContact(item.key)}
+
+                            >
+
+                              ✅ Marcar Contatado
+
+                            </button>
+
+                          )}
+
+
+
+                          <button 
+
+                            className="btn-primary" 
+
+                            style={{ padding: "7px 14px", fontSize: 12, background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "#ffffff" }}
+
+                            onClick={() => setSelectedItemForAi(item)}
+
+                          >
+
+                            🤖 Gerar Mensagem IA
+
+                          </button>
+
+                        </div>
+
+                      </div>
+
+                    </div>
+
+                  );
+
+                })}
+
+              </div>
+
+            )}
+
+          </div>
+
+
+
+          {/* MODAL DE IA E WHATSAPP */}
+
+          {selectedItemForAi && (
+
+            <AiMessageMãodal 
+
+              item={selectedItemForAi}
+
+              onClose={() => setSelectedItemForAi(null)}
+
+              onContacted={() => {
+
+                saveContact(selectedItemForAi.key);
+
+                setSelectedItemForAi(null);
+
+              }}
+
+            />
+
+          )}
+
+        </div>
+
+      );
+
+    }
+
+
+
+    // ── MODAL INTERATIVO DE GERAÇÃO DE MENSAGEM IA WHATSAPP ───────────────────
+
+    function AiMessageMãodal({ item, onClose, onContacted }) {
+
+      const [apiKey, setApiKey] = useState(() => (typeof window !== "undefined" ? localStorage.getItem("asdcar_gemini_api_key") || "" : ""));
+
+      const [promptGoal, setPromptGoal] = useState(() => {
+
+        if (item.diasDecorridos >= 180) return "Lembrete de troca de óleo, filtros e revisão preventiva";
+
+        if (item.diasDecorridos >= 120) return "Revisão de viagem e check-up pré-férias de fim de ano";
+
+        return "Lembrete preventivo de checagem geral e manutenção";
+
+      });
+
+
+
+      const [loading, setLoading] = useState(true);
+
+      const [stepIndex, setStepIndex] = useState(1);
+
+      const [generatedText, setGeneratedText] = useState("");
+
+      const [copied, setCopied] = useState(false);
+
+
+
+      const payload = React.useMemo(() => ({
+
+        cliente: item.cliente,
+
+        veiculo: item.veiculo,
+
+        data_ultimo_servico: item.dataFormatted,
+
+        dias_decorridos: item.diasDecorridos,
+
+        servico_anterior: item.servicoAnterior,
+
+        km_anterior: item.kmAnterior,
+
+        objetivo_mensagem: promptGoal
+
+      }), [item, promptGoal]);
+
+
+
+      const handleGenerate = async () => {
+
+        setLoading(true);
+
+        setStepIndex(1);
+
+        
+
+        const timer1 = setTimeout(() => setStepIndex(2), 600);
+
+        const timer2 = setTimeout(() => setStepIndex(3), 1200);
+
+
+
+        try {
+
+          const result = await generateAiMessage(payload, apiKey);
+
+          setGeneratedText(result);
+
+        } catch (e) {
+
+          setGeneratedText(`Olá, ${item.cliente}! Tudo bem? Aqui é a equipe da ASDCAR AutoGestão. Passando para lembrar do check-up preventivo do seu ${item.veiculo}! Se quiser agendar um horário esta semana, me avisa por aqui!`);
+
+        } finally {
+
+          clearTimeout(timer1);
+
+          clearTimeout(timer2);
+
+          setLoading(false);
+
+        }
+
+      };
+
+
+
+      useEffect(() => {
+
+        handleGenerate();
+
+      }, [promptGoal]);
+
+
+
+      const rawPhone = (item.telefone || "").replace(/\D/g, "");
+
+      const formattedPhone = rawPhone.length === 10 || rawPhone.length === 11 ? `55${rawPhone}` : rawPhone;
+
+      const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(generatedText)}`;
+
+
+
+      const handleCopy = () => {
+
+        navigator.clipboard.writeText(generatedText);
+
+        setCopied(true);
+
+        setTimeout(() => setCopied(false), 2000);
+
+      };
+
+
+
+      const handleSendWhatsapp = () => {
+
+        window.open(whatsappUrl, "_blank");
+
+        onContacted();
+
+      };
+
+
+
+      return (
+
+        <div className="modal-bg" onClick={onClose}>
+
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 640 }}>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid #1c2234", paddingBottom: 12 }}>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #7c3aed, #6d28d9)", display: "flex", alignItems: "center", justify: "center", fontSize: 18 }}>
+
+                  🤖
+
+                </div>
+
+                <div>
+
+                  <h3 style={{ fontSize: 16, fontWeight: 800, fontFamily: "'Syne', sans-serif" }}>
+
+                    Gerador de Mensagem com IA ASDCAR
+
+                  </h3>
+
+                  <p style={{ fontSize: 11, color: "#94a3b8" }}>
+
+                    WhatsApp Reengajamento LTV · {item.cliente} ({item.veiculo})
+
+                  </p>
+
+                </div>
+
+              </div>
+
+              <button className="btn-ghost" onClick={onClose} style={{ padding: "4px 10px", fontSize: 16 }}>✕</button>
+
+            </div>
+
+
+
+            <details style={{ background: "#0b0d14", border: "1px solid #1c2234", borderRadius: 10, padding: "8px 12px", marginBottom: 14, fontSize: 11, color: "#94a3b8" }}>
+
+              <summary style={{ cursor: "pointer", fontWeight: 700, color: "#7c3aed" }}>
+
+                🔍 Ver Payload Estruturado enviado para a API da IA (JSON)
+
+              </summary>
+
+              <pre style={{ marginTop: 8, background: "#06070a", padding: 10, borderRadius: 6, color: "#38bdf8", overflowX: "auto", fontSize: 11 }}>
+
+                {JSON.stringify(payload, null, 2)}
+
+              </pre>
+
+            </details>
+
+
+
+            <div style={{ marginBottom: 14 }}>
+
+              <label className="label">OBJETIVO DA MENSAGEM PREVENTIVA</label>
+
+              <select 
+
+                className="input" 
+
+                value={promptGoal} 
+
+                onChange={e => setPromptGoal(e.target.value)}
+
+              >
+
+                <option value="Lembrete preventivo de checagem geral e manutenção">
+
+                  90 dias: Lembrete preventivo de checagem geral
+
+                </option>
+
+                <option value="Lembrete de troca de óleo, filtros e revisão preventiva">
+
+                  180 dias (6 meses): Troca de óleo, filtros e alinhamento
+
+                </option>
+
+                <option value="Revisão de viagem e check-up pré-férias de fim de ano">
+
+                  Q4 / Pré-Férias: Revisão de viagem de fim de ano
+
+                </option>
+
+              </select>
+
+            </div>
+
+
+
+            {loading ? (
+
+              <div style={{ background: "#0b0d14", border: "1px dashed #7c3aed", borderRadius: 14, padding: 30, textAlign: "center" }}>
+
+                <div style={{ fontSize: 28, marginBottom: 10 }}>✨</div>
+
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#a78bfa" }}>
+
+                  {stepIndex === 1 && "📥 Lendo histórico da OS e dados do veículo..."}
+
+                  {stepIndex === 2 && "⚙️ Aplicando Prompt do Consultor Técnico ASDCAR..."}
+
+                  {stepIndex === 3 && "💬 Sintetizando mensagem humanizada..."}
+
+                </div>
+
+                <div style={{ fontSize: 11, color: "#64748b", marginTop: 6 }}>
+
+                  A IA está gerando o texto em aproximadamente 2 segundos...
+
+                </div>
+
+              </div>
+
+            ) : (
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+
+                <label className="label" style={{ color: "#10b981", display: "flex", justifyContent: "space-between" }}>
+
+                  <span>💬 MENSAGEM GERADA PELA IA (EDITÁVEL)</span>
+
+                  <span>{generatedText.length} caracteres</span>
+
+                </label>
+
+                <textarea 
+
+                  className="textarea" 
+
+                  style={{ minHeight: 150, borderColor: "#10b981", background: "#0b1318", color: "#f8fafc", fontSize: 13, lineHeight: 1.5 }}
+
+                  value={generatedText}
+
+                  onChange={e => setGeneratedText(e.target.value)}
+
+                />
+
+              </div>
+
+            )}
+
+
+
+            <div style={{ display: "flex", gap: 10, marginTop: 18, justifyContent: "space-between", flexWrap: "wrap" }}>
+
+              <button 
+
+                className="btn-ghost" 
+
+                onClick={handleGenerate}
+
+                disabled={loading}
+
+              >
+
+                ✨ Regerar
+
+              </button>
+
+
+
+              <div style={{ display: "flex", gap: 8 }}>
+
+                <button 
+
+                  className="btn-ghost" 
+
+                  onClick={handleCopy}
+
+                  disabled={loading}
+
+                >
+
+                  {copied ? "✅ Copiado!" : "📋 Copiar"}
+
+                </button>
+
+
+
+                <button 
+
+                  className="btn-primary" 
+
+                  style={{ background: "#25D366", color: "#000000", fontWeight: 800 }}
+
+                  onClick={handleSendWhatsapp}
+
+                  disabled={loading}
+
+                >
+
+                  💬 Enviar via WhatsApp Web
+
+                </button>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      );
+
+    }
+
+
+
+    // ── MODAL DE CONFIGURAÇÃO DE IA (GEMINI API KEY) ─────────────────────────
+
+    function AiConfigMãodal({ onClose }) {
+
+      const [apiKey, setApiKey] = useState(() => (typeof window !== "undefined" ? localStorage.getItem("asdcar_gemini_api_key") || "" : ""));
+
+      const [saved, setSaved] = useState(false);
+
+
+
+      const handleSave = () => {
+
+        if (typeof window !== "undefined") {
+
+          localStorage.setItem("asdcar_gemini_api_key", apiKey.trim());
+
+        }
+
+        setSaved(true);
+
+        setTimeout(() => {
+
+          setSaved(false);
+
+          onClose();
+
+        }, 1200);
+
+      };
+
+
+
+      return (
+
+        <div className="modal-bg" onClick={onClose}>
+
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 480 }}>
+
+            <h3 style={{ fontSize: 16, fontWeight: 800, fontFamily: "'Syne', sans-serif", marginBottom: 8 }}>
+
+              ⚙️ Configurações da IA (Google Gemini)
+
+            </h3>
+
+            <p style={{ fontSize: 12, color: "#94a3b8", marginBottom: 14, lineHeight: 1.4 }}>
+
+              Insira sua API Key do <b>Google Gemini</b> caso deseje chamadas diretas via API cloud. Se o campo ficar em branco, a ASDCAR utilizará automaticamente seu <b>Mãotor Inteligente Nativo de IA</b> com a persona do consultor técnico.
+
+            </p>
+
+
+
+            <div style={{ marginBottom: 14 }}>
+
+              <label className="label">GEMINI API KEY (OPCIONAL)</label>
+
+              <input 
+
+                className="input" 
+
+                type="password" 
+
+                placeholder="AIzaSy..." 
+
+                value={apiKey} 
+
+                onChange={e => setApiKey(e.target.value)} 
+
+              />
+
+            </div>
+
+
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
+
+              <button className="btn-ghost" onClick={onClose}>Cancelar</button>
+
+              <button className="btn-primary" onClick={handleSave}>
+
+                {saved ? "✅ Salvo!" : "Salvar Configurações"}
+
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      );
+
+    }
+
+
+
+
+
+    // ── MODAL GERADOR DE PDF ──────────────────────────────────────────────────
+
+    function ReportMãodal({ onClose, onGenerate }) {
+
+      const [from, setFrom] = useState(today().slice(0, 8) + "01");
+
+      const [to, setTo] = useState(today());
+
+      return (
+
+        <div className="modal-bg" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}>
+
+          <h3>Gerar Fechamento Comercial</h3>
+
+          <Field label="Data Início" type="date" value={from} onChange={setFrom} />
+
+          <Field label="Data Fim" type="date" value={to} onChange={setTo} />
+
+          <button className="btn-primary" style={{width:"100%", marginTop:10}} onClick={() => onGenerate(from, to)}>Compilar Relatório Master</button>
+
+        </div></div>
+
+      );
+
+    }
+
+
+
+    // ── JANELA DA O.S ────────────────────────────────────────────────────────
+
+    function OSMãodal({ service, vehicles, onClose }) {
+
+      const [email, setEmail] = useState("");
+
+      const car = vehicles.find(v => v.id === service.vehicleId) || {};
+
+      return (
+
+        <div className="modal-bg" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}>
+
+          <h3>Emitir O.S. — ASDCAR</h3>
+
+          <div style={{marginBottom:10}}><label className="label">Cliente</label><input className="input" value={car.owner || "—"} disabled /></div>
+
+          <Field label="E-mail do Cliente (Opcional)" value={email} onChange={setEmail} type="email" />
+
+          <button className="btn-primary" style={{width:"100%", marginTop:10, background:"#7c3aed", color:"#fff"}} onClick={() => { generateOSFile(service, car, email); onClose(); }}>Gerar Via de Impressão</button>
+
+        </div></div>
+
+      );
+
+    }
+
+
+
+    function Section({ title, action, children }) { return (<div style={{ display: "flex", flexDirection: "column", gap: 12 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><h1 style={{ fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 800 }}>{title}</h1>{action}</div>{children}</div>); }
+
+    function StatusBadge({ status, map }) { const color = (map || {})[status] || "#6b7280"; return <span className="badge" style={{ background: color + "22", color, border: `1px solid ${color}44` }}>{status || "—"}</span>; }
+
+    function Field({ label, value, onChange, type = "text", disabled = false, placeholder = "" }) { return <div style={{ marginBottom: 10 }}><label className="label">{label}</label><input className="input" placeholder={placeholder} type={type} value={value || ""} onChange={e => onChange(e.target.value)} disabled={disabled} /></div>; }
+
+    function SelectField({ label, value, onChange, options }) { return <div style={{ marginBottom: 10 }}><label className="label">{label}</label><select className="input" value={value} onChange={e => onChange(e.target.value)}>{options.map(o => <option key={o} value={o}>{o}</option>)}</select></div>; }
+
+
+
+    // ── GERADORES DE DOCUMENTOS COMPLETOS ─────────────────────────────────────
+
+    function generateOSFile(s, car, email) {
+
+      const tBruto = Number(s.partsValue || 0) + Number(s.laborValue || 0);
+
+      let escopoPrincipal = s.description || "";
+
+      let blocoPecasMistas = "";
+
+      if (s.description?.includes("|| Peças Oficina:")) {
+
+        const blocos = s.description.split("||");
+
+        escopoPrincipal = blocos[0].trim();
+
+        blocoPecasMistas = "<div style='margin-top:15px; padding:10px; background:#f8fafc; border-radius:4px; border:1px solid #e2e8f0;'><p style='margin-bottom:4px;'>⚙️ <strong>Peças fornecidas pela ASDCAR:</strong> " + (blocos[1]?.replace("Peças Oficina:", "")?.trim() || "") + "</p><p>👤 <strong>Peças trazidas pelo Cliente:</strong> " + (blocos[2]?.replace("Peças Cliente:", "")?.trim() || "") + " <em>(Cliente forneceu)</em></p></div>";
+
+      } else if (s.description?.includes("(Cliente forneceu as peças)")) {
+
+        escopoPrincipal = s.description.replace("(Cliente forneceu as peças)", "").trim();
+
+        blocoPecasMistas = "<div style='margin-top:10px; color:#64748b; font-style:italic;'>⚠️ Nota: Todas as peças para este serviço foram fornecidas pelo próprio cliente.</div>";
+
+      }
+
+
+
+      const html = "<!DOCTYPE html><html lang='pt-BR'><head><meta charset='UTF-8'/><title>O.S. " + s.vehiclePlate + "</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:12px;color:#0f172a;padding:40px;}.os-border{border:2px dashed #000;padding:30px;}.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #000;padding-bottom:15px;margin-bottom:20px;}.grid-ficha{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:25px;background:#f8fafc;padding:15px;border:1px solid #e2e8f0;}h2{font-size:13px;text-transform:uppercase;margin:20px 0 10px 0;border-left:4px solid #000;padding-left:8px;}.box-servico{border:1px solid #e2e8f0;padding:15px;min-height:80px;line-height:1.5;background:#fff;margin-bottom:20px;}.termos{font-size:10px;color:#475569;margin:30px 0;text-align:justify;}.assinaturas{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:50px;text-align:center;}.linha-sub{border-top:1px solid #000;padding-top:6px;font-size:11px;font-weight:bold;}.no-print{background:#7c3aed;color:white;padding:14px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:25px;border-radius:8px;border:none;width:100%;font-size:15px;}@media print{.no-print{display:none;}body{padding:0;}.os-border{border:none;}}</style></head><body><button class='no-print' onclick='window.print()'>CLIQUE AQUI PARA IMPRIMIR VIA DO CLIENTE</button><div class='os-border'><div class='hdr'><div><strong style='font-size:24px;letter-spacing:1px;'>ASDCAR</strong><br/><span style='color:#475569;'>Centro Automotivo</span></div><div style='text-align:right;'><strong>ORDEM DE SERVIÇO</strong><br/>Data Entrada: " + fmtDate(s.entryDate) + "<br/>Status: <strong>" + s.status + "</strong></div></div><h2>👤 Ficha do Cliente</h2><div class='grid-ficha'><div>Nome: <strong>" + (car.owner || '—') + "</strong><br/>Telefone: <strong>" + (car.phone || '—') + "</strong></div><div>E-mail: <strong>" + (email || 'Não informado') + "</strong></div></div><h2>🚗 Identificação do Veículo</h2><div class='grid-ficha'><div>Placa: <strong style='text-transform:uppercase;'>" + s.vehiclePlate + "</strong><br/>Modelo: <strong>" + (s.vehicleBrand || car.brand) + " " + (s.vehicleMãodel || car.model) + "</strong></div><div>Ano: <strong>" + (car.year || '—') + "</strong><br/>KM Entrada: <strong>" + fmtKm(s.mileage) + "</strong></div></div><h2>⚙️ Serviços Solicitados / Diagnóstico</h2><div class='box-servico'><strong>" + escopoPrincipal + "</strong>" + blocoPecasMistas + "</div><h2>💰 Valores e Condição de Pagamento</h2><div class='grid-ficha'><div>Valor Peças: <strong>" + fmt(s.partsValue) + "</strong><br/>Mão de Obra: <strong>" + fmt(s.laborValue) + "</strong><br/><span style='font-size:14px;color:#000;'>Total da O.S.: <strong>" + fmt(tBruto) + "</strong></span></div><div>Forma de Pagamento: <strong>" + s.paymentMethod + "</strong></div></div><div class='termos'><strong>TERMOS DE GARANTIA E CONDIÇÕES:</strong><br/>1. A garantia dos serviços executados é de 90 dias a contar da data de entrega do veículo, cobrindo exclusivamente defeitos de mão de obra.<br/>2. Peças fornecidas pelo cliente não possuem garantia pela oficina ASDCAR.<br/>3. Veículos não retirados em até 5 dias após a notificação de término estarão sujeitos a taxa de diária de permanência.</div><div class='assinaturas'><div><div class='linha-sub'>ASDCAR Centro Automotivo</div></div><div><div class='linha-sub'>Assinatura do Cliente / De acordo</div></div></div></div></body></html>";
+
+      const w = window.open("", "_blank");
+
+      if (w) { w.document.write(html); w.document.close(); }
+
+    }
+
+
+
+    function generatePDF(vehicles, services, expenses, fromStr, toStr, viewMãode = "labor") {
+
       const from = new Date(fromStr + "T00:00:00");
+
       const to = new Date(toStr + "T23:59:59");
+
       const relServices = services.filter(s => { if (s.status !== "Entregue" || !s.exitDate) return false; const d = new Date(s.exitDate + "T12:00:00"); return d >= from && d <= to; });
+
       const relExpenses = expenses.filter(e => { if (!e.expense_date) return false; const d = new Date(e.expense_date + "T12:00:00"); return d >= from && d <= to; });
 
+
+
       const totalPecas = relServices.reduce((a, s) => a + (Number(s.partsValue) || 0), 0);
+
       const totalMO = relServices.reduce((a, s) => a + (Number(s.laborValue) || 0), 0);
 
+
+
       const faturamentoLiquido = relServices.reduce((acc, s) => {
+
         if (s.paymentMethod === "Múltiplo / Misto") {
+
           const taxaCard = PAYMENT_METHODS[s.mixedCardMethod] || 0;
+
           const dinheiroPixLivre = Number(s.mixedCash || 0);
-          if (viewMode === "labor") {
+
+          if (viewMãode === "labor") {
+
             const totalBrutoServico = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
+
             if (totalBrutoServico <= 0) return acc;
+
             const percentualLabor = Number(s.laborValue) / totalBrutoServico;
+
             return acc + (dinheiroPixLivre * percentualLabor) + (Number(s.mixedCard || 0) * percentualLabor * (1 - taxaCard / 100));
+
           } else {
+
             return acc + dinheiroPixLivre + (Number(s.mixedCard || 0) * (1 - taxaCard / 100));
+
           }
+
         }
+
         const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
-        if (viewMode === "labor") { return acc + (Number(s.laborValue || 0) * (1 - taxa / 100)); }
+
+        if (viewMãode === "labor") { return acc + (Number(s.laborValue || 0) * (1 - taxa / 100)); }
+
         else { return acc + (s.netValue || 0); }
+
       }, 0);
 
+
+
       const totalDespesas = relExpenses.reduce((a, e) => a + (Number(e.value) || 0), 0);
+
       const resultadoReal = faturamentoLiquido - totalDespesas;
 
-      const html = "<!DOCTYPE html><html lang='pt-BR'><head><meta charset='UTF-8'/><title>Fechamento Comercial ASDCAR</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:11px;color:#0f172a;padding:30px;}.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #f97316;padding-bottom:12px;margin-bottom:20px;}.kpi-box{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}.kpi{background:#f8fafc;border:1px solid #e2e8f0;padding:10px;border-radius:6px;}.kpi-lbl{font-size:9px;color:#64748b;text-transform:uppercase;}.kpi-val{font-size:14px;font-weight:bold;margin-top:2px;}table{width:100%;border-collapse:collapse;margin-bottom:20px;}th,td{padding:8px;border:1px solid #e2e8f0;text-align:left;}th{background:#f1f5f9;font-size:9px;text-transform:uppercase;}.no-print{background:#f97316;color:white;padding:12px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:6px;border:none;width:100%;font-size:14px;}@media print{.no-print{display:none;}body{padding:0;}}</style></head><body><button class='no-print' onclick='window.print()'>CLIQUE AQUI PARA IMPRIMIR OU SALVAR EM PDF</button><div class='hdr'><div><strong style='font-size:22px;color:#f97316;'>ASDCAR</strong><br/><span>Fechamento Comercial</span></div><div style='text-align:right;'>Período: <strong>" + fmtDate(fromStr) + " até " + fmtDate(toStr) + "</strong></div></div><div class='kpi-box'><div class='kpi'><div class='kpi-lbl'>Peças Totais</div><div class='kpi-val' style='color:#8b5cf6;'>" + fmt(totalPecas) + "</div></div><div class='kpi'><div class='kpi-lbl'>Mão de Obra</div><div class='kpi-val' style='color:#10b981;'>" + fmt(totalMO) + "</div></div><div class='kpi'><div class='kpi-lbl'>Entradas Líquidas</div><div class='kpi-val' style='color:#3b82f6;'>" + fmt(faturamentoLiquido) + "</div></div><div class='kpi'><div class='kpi-lbl'>Resultado Real</div><div class='kpi-val' style='color:" + (resultadoReal >= 0 ? '#10b981' : '#ef4444') + ";'>" + fmt(resultadoReal) + "</div></div></div><h3>📋 Serviços Entregues (" + relServices.length + ")</h3><table><thead><tr><th>Veículo</th><th>Descrição / Obs.</th><th>Forma Pagto</th><th>Peças</th><th>M.O.</th><th>Saída</th></tr></thead><tbody>" + relServices.map(s => "<tr><td><strong>" + s.vehiclePlate + "</strong><br/>" + s.vehicleBrand + " " + s.vehicleModel + "</td><td>" + s.description.replace(/\|\|/g, '<br/>') + "</td><td>" + s.paymentMethod + "</td><td>" + fmt(s.partsValue) + "</td><td>" + fmt(s.laborValue) + "</td><td>" + fmtDate(s.exitDate) + "</td></tr>").join('') + "</tbody></table><h3>💸 Despesas do Período (" + relExpenses.length + ")</h3><table><thead><tr><th>Descrição</th><th>Categoria</th><th>Data</th><th>Valor</th></tr></thead><tbody>" + relExpenses.map(e => "<tr><td>" + e.description + "</td><td>" + e.category + "</td><td>" + fmtDate(e.expense_date) + "</td><td style='color:#ef4444;font-weight:bold;'>-" + fmt(e.value) + "</td></tr>").join('') + "</tbody></table></body></html>";
+
+
+      const html = "<!DOCTYPE html><html lang='pt-BR'><head><meta charset='UTF-8'/><title>Fechamento Comercial ASDCAR</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:11px;color:#0f172a;padding:30px;}.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #f97316;padding-bottom:12px;margin-bottom:20px;}.kpi-box{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}.kpi{background:#f8fafc;border:1px solid #e2e8f0;padding:10px;border-radius:6px;}.kpi-lbl{font-size:9px;color:#64748b;text-transform:uppercase;}.kpi-val{font-size:14px;font-weight:bold;margin-top:2px;}table{width:100%;border-collapse:collapse;margin-bottom:20px;}th,td{padding:8px;border:1px solid #e2e8f0;text-align:left;}th{background:#f1f5f9;font-size:9px;text-transform:uppercase;}.no-print{background:#f97316;color:white;padding:12px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:6px;border:none;width:100%;font-size:14px;}@media print{.no-print{display:none;}body{padding:0;}}</style></head><body><button class='no-print' onclick='window.print()'>CLIQUE AQUI PARA IMPRIMIR OU SALVAR EM PDF</button><div class='hdr'><div><strong style='font-size:22px;color:#f97316;'>ASDCAR</strong><br/><span>Fechamento Comercial</span></div><div style='text-align:right;'>Período: <strong>" + fmtDate(fromStr) + " até " + fmtDate(toStr) + "</strong></div></div><div class='kpi-box'><div class='kpi'><div class='kpi-lbl'>Peças Totais</div><div class='kpi-val' style='color:#8b5cf6;'>" + fmt(totalPecas) + "</div></div><div class='kpi'><div class='kpi-lbl'>Mão de Obra</div><div class='kpi-val' style='color:#10b981;'>" + fmt(totalMO) + "</div></div><div class='kpi'><div class='kpi-lbl'>Entradas Líquidas</div><div class='kpi-val' style='color:#3b82f6;'>" + fmt(faturamentoLiquido) + "</div></div><div class='kpi'><div class='kpi-lbl'>Resultado Real</div><div class='kpi-val' style='color:" + (resultadoReal >= 0 ? '#10b981' : '#ef4444') + ";'>" + fmt(resultadoReal) + "</div></div></div><h3>📋 Serviços Entregues (" + relServices.length + ")</h3><table><thead><tr><th>Veículo</th><th>Descrição / Obs.</th><th>Forma Pagto</th><th>Peças</th><th>M.O.</th><th>Saída</th></tr></thead><tbody>" + relServices.map(s => "<tr><td><strong>" + s.vehiclePlate + "</strong><br/>" + s.vehicleBrand + " " + s.vehicleMãodel + "</td><td>" + s.description.replace(/\|\|/g, '<br/>') + "</td><td>" + s.paymentMethod + "</td><td>" + fmt(s.partsValue) + "</td><td>" + fmt(s.laborValue) + "</td><td>" + fmtDate(s.exitDate) + "</td></tr>").join('') + "</tbody></table><h3>💸 Despesas do Período (" + relExpenses.length + ")</h3><table><thead><tr><th>Descrição</th><th>Categoria</th><th>Data</th><th>Valor</th></tr></thead><tbody>" + relExpenses.map(e => "<tr><td>" + e.description + "</td><td>" + e.category + "</td><td>" + fmtDate(e.expense_date) + "</td><td style='color:#ef4444;font-weight:bold;'>-" + fmt(e.value) + "</td></tr>").join('') + "</tbody></table></body></html>";
+
       const w = window.open("", "_blank");
+
       if (w) { w.document.write(html); w.document.close(); }
+
     }
 
+
+
     ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+
   </script>
+
 </body>
+
 </html>
