@@ -686,14 +686,14 @@ import { useState, useEffect, useRef } from 'react';
 
               <>
 
-                {tab === "dashboard" && <Dashboard services={services} viewMãode={globalViewMãode} setViewMãode={setGlobalViewMãode} onEditService={handleEditCar} />}
+                {tab === "dashboard" && <Dashboard services={services} viewMode={globalViewMãode} setViewMãode={setGlobalViewMãode} onEditService={handleEditCar} />}
 
                 {tab === "services" && <ServicesTab services={services} vehicles={vehicles} loadAll={loadAll} onOpenOS={(s) => setShowOSModal(s)} driveUrl={driveUrl} onOpenDriveConfig={() => setShowDriveModal(true)} onZoomPhoto={(p) => setZoomPhoto(p)} externalModalService={serviceModalToOpen} onClearExternalModal={() => setServiceModalToOpen(null)} />}
 
                 {tab === "monthly_history" && <MonthlyHistoryTab services={services} vehicles={vehicles} onOpenOS={(s) => setShowOSModal(s)} onZoomPhoto={(p) => setZoomPhoto(p)} onEditService={handleEditCar} />}
 
 
-                {tab === "finance" && <FinanceTab expenses={expenses} services={services} loadAll={loadAll} viewMãode={globalViewMãode} setViewMãode={setGlobalViewMãode} />}
+                {tab === "finance" && <FinanceTab expenses={expenses} services={services} loadAll={loadAll} viewMode={globalViewMãode} setViewMãode={setGlobalViewMãode} />}
 
                 {tab === "vehicles" && <VehiclesTab vehicles={vehicles} services={services} loadAll={loadAll} onZoomPhoto={(p) => setZoomPhoto(p)} />}
 
@@ -731,7 +731,7 @@ import { useState, useEffect, useRef } from 'react';
 
           {/* MODAIS */}
 
-          {showReport && <ReportModal services={services} viewMãode={globalViewMãode} onClose={() => setShowReport(false)} onGenerate={(f, t) => { generatePDF(vehicles, services, expenses, f, t, globalViewMãode); setShowReport(false); }} />}
+          {showReport && <ReportModal services={services} viewMode={globalViewMãode} onClose={() => setShowReport(false)} onGenerate={(f, t) => { generatePDF(vehicles, services, expenses, f, t, globalViewMãode); setShowReport(false); }} />}
 
           {showDriveModal && (
 
@@ -762,7 +762,7 @@ import { useState, useEffect, useRef } from 'react';
 
     // ── ABA INÍCIO ─────────────────────────────────────────────────────────────
 
-    function Dashboard({ services, viewMãode, setViewMãode, onEditService }) {
+    function Dashboard({ services, viewMode, setViewMãode, onEditService }) {
 
       const [selMãonth, setSelMãonth] = useState(new Date().getMãonth());
 
@@ -804,7 +804,7 @@ import { useState, useEffect, useRef } from 'react';
 
           
 
-          if (viewMãode === "labor") {
+          if (viewMode === "labor") {
 
             const totalBrutoServico = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
 
@@ -838,7 +838,7 @@ import { useState, useEffect, useRef } from 'react';
 
         const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
 
-        if (viewMãode === "labor") {
+        if (viewMode === "labor") {
 
           return acc + (Number(s.laborValue || 0) * (1 - taxa / 100));
 
@@ -890,7 +890,7 @@ import { useState, useEffect, useRef } from 'react';
 
                 <label className="label">MODELO DE FILTRO (PAINEL & PDF)</label>
 
-                <select className="input" value={viewMãode} onChange={(e) => setViewMãode(e.target.value)}>
+                <select className="input" value={viewMode} onChange={(e) => setViewMãode(e.target.value)}>
 
                   <option value="labor">Mão de Obra Líquida (Desconta taxas de cartão)</option>
 
@@ -970,7 +970,7 @@ import { useState, useEffect, useRef } from 'react';
 
               <div className="kpi-number" style={{ color: "#10b981" }}>{fmt(receitaCalculada)}</div>
 
-              <div className="kpi-label">{viewMãode === "labor" ? "M.O. LÍQUIDA" : "FATURAMENTO LÍQ."}</div>
+              <div className="kpi-label">{viewMode === "labor" ? "M.O. LÍQUIDA" : "FATURAMENTO LÍQ."}</div>
 
             </div>
 
@@ -2310,7 +2310,7 @@ import { useState, useEffect, useRef } from 'react';
 
     // ── ABA FINANCEIRO ─────────────────────────────────────────────────────────
 
-    function FinanceTab({ services, expenses, loadAll, viewMãode, setViewMãode }) {
+    function FinanceTab({ services, expenses, loadAll, viewMode, setViewMãode }) {
 
       const [modal, setModal] = useState(false);
 
@@ -2332,7 +2332,7 @@ import { useState, useEffect, useRef } from 'react';
 
             const dinheiroPixLivre = Number(s.mixedCash || 0);
 
-            if (viewMãode === "labor") {
+            if (viewMode === "labor") {
 
               const totalBrutoServico = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
 
@@ -2352,7 +2352,7 @@ import { useState, useEffect, useRef } from 'react';
 
           const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
 
-          return viewMãode === "labor" ? acc + (Number(s.laborValue || 0) * (1 - taxa / 100)) : acc + (s.netValue || 0);
+          return viewMode === "labor" ? acc + (Number(s.laborValue || 0) * (1 - taxa / 100)) : acc + (s.netValue || 0);
 
         }, 0);
 
@@ -2406,7 +2406,7 @@ import { useState, useEffect, useRef } from 'react';
 
             <div className="card" style={{ borderLeft: "3px solid #10b981" }}>
 
-              <label className="label">{viewMãode === "labor" ? "Entradas (M.O. Líquida)" : "Entradas (Total Líquido)"}</label>
+              <label className="label">{viewMode === "labor" ? "Entradas (M.O. Líquida)" : "Entradas (Total Líquido)"}</label>
 
               <div style={{ fontSize: 16, fontWeight: 800 }}>{fmt(totalIn)}</div>
 
@@ -3710,7 +3710,6 @@ Se quiser, me avisa por aqui que já reservo um horário exclusivo para você ne
 
       );
 
-    }
 
 
 
@@ -4049,7 +4048,6 @@ Se quiser, me avisa por aqui que já reservo um horário exclusivo para você ne
 
       );
 
-    }
 
 
 
@@ -4144,7 +4142,6 @@ Se quiser, me avisa por aqui que já reservo um horário exclusivo para você ne
 
       );
 
-    }
 
 
 
@@ -4254,7 +4251,7 @@ Se quiser, me avisa por aqui que já reservo um horário exclusivo para você ne
 
 
 
-    function generatePDF(vehicles, services, expenses, fromStr, toStr, viewMãode = "labor") {
+    function generatePDF(vehicles, services, expenses, fromStr, toStr, viewMode = "labor") {
 
       const from = new Date(fromStr + "T00:00:00");
 
@@ -4280,7 +4277,7 @@ Se quiser, me avisa por aqui que já reservo um horário exclusivo para você ne
 
           const dinheiroPixLivre = Number(s.mixedCash || 0);
 
-          if (viewMãode === "labor") {
+          if (viewMode === "labor") {
 
             const totalBrutoServico = (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0);
 
@@ -4300,7 +4297,7 @@ Se quiser, me avisa por aqui que já reservo um horário exclusivo para você ne
 
         const taxa = PAYMENT_METHODS[s.paymentMethod] || 0;
 
-        if (viewMãode === "labor") { return acc + (Number(s.laborValue || 0) * (1 - taxa / 100)); }
+        if (viewMode === "labor") { return acc + (Number(s.laborValue || 0) * (1 - taxa / 100)); }
 
         else { return acc + (s.netValue || 0); }
 
