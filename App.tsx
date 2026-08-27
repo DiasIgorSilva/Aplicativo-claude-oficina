@@ -406,7 +406,8 @@ import { useState, useEffect, useRef } from 'react';
 
       const [showReport, setShowReport] = useState(false);
 
-      const [showOSModal, setShowOSModal] = useState(null);
+      const [globalViewMode, setGlobalViewMode] = useState("labor");
+  const [showOSModal, setShowOSModal] = useState(null);
 
       const [globalViewMãode, setGlobalViewMãode] = useState("labor");
 
@@ -464,25 +465,16 @@ import { useState, useEffect, useRef } from 'react';
 
 
 
-      const [showAiConfigModal, setShowAiConfigModal] = useState(false);
 
 
 
       const tabs = [
-
-        { id: "dashboard", label: "Início", icon: "🏠" }, 
-
-        { id: "services", label: "Oficina", icon: "🔧" }, 
-
-        { id: "monthly_history", label: "Passaram no Mês", icon: "📋" }, 
-
-        { id: "retention", label: "Retenção & LTV", icon: "🎯" }, 
-
-        { id: "finance", label: "Financeiro", icon: "💰" }, 
-
-        { id: "vehicles", label: "Carros", icon: "🚗" }
-
-      ];
+    { id: "dashboard", label: "Início", icon: "🏠" }, 
+    { id: "services", label: "Oficina", icon: "🔧" }, 
+    { id: "monthly_history", label: "Passaram no Mês", icon: "📋" }, 
+    { id: "finance", label: "Financeiro", icon: "💰" }, 
+    { id: "vehicles", label: "Carros", icon: "🚗" }
+  ];
 
 
 
@@ -700,7 +692,6 @@ import { useState, useEffect, useRef } from 'react';
 
                 {tab === "monthly_history" && <MonthlyHistoryTab services={services} vehicles={vehicles} onOpenOS={(s) => setShowOSModal(s)} onZoomPhoto={(p) => setZoomPhoto(p)} onEditService={handleEditCar} />}
 
-                {tab === "retention" && <RetentionTab services={services} vehicles={vehicles} onOpenAiConfig={() => setShowAiConfigModal(true)} />}
 
                 {tab === "finance" && <FinanceTab expenses={expenses} services={services} loadAll={loadAll} viewMãode={globalViewMãode} setViewMãode={setGlobalViewMãode} />}
 
@@ -760,7 +751,6 @@ import { useState, useEffect, useRef } from 'react';
 
           {showOSModal && <OSModal service={showOSModal} vehicles={vehicles} onClose={() => setShowOSModal(null)} />}
 
-          {showAiConfigModal && <AiConfigModal onClose={() => setShowAiConfigModal(false)} />}
 
         </div>
 
@@ -2782,7 +2772,6 @@ Se quiser, me avisa por aqui que já reservo um horário exclusivo para você ne
 
     // ── COMPONENTE ABA RETENÇÃO & LTV ──────────────────────────────────────────
 
-    function RetentionTab({ services, vehicles, onOpenAiConfig }) {
 
       const [search, setSearch] = useState("");
 
@@ -3700,7 +3689,6 @@ Se quiser, me avisa por aqui que já reservo um horário exclusivo para você ne
 
           {selectedItemForAi && (
 
-            <AiMessageModal 
 
               item={selectedItemForAi}
 
@@ -3728,7 +3716,6 @@ Se quiser, me avisa por aqui que já reservo um horário exclusivo para você ne
 
     // ── MODAL INTERATIVO DE GERAÇÃO DE MENSAGEM IA WHATSAPP ───────────────────
 
-    function AiMessageModal({ item, onClose, onContacted }) {
 
       const [apiKey, setApiKey] = useState(() => (typeof window !== "undefined" ? localStorage.getItem("asdcar_gemini_api_key") || "" : ""));
 
@@ -4068,7 +4055,6 @@ Se quiser, me avisa por aqui que já reservo um horário exclusivo para você ne
 
     // ── MODAL DE CONFIGURAÇÃO DE IA (GEMINI API KEY) ─────────────────────────
 
-    function AiConfigModal({ onClose }) {
 
       const [apiKey, setApiKey] = useState(() => (typeof window !== "undefined" ? localStorage.getItem("asdcar_gemini_api_key") || "" : ""));
 
