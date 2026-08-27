@@ -503,15 +503,15 @@
 
         if (isInitial) setLoading(true);
 
-        const vRes = await supabaseClient.from("vehicles").select("*").or("is_test.is.null,is_test.eq.false").order("created_at", { ascending: false });
+        const vRes = await supabaseClient.from("vehicles").select("*").order("created_at", { ascending: false });
 
         if (vRes.data) setVehicles(vRes.data.map(mapV));
 
 
 
-        const sRes = await supabaseClient.from("services").select("*").or("is_test.is.null,is_test.eq.false").order("created_at", { ascending: false });
+        const sRes = await supabaseClient.from("services").select("*").order("created_at", { ascending: false });
 
-        if (sRes.data) setServices(sRes.data.map(mapS));
+        if (sRes.data) setServices(sRes.data.map(mapS).filter(s => !s.description?.includes("[TESTE]") && s.status !== "TESTE"));
 
 
 
