@@ -24,10 +24,6 @@
 
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
 
-<script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7/babel.min.js" crossorigin="anonymous"></script>
 </head>
 
 <body style="background: #0b0d14; color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; margin: 0; padding: 0;">
@@ -432,7 +428,27 @@
 
     function App() {
 
-      const [tab, setTab] = useState("dashboard");
+      const [tab, setTabState] = useState("dashboard");
+      const tabScrollPositions = useRef({
+        dashboard: 0,
+        services: 0,
+        monthly_history: 0,
+        finance: 0,
+        vehicles: 0
+      });
+
+      const changeTab = (newTab) => {
+        if (!newTab || newTab === tab) return;
+        tabScrollPositions.current[tab] = window.scrollY || window.pageYOffset || 0;
+        setTabState(newTab);
+        const targetScroll = tabScrollPositions.current[newTab] || 0;
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            window.scrollTo({ top: targetScroll, behavior: "instant" });
+          }, 15);
+        });
+      };
+      const setTab = changeTab;
 
       const [vehicles, setVehicles] = useState([]);
 

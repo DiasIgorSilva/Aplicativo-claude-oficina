@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect, useRef } from 'react';
 
     import { createClient } from '@supabase/supabase-js';
@@ -394,7 +393,27 @@ import { useState, useEffect, useRef } from 'react';
 
     export default function App() {
 
-      const [tab, setTab] = useState("dashboard");
+      const [tab, setTabState] = useState("dashboard");
+      const tabScrollPositions = useRef({
+        dashboard: 0,
+        services: 0,
+        monthly_history: 0,
+        finance: 0,
+        vehicles: 0
+      });
+
+      const changeTab = (newTab) => {
+        if (!newTab || newTab === tab) return;
+        tabScrollPositions.current[tab] = window.scrollY || window.pageYOffset || 0;
+        setTabState(newTab);
+        const targetScroll = tabScrollPositions.current[newTab] || 0;
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            window.scrollTo({ top: targetScroll, behavior: "instant" });
+          }, 15);
+        });
+      };
+      const setTab = changeTab;
 
       const [vehicles, setVehicles] = useState([]);
 
@@ -2775,4 +2794,3 @@ function ReportModal({ onClose, onGenerate }) {
       if (w) { w.document.write(html); w.document.close(); }
 
     }
-
