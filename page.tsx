@@ -1494,6 +1494,20 @@ const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
 
 
+      
+      const deleteService = async (serviceId) => {
+        if (!serviceId) return;
+        if (confirm("Tem certeza que deseja excluir este serviço?")) {
+          const { error } = await supabaseClient.from("services").delete().eq("id", serviceId);
+          if (!error) {
+            await loadAll(false);
+            alert("Serviço excluído com sucesso!");
+          } else {
+            alert("Erro ao excluir: " + error.message);
+          }
+        }
+      };
+
       const save = async () => {
 
         const vId = form.vehicleId || form.vehicle_id || editing?.vehicleId || editing?.vehicle_id;
