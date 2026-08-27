@@ -217,8 +217,8 @@ export default function App() {
     }
   }, []);
 
-  async function loadAll() {
-    setLoading(true);
+  async function loadAll(isInitial = false) {
+    if (isInitial) setLoading(true);
     const vRes = await supabase.from("vehicles").select("*").order("created_at", { ascending: false });
     if (vRes.data) setVehicles(vRes.data.map(mapV));
 
@@ -231,7 +231,7 @@ export default function App() {
     setLoading(false);
   }
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => { loadAll(true); }, []);
 
   const tabs = [
     { id: "dashboard", label: "Início", icon: "🏠" }, 
@@ -784,7 +784,7 @@ function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDr
     }
 
     if (!error) { 
-      await loadAll(); 
+      await loadAll(false); 
       close(); 
     } else { 
       alert("Erro ao salvar no banco de dados: " + error.message); 
@@ -1181,7 +1181,7 @@ function FinanceTab({ services, expenses, loadAll, viewMode, setViewMode }: any)
     if (!form.category || !form.value) return alert("Preencha categoria e valor.");
     const row = { id: form.id || uid(), category: form.category, value: Number(form.value), supplier: form.supplier || "Geral", expense_date: form.expense_date || today() };
     const { error } = await supabase.from("expenses").upsert(row);
-    if (!error) { await loadAll(); setModal(false); setForm({ expense_date: today() }); } else { alert("Erro ao salvar: " + error.message); }
+    if (!error) { await loadAll(false); setModal(false); setForm({ expense_date: today() }); } else { alert("Erro ao salvar: " + error.message); }
   };
 
   return (
@@ -1253,7 +1253,7 @@ function VehiclesTab({ vehicles, services, loadAll }: any) {
       year: form.year, color: form.color, owner: form.owner, phone: form.phone, notes: form.notes, mileage: Number(form.mileage) || 0 
     };
     const { error } = await supabase.from("vehicles").upsert(row);
-    if (!error) { await loadAll(); close(); } else { alert("Erro ao salvar: " + error.message); }
+    if (!error) { await loadAll(false); close(); } else { alert("Erro ao salvar: " + error.message); }
   };
 
   const filtered = vehicles.filter((v: any) => !search || (v.plate||"").toLowerCase().includes(search.toLowerCase()) || (v.owner||"").toLowerCase().includes(search.toLowerCase()));
