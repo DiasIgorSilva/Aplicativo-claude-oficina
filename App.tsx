@@ -92,7 +92,7 @@ import { useState, useEffect, useRef } from 'react';
 
         id: r.id, vehicleId: r.vehicle_id, vehiclePlate: r.vehicle_plate, 
 
-        vehicleBrand: r.vehicle_brand, vehicleMãodel: r.vehicle_model, 
+        vehicleBrand: r.vehicle_brand, vehicleModel: r.vehicle_model, 
 
         description: r.description, partsValue: parts, laborValue: labor, 
 
@@ -288,7 +288,7 @@ import { useState, useEffect, useRef } from 'react';
 
 
 
-    function DriveMãodal({ driveUrl, onSave, onClose }) {
+    function DriveModal({ driveUrl, onSave, onClose }) {
 
       const [urlInput, setUrlInput] = useState(driveUrl || "");
 
@@ -346,7 +346,7 @@ import { useState, useEffect, useRef } from 'react';
 
 
 
-    function PhotoZoomMãodal({ photo, onClose }) {
+    function PhotoZoomModal({ photo, onClose }) {
 
       if (!photo) return null;
 
@@ -406,17 +406,17 @@ import { useState, useEffect, useRef } from 'react';
 
       const [showReport, setShowReport] = useState(false);
 
-      const [showOSMãodal, setShowOSMãodal] = useState(null);
+      const [showOSModal, setShowOSModal] = useState(null);
 
       const [globalViewMãode, setGlobalViewMãode] = useState("labor");
 
       const [driveUrl, setDriveUrl] = useState("");
 
-      const [showDriveMãodal, setShowDriveMãodal] = useState(false);
+      const [showDriveModal, setShowDriveModal] = useState(false);
 
       const [zoomPhoto, setZoomPhoto] = useState(null);
 
-      const [serviceMãodalToOpen, setServiceMãodalToOpen] = useState(null);
+      const [serviceModalToOpen, setServiceModalToOpen] = useState(null);
 
 
 
@@ -464,7 +464,7 @@ import { useState, useEffect, useRef } from 'react';
 
 
 
-      const [showAiConfigMãodal, setShowAiConfigMãodal] = useState(false);
+      const [showAiConfigModal, setShowAiConfigModal] = useState(false);
 
 
 
@@ -490,7 +490,7 @@ import { useState, useEffect, useRef } from 'react';
 
         setTab("services");
 
-        setServiceMãodalToOpen(service);
+        setServiceModalToOpen(service);
 
       };
 
@@ -648,7 +648,7 @@ import { useState, useEffect, useRef } from 'react';
 
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
 
-              <button className={`pill-badge ${driveUrl ? "active-green" : ""}`} onClick={() => setShowDriveMãodal(true)}>
+              <button className={`pill-badge ${driveUrl ? "active-green" : ""}`} onClick={() => setShowDriveModal(true)}>
 
                 ☁️ {driveUrl ? "Drive Ok" : "Conectar Drive"}
 
@@ -696,11 +696,11 @@ import { useState, useEffect, useRef } from 'react';
 
                 {tab === "dashboard" && <Dashboard services={services} viewMãode={globalViewMãode} setViewMãode={setGlobalViewMãode} onEditService={handleEditCar} />}
 
-                {tab === "services" && <ServicesTab services={services} vehicles={vehicles} loadAll={loadAll} onOpenOS={(s) => setShowOSMãodal(s)} driveUrl={driveUrl} onOpenDriveConfig={() => setShowDriveMãodal(true)} onZoomPhoto={(p) => setZoomPhoto(p)} externalMãodalService={serviceMãodalToOpen} onClearExternalMãodal={() => setServiceMãodalToOpen(null)} />}
+                {tab === "services" && <ServicesTab services={services} vehicles={vehicles} loadAll={loadAll} onOpenOS={(s) => setShowOSModal(s)} driveUrl={driveUrl} onOpenDriveConfig={() => setShowDriveModal(true)} onZoomPhoto={(p) => setZoomPhoto(p)} externalModalService={serviceModalToOpen} onClearExternalModal={() => setServiceModalToOpen(null)} />}
 
-                {tab === "monthly_history" && <MãonthlyHistoryTab services={services} vehicles={vehicles} onOpenOS={(s) => setShowOSMãodal(s)} onZoomPhoto={(p) => setZoomPhoto(p)} onEditService={handleEditCar} />}
+                {tab === "monthly_history" && <MonthlyHistoryTab services={services} vehicles={vehicles} onOpenOS={(s) => setShowOSModal(s)} onZoomPhoto={(p) => setZoomPhoto(p)} onEditService={handleEditCar} />}
 
-                {tab === "retention" && <RetentionTab services={services} vehicles={vehicles} onOpenAiConfig={() => setShowAiConfigMãodal(true)} />}
+                {tab === "retention" && <RetentionTab services={services} vehicles={vehicles} onOpenAiConfig={() => setShowAiConfigModal(true)} />}
 
                 {tab === "finance" && <FinanceTab expenses={expenses} services={services} loadAll={loadAll} viewMãode={globalViewMãode} setViewMãode={setGlobalViewMãode} />}
 
@@ -740,27 +740,27 @@ import { useState, useEffect, useRef } from 'react';
 
           {/* MODAIS */}
 
-          {showReport && <ReportMãodal services={services} viewMãode={globalViewMãode} onClose={() => setShowReport(false)} onGenerate={(f, t) => { generatePDF(vehicles, services, expenses, f, t, globalViewMãode); setShowReport(false); }} />}
+          {showReport && <ReportModal services={services} viewMãode={globalViewMãode} onClose={() => setShowReport(false)} onGenerate={(f, t) => { generatePDF(vehicles, services, expenses, f, t, globalViewMãode); setShowReport(false); }} />}
 
-          {showDriveMãodal && (
+          {showDriveModal && (
 
-            <DriveMãodal 
+            <DriveModal 
 
               driveUrl={driveUrl} 
 
               onSave={(url) => { if (typeof window !== "undefined") { localStorage.setItem("asdcar_drive_url", url); } setDriveUrl(url); }} 
 
-              onClose={() => setShowDriveMãodal(false)} 
+              onClose={() => setShowDriveModal(false)} 
 
             />
 
           )}
 
-          {zoomPhoto && <PhotoZoomMãodal photo={zoomPhoto} onClose={() => setZoomPhoto(null)} />}
+          {zoomPhoto && <PhotoZoomModal photo={zoomPhoto} onClose={() => setZoomPhoto(null)} />}
 
-          {showOSMãodal && <OSMãodal service={showOSMãodal} vehicles={vehicles} onClose={() => setShowOSMãodal(null)} />}
+          {showOSModal && <OSModal service={showOSModal} vehicles={vehicles} onClose={() => setShowOSModal(null)} />}
 
-          {showAiConfigMãodal && <AiConfigMãodal onClose={() => setShowAiConfigMãodal(false)} />}
+          {showAiConfigModal && <AiConfigModal onClose={() => setShowAiConfigModal(false)} />}
 
         </div>
 
@@ -1044,7 +1044,7 @@ import { useState, useEffect, useRef } from 'react';
 
                         <div>
 
-                          <div style={{ fontSize: 14, fontWeight: 700, color: "#f8fafc" }}>{s.vehicleBrand} {s.vehicleMãodel}</div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: "#f8fafc" }}>{s.vehicleBrand} {s.vehicleModel}</div>
 
                           <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{s.description.split("||")[0]}</div>
 
@@ -1126,7 +1126,7 @@ import { useState, useEffect, useRef } from 'react';
 
                       <div>
 
-                        <div style={{ fontSize: 14, fontWeight: 700, color: "#f8fafc" }}>{s.vehicleBrand} {s.vehicleMãodel}</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: "#f8fafc" }}>{s.vehicleBrand} {s.vehicleModel}</div>
 
                         <div style={{ fontSize: 11, color: "#10b981", marginTop: 2 }}>Entregue em: {fmtDate(s.exitDate || s.entryDate)} · {s.description.split("||")[0]}</div>
 
@@ -1162,9 +1162,9 @@ import { useState, useEffect, useRef } from 'react';
 
     // ── ABA OFICINA ────────────────────────────────────────────────────────────
 
-    function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDriveConfig, onZoomPhoto, externalMãodalService, onClearExternalMãodal }) {
+    function ServicesTab({ services, vehicles, loadAll, onOpenOS, driveUrl, onOpenDriveConfig, onZoomPhoto, externalModalService, onClearExternalModal }) {
 
-      const [modal, setMãodal] = useState(false);
+      const [modal, setModal] = useState(false);
 
       const [editing, setEditing] = useState(null);
 
@@ -1194,15 +1194,15 @@ import { useState, useEffect, useRef } from 'react';
 
       useEffect(() => {
 
-        if (externalMãodalService) {
+        if (externalModalService) {
 
-          open(externalMãodalService);
+          open(externalModalService);
 
-          if (onClearExternalMãodal) onClearExternalMãodal();
+          if (onClearExternalModal) onClearExternalModal();
 
         }
 
-      }, [externalMãodalService]);
+      }, [externalModalService]);
 
 
 
@@ -1248,7 +1248,7 @@ import { useState, useEffect, useRef } from 'react';
 
         setForm(s ? { ...s, photos: photosList } : { status: "Aguardando", description: "", partsValue: 0, laborValue: 0, entryDate: today(), paymentMethod: "Dinheiro", mixedCash: 0, mixedCard: 0, mixedCardMethod: "Débito", photos: [] }); 
 
-        setMãodal(true); 
+        setModal(true); 
 
       };
 
@@ -1450,7 +1450,7 @@ import { useState, useEffect, useRef } from 'react';
 
       };
 
-      const close = () => { setMãodal(false); setEditing(null); setForm({}); };
+      const close = () => { setModal(false); setEditing(null); setForm({}); };
 
 
 
@@ -1468,7 +1468,7 @@ import { useState, useEffect, useRef } from 'react';
 
         const brand = v?.brand || form.vehicleBrand || form.vehicle_brand || editing?.vehicleBrand || "";
 
-        const model = v?.model || form.vehicleMãodel || form.vehicle_model || editing?.vehicleMãodel || "";
+        const model = v?.model || form.vehicleModel || form.vehicle_model || editing?.vehicleModel || "";
 
 
 
@@ -1662,7 +1662,7 @@ import { useState, useEffect, useRef } from 'react';
 
                       <div>
 
-                        <div style={{ fontSize: 11, fontWeight: 700, color: "#f8fafc" }}>{s.vehicleMãodel || s.vehicleBrand}</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: "#f8fafc" }}>{s.vehicleModel || s.vehicleBrand}</div>
 
                         <div style={{ fontSize: 10, color: "#64748b" }}>{s.vehicleBrand}</div>
 
@@ -2026,7 +2026,7 @@ import { useState, useEffect, useRef } from 'react';
 
     // ── ABA HISTÓRICO MENSAL (PASSARAM NO MÊS) ─────────────────────────────────
 
-    function MãonthlyHistoryTab({ services, vehicles, onOpenOS, onZoomPhoto, onEditService }) {
+    function MonthlyHistoryTab({ services, vehicles, onOpenOS, onZoomPhoto, onEditService }) {
 
       const [selMãonth, setSelMãonth] = useState(new Date().getMãonth());
 
@@ -2054,7 +2054,7 @@ import { useState, useEffect, useRef } from 'react';
 
         const plate = (s.vehiclePlate || "").toLowerCase();
 
-        const model = (s.vehicleMãodel || "").toLowerCase();
+        const model = (s.vehicleModel || "").toLowerCase();
 
         const brand = (s.vehicleBrand || "").toLowerCase();
 
@@ -2234,7 +2234,7 @@ import { useState, useEffect, useRef } from 'react';
 
                         <div>
 
-                          <div style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc" }}>{s.vehicleBrand} {s.vehicleMãodel}</div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc" }}>{s.vehicleBrand} {s.vehicleModel}</div>
 
                           <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>
 
@@ -2322,7 +2322,7 @@ import { useState, useEffect, useRef } from 'react';
 
     function FinanceTab({ services, expenses, loadAll, viewMãode, setViewMãode }) {
 
-      const [modal, setMãodal] = useState(false);
+      const [modal, setModal] = useState(false);
 
       const [form, setForm] = useState({ expense_date: today() });
 
@@ -2382,7 +2382,7 @@ import { useState, useEffect, useRef } from 'react';
 
         const { error } = await supabaseClient.from("expenses").upsert(row);
 
-        if (!error) { await loadAll(false); setMãodal(false); setForm({ expense_date: today() }); } else { alert("Erro ao salvar: " + error.message); }
+        if (!error) { await loadAll(false); setModal(false); setForm({ expense_date: today() }); } else { alert("Erro ao salvar: " + error.message); }
 
       };
 
@@ -2430,7 +2430,7 @@ import { useState, useEffect, useRef } from 'react';
 
 
 
-          <button className="btn-primary" onClick={() => { setForm({ expense_date: today() }); setMãodal(true); }}>+ Lançar Despesa Mensal</button>
+          <button className="btn-primary" onClick={() => { setForm({ expense_date: today() }); setModal(true); }}>+ Lançar Despesa Mensal</button>
 
 
 
@@ -2448,7 +2448,7 @@ import { useState, useEffect, useRef } from 'react';
 
                   <div style={{ fontSize: 12, fontWeight: 800, color: "#ef4444" }}>-{fmt(e.value)}</div>
 
-                  <button onClick={() => { setForm({ id: e.id, category: e.category, value: e.value, supplier: e.supplier, expense_date: e.expense_date }); setMãodal(true); }} className="btn-ghost" style={{ padding: "4px 8px", fontSize: 11 }}>✏️</button>
+                  <button onClick={() => { setForm({ id: e.id, category: e.category, value: e.value, supplier: e.supplier, expense_date: e.expense_date }); setModal(true); }} className="btn-ghost" style={{ padding: "4px 8px", fontSize: 11 }}>✏️</button>
 
                 </div>
 
@@ -2462,7 +2462,7 @@ import { useState, useEffect, useRef } from 'react';
 
           {modal && (
 
-            <div className="modal-bg" onClick={() => setMãodal(false)}><div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-bg" onClick={() => setModal(false)}><div className="modal" onClick={e => e.stopPropagation()}>
 
               <h3>Gasto Interno ASDCAR</h3>
 
@@ -2492,9 +2492,9 @@ import { useState, useEffect, useRef } from 'react';
 
     function VehiclesTab({ vehicles, services, loadAll, onZoomPhoto }) {
 
-      const [modal, setMãodal] = useState(false);
+      const [modal, setModal] = useState(false);
 
-      const [historyMãodal, setHistoryMãodal] = useState(false);
+      const [historyModal, setHistoryModal] = useState(false);
 
       const [selectedV, setSelectedV] = useState(null);
 
@@ -2506,9 +2506,9 @@ import { useState, useEffect, useRef } from 'react';
 
       
 
-      const open = (v = null) => { setEditing(v); setForm(v || {}); setMãodal(true); };
+      const open = (v = null) => { setEditing(v); setForm(v || {}); setModal(true); };
 
-      const close = () => { setMãodal(false); setEditing(null); setForm({}); };
+      const close = () => { setModal(false); setEditing(null); setForm({}); };
 
 
 
@@ -2558,11 +2558,11 @@ import { useState, useEffect, useRef } from 'react';
 
                   <div>
 
-                    <button onClick={() => { setSelectedV(v); setHistoryMãodal(true); }} className="btn-history">📜 Histórico</button>
+                    <button onClick={() => { setSelectedV(v); setHistoryModal(true); }} className="btn-history">📜 Histórico</button>
 
                     <div style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{v.brand} {v.model}</div>
 
-                    <div style={{ fontSize: 10, color: "#f97316" }}>{v.plate} · {v.year || "—"} {v.engine ? `· Mãotor: ${v.engine}` : ""} · {fmtKm(v.mileage)}</div>
+                    <div style={{ fontSize: 10, color: "#f97316" }}>{v.plate} · {v.year || "—"} {v.engine ? `· Motor: ${v.engine}` : ""} · {fmtKm(v.mileage)}</div>
 
                   </div>
 
@@ -2616,9 +2616,9 @@ import { useState, useEffect, useRef } from 'react';
 
           
 
-          {historyMãodal && (
+          {historyModal && (
 
-            <div className="modal-bg" onClick={() => setHistoryMãodal(false)}><div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-bg" onClick={() => setHistoryModal(false)}><div className="modal" onClick={e => e.stopPropagation()}>
 
               <h3>Histórico: {selectedV?.plate}</h3>
 
@@ -2640,7 +2640,7 @@ import { useState, useEffect, useRef } from 'react';
 
               </div>
 
-              <button className="btn-ghost" style={{ width: "100%", marginTop: 15 }} onClick={() => setHistoryMãodal(false)}>Fechar</button>
+              <button className="btn-ghost" style={{ width: "100%", marginTop: 15 }} onClick={() => setHistoryModal(false)}>Fechar</button>
 
             </div></div>
 
@@ -2722,7 +2722,7 @@ import { useState, useEffect, useRef } from 'react';
 
 
 
-      // Mãotor Inteligente Nativo ASDCAR (Sintetizador com Engenharia de Prompt Exata)
+      // Motor Inteligente Nativo ASDCAR (Sintetizador com Engenharia de Prompt Exata)
 
       // Simula latência realista de ~1.5s de processamento por IA
 
@@ -2890,7 +2890,7 @@ Se quiser, me avisa por aqui que já reservo um horário exclusivo para você ne
 
           const ownerPhone = v?.phone || "";
 
-          const vehicleMãodelStr = v ? `${v.brand} ${v.model} ${v.year ? '(' + v.year + ')' : ''}` : `${s.vehicleBrand || ''} ${s.vehicleMãodel || ''}`.trim();
+          const vehicleModelStr = v ? `${v.brand} ${v.model} ${v.year ? '(' + v.year + ')' : ''}` : `${s.vehicleBrand || ''} ${s.vehicleModel || ''}`.trim();
 
           const key = `os_${s.id}_${plate}`;
 
@@ -2946,7 +2946,7 @@ Se quiser, me avisa por aqui que já reservo um horário exclusivo para você ne
 
               telefone: ownerPhone,
 
-              veiculo: vehicleMãodelStr || "Veículo ASDCAR",
+              veiculo: vehicleModelStr || "Veículo ASDCAR",
 
               placa: plate || "SEM-PLACA",
 
@@ -3700,7 +3700,7 @@ Se quiser, me avisa por aqui que já reservo um horário exclusivo para você ne
 
           {selectedItemForAi && (
 
-            <AiMessageMãodal 
+            <AiMessageModal 
 
               item={selectedItemForAi}
 
@@ -3728,7 +3728,7 @@ Se quiser, me avisa por aqui que já reservo um horário exclusivo para você ne
 
     // ── MODAL INTERATIVO DE GERAÇÃO DE MENSAGEM IA WHATSAPP ───────────────────
 
-    function AiMessageMãodal({ item, onClose, onContacted }) {
+    function AiMessageModal({ item, onClose, onContacted }) {
 
       const [apiKey, setApiKey] = useState(() => (typeof window !== "undefined" ? localStorage.getItem("asdcar_gemini_api_key") || "" : ""));
 
@@ -4068,7 +4068,7 @@ Se quiser, me avisa por aqui que já reservo um horário exclusivo para você ne
 
     // ── MODAL DE CONFIGURAÇÃO DE IA (GEMINI API KEY) ─────────────────────────
 
-    function AiConfigMãodal({ onClose }) {
+    function AiConfigModal({ onClose }) {
 
       const [apiKey, setApiKey] = useState(() => (typeof window !== "undefined" ? localStorage.getItem("asdcar_gemini_api_key") || "" : ""));
 
@@ -4112,7 +4112,7 @@ Se quiser, me avisa por aqui que já reservo um horário exclusivo para você ne
 
             <p style={{ fontSize: 12, color: "#94a3b8", marginBottom: 14, lineHeight: 1.4 }}>
 
-              Insira sua API Key do <b>Google Gemini</b> caso deseje chamadas diretas via API cloud. Se o campo ficar em branco, a ASDCAR utilizará automaticamente seu <b>Mãotor Inteligente Nativo de IA</b> com a persona do consultor técnico.
+              Insira sua API Key do <b>Google Gemini</b> caso deseje chamadas diretas via API cloud. Se o campo ficar em branco, a ASDCAR utilizará automaticamente seu <b>Motor Inteligente Nativo de IA</b> com a persona do consultor técnico.
 
             </p>
 
@@ -4166,7 +4166,7 @@ Se quiser, me avisa por aqui que já reservo um horário exclusivo para você ne
 
     // ── MODAL GERADOR DE PDF ──────────────────────────────────────────────────
 
-    function ReportMãodal({ onClose, onGenerate }) {
+    function ReportModal({ onClose, onGenerate }) {
 
       const [from, setFrom] = useState(today().slice(0, 8) + "01");
 
@@ -4194,7 +4194,7 @@ Se quiser, me avisa por aqui que já reservo um horário exclusivo para você ne
 
     // ── JANELA DA O.S ────────────────────────────────────────────────────────
 
-    function OSMãodal({ service, vehicles, onClose }) {
+    function OSModal({ service, vehicles, onClose }) {
 
       const [email, setEmail] = useState("");
 
@@ -4258,7 +4258,7 @@ Se quiser, me avisa por aqui que já reservo um horário exclusivo para você ne
 
 
 
-      const html = "<!DOCTYPE html><html lang='pt-BR'><head><meta charset='UTF-8'/><title>O.S. " + s.vehiclePlate + "</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:12px;color:#0f172a;padding:40px;}.os-border{border:2px dashed #000;padding:30px;}.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #000;padding-bottom:15px;margin-bottom:20px;}.grid-ficha{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:25px;background:#f8fafc;padding:15px;border:1px solid #e2e8f0;}h2{font-size:13px;text-transform:uppercase;margin:20px 0 10px 0;border-left:4px solid #000;padding-left:8px;}.box-servico{border:1px solid #e2e8f0;padding:15px;min-height:80px;line-height:1.5;background:#fff;margin-bottom:20px;}.termos{font-size:10px;color:#475569;margin:30px 0;text-align:justify;}.assinaturas{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:50px;text-align:center;}.linha-sub{border-top:1px solid #000;padding-top:6px;font-size:11px;font-weight:bold;}.no-print{background:#7c3aed;color:white;padding:14px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:25px;border-radius:8px;border:none;width:100%;font-size:15px;}@media print{.no-print{display:none;}body{padding:0;}.os-border{border:none;}}</style></head><body><button class='no-print' onclick='window.print()'>CLIQUE AQUI PARA IMPRIMIR VIA DO CLIENTE</button><div class='os-border'><div class='hdr'><div><strong style='font-size:24px;letter-spacing:1px;'>ASDCAR</strong><br/><span style='color:#475569;'>Centro Automotivo</span></div><div style='text-align:right;'><strong>ORDEM DE SERVIÇO</strong><br/>Data Entrada: " + fmtDate(s.entryDate) + "<br/>Status: <strong>" + s.status + "</strong></div></div><h2>👤 Ficha do Cliente</h2><div class='grid-ficha'><div>Nome: <strong>" + (car.owner || '—') + "</strong><br/>Telefone: <strong>" + (car.phone || '—') + "</strong></div><div>E-mail: <strong>" + (email || 'Não informado') + "</strong></div></div><h2>🚗 Identificação do Veículo</h2><div class='grid-ficha'><div>Placa: <strong style='text-transform:uppercase;'>" + s.vehiclePlate + "</strong><br/>Modelo: <strong>" + (s.vehicleBrand || car.brand) + " " + (s.vehicleMãodel || car.model) + "</strong></div><div>Ano: <strong>" + (car.year || '—') + "</strong><br/>KM Entrada: <strong>" + fmtKm(s.mileage) + "</strong></div></div><h2>⚙️ Serviços Solicitados / Diagnóstico</h2><div class='box-servico'><strong>" + escopoPrincipal + "</strong>" + blocoPecasMistas + "</div><h2>💰 Valores e Condição de Pagamento</h2><div class='grid-ficha'><div>Valor Peças: <strong>" + fmt(s.partsValue) + "</strong><br/>Mão de Obra: <strong>" + fmt(s.laborValue) + "</strong><br/><span style='font-size:14px;color:#000;'>Total da O.S.: <strong>" + fmt(tBruto) + "</strong></span></div><div>Forma de Pagamento: <strong>" + s.paymentMethod + "</strong></div></div><div class='termos'><strong>TERMOS DE GARANTIA E CONDIÇÕES:</strong><br/>1. A garantia dos serviços executados é de 90 dias a contar da data de entrega do veículo, cobrindo exclusivamente defeitos de mão de obra.<br/>2. Peças fornecidas pelo cliente não possuem garantia pela oficina ASDCAR.<br/>3. Veículos não retirados em até 5 dias após a notificação de término estarão sujeitos a taxa de diária de permanência.</div><div class='assinaturas'><div><div class='linha-sub'>ASDCAR Centro Automotivo</div></div><div><div class='linha-sub'>Assinatura do Cliente / De acordo</div></div></div></div></body></html>";
+      const html = "<!DOCTYPE html><html lang='pt-BR'><head><meta charset='UTF-8'/><title>O.S. " + s.vehiclePlate + "</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:12px;color:#0f172a;padding:40px;}.os-border{border:2px dashed #000;padding:30px;}.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #000;padding-bottom:15px;margin-bottom:20px;}.grid-ficha{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:25px;background:#f8fafc;padding:15px;border:1px solid #e2e8f0;}h2{font-size:13px;text-transform:uppercase;margin:20px 0 10px 0;border-left:4px solid #000;padding-left:8px;}.box-servico{border:1px solid #e2e8f0;padding:15px;min-height:80px;line-height:1.5;background:#fff;margin-bottom:20px;}.termos{font-size:10px;color:#475569;margin:30px 0;text-align:justify;}.assinaturas{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:50px;text-align:center;}.linha-sub{border-top:1px solid #000;padding-top:6px;font-size:11px;font-weight:bold;}.no-print{background:#7c3aed;color:white;padding:14px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:25px;border-radius:8px;border:none;width:100%;font-size:15px;}@media print{.no-print{display:none;}body{padding:0;}.os-border{border:none;}}</style></head><body><button class='no-print' onclick='window.print()'>CLIQUE AQUI PARA IMPRIMIR VIA DO CLIENTE</button><div class='os-border'><div class='hdr'><div><strong style='font-size:24px;letter-spacing:1px;'>ASDCAR</strong><br/><span style='color:#475569;'>Centro Automotivo</span></div><div style='text-align:right;'><strong>ORDEM DE SERVIÇO</strong><br/>Data Entrada: " + fmtDate(s.entryDate) + "<br/>Status: <strong>" + s.status + "</strong></div></div><h2>👤 Ficha do Cliente</h2><div class='grid-ficha'><div>Nome: <strong>" + (car.owner || '—') + "</strong><br/>Telefone: <strong>" + (car.phone || '—') + "</strong></div><div>E-mail: <strong>" + (email || 'Não informado') + "</strong></div></div><h2>🚗 Identificação do Veículo</h2><div class='grid-ficha'><div>Placa: <strong style='text-transform:uppercase;'>" + s.vehiclePlate + "</strong><br/>Modelo: <strong>" + (s.vehicleBrand || car.brand) + " " + (s.vehicleModel || car.model) + "</strong></div><div>Ano: <strong>" + (car.year || '—') + "</strong><br/>KM Entrada: <strong>" + fmtKm(s.mileage) + "</strong></div></div><h2>⚙️ Serviços Solicitados / Diagnóstico</h2><div class='box-servico'><strong>" + escopoPrincipal + "</strong>" + blocoPecasMistas + "</div><h2>💰 Valores e Condição de Pagamento</h2><div class='grid-ficha'><div>Valor Peças: <strong>" + fmt(s.partsValue) + "</strong><br/>Mão de Obra: <strong>" + fmt(s.laborValue) + "</strong><br/><span style='font-size:14px;color:#000;'>Total da O.S.: <strong>" + fmt(tBruto) + "</strong></span></div><div>Forma de Pagamento: <strong>" + s.paymentMethod + "</strong></div></div><div class='termos'><strong>TERMOS DE GARANTIA E CONDIÇÕES:</strong><br/>1. A garantia dos serviços executados é de 90 dias a contar da data de entrega do veículo, cobrindo exclusivamente defeitos de mão de obra.<br/>2. Peças fornecidas pelo cliente não possuem garantia pela oficina ASDCAR.<br/>3. Veículos não retirados em até 5 dias após a notificação de término estarão sujeitos a taxa de diária de permanência.</div><div class='assinaturas'><div><div class='linha-sub'>ASDCAR Centro Automotivo</div></div><div><div class='linha-sub'>Assinatura do Cliente / De acordo</div></div></div></div></body></html>";
 
       const w = window.open("", "_blank");
 
@@ -4328,7 +4328,7 @@ Se quiser, me avisa por aqui que já reservo um horário exclusivo para você ne
 
 
 
-      const html = "<!DOCTYPE html><html lang='pt-BR'><head><meta charset='UTF-8'/><title>Fechamento Comercial ASDCAR</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:11px;color:#0f172a;padding:30px;}.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #f97316;padding-bottom:12px;margin-bottom:20px;}.kpi-box{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}.kpi{background:#f8fafc;border:1px solid #e2e8f0;padding:10px;border-radius:6px;}.kpi-lbl{font-size:9px;color:#64748b;text-transform:uppercase;}.kpi-val{font-size:14px;font-weight:bold;margin-top:2px;}table{width:100%;border-collapse:collapse;margin-bottom:20px;}th,td{padding:8px;border:1px solid #e2e8f0;text-align:left;}th{background:#f1f5f9;font-size:9px;text-transform:uppercase;}.no-print{background:#f97316;color:white;padding:12px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:6px;border:none;width:100%;font-size:14px;}@media print{.no-print{display:none;}body{padding:0;}}</style></head><body><button class='no-print' onclick='window.print()'>CLIQUE AQUI PARA IMPRIMIR OU SALVAR EM PDF</button><div class='hdr'><div><strong style='font-size:22px;color:#f97316;'>ASDCAR</strong><br/><span>Fechamento Comercial</span></div><div style='text-align:right;'>Período: <strong>" + fmtDate(fromStr) + " até " + fmtDate(toStr) + "</strong></div></div><div class='kpi-box'><div class='kpi'><div class='kpi-lbl'>Peças Totais</div><div class='kpi-val' style='color:#8b5cf6;'>" + fmt(totalPecas) + "</div></div><div class='kpi'><div class='kpi-lbl'>Mão de Obra</div><div class='kpi-val' style='color:#10b981;'>" + fmt(totalMO) + "</div></div><div class='kpi'><div class='kpi-lbl'>Entradas Líquidas</div><div class='kpi-val' style='color:#3b82f6;'>" + fmt(faturamentoLiquido) + "</div></div><div class='kpi'><div class='kpi-lbl'>Resultado Real</div><div class='kpi-val' style='color:" + (resultadoReal >= 0 ? '#10b981' : '#ef4444') + ";'>" + fmt(resultadoReal) + "</div></div></div><h3>📋 Serviços Entregues (" + relServices.length + ")</h3><table><thead><tr><th>Veículo</th><th>Descrição / Obs.</th><th>Forma Pagto</th><th>Peças</th><th>M.O.</th><th>Saída</th></tr></thead><tbody>" + relServices.map(s => "<tr><td><strong>" + s.vehiclePlate + "</strong><br/>" + s.vehicleBrand + " " + s.vehicleMãodel + "</td><td>" + s.description.replace(/\|\|/g, '<br/>') + "</td><td>" + s.paymentMethod + "</td><td>" + fmt(s.partsValue) + "</td><td>" + fmt(s.laborValue) + "</td><td>" + fmtDate(s.exitDate) + "</td></tr>").join('') + "</tbody></table><h3>💸 Despesas do Período (" + relExpenses.length + ")</h3><table><thead><tr><th>Descrição</th><th>Categoria</th><th>Data</th><th>Valor</th></tr></thead><tbody>" + relExpenses.map(e => "<tr><td>" + e.description + "</td><td>" + e.category + "</td><td>" + fmtDate(e.expense_date) + "</td><td style='color:#ef4444;font-weight:bold;'>-" + fmt(e.value) + "</td></tr>").join('') + "</tbody></table></body></html>";
+      const html = "<!DOCTYPE html><html lang='pt-BR'><head><meta charset='UTF-8'/><title>Fechamento Comercial ASDCAR</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:11px;color:#0f172a;padding:30px;}.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #f97316;padding-bottom:12px;margin-bottom:20px;}.kpi-box{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}.kpi{background:#f8fafc;border:1px solid #e2e8f0;padding:10px;border-radius:6px;}.kpi-lbl{font-size:9px;color:#64748b;text-transform:uppercase;}.kpi-val{font-size:14px;font-weight:bold;margin-top:2px;}table{width:100%;border-collapse:collapse;margin-bottom:20px;}th,td{padding:8px;border:1px solid #e2e8f0;text-align:left;}th{background:#f1f5f9;font-size:9px;text-transform:uppercase;}.no-print{background:#f97316;color:white;padding:12px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:6px;border:none;width:100%;font-size:14px;}@media print{.no-print{display:none;}body{padding:0;}}</style></head><body><button class='no-print' onclick='window.print()'>CLIQUE AQUI PARA IMPRIMIR OU SALVAR EM PDF</button><div class='hdr'><div><strong style='font-size:22px;color:#f97316;'>ASDCAR</strong><br/><span>Fechamento Comercial</span></div><div style='text-align:right;'>Período: <strong>" + fmtDate(fromStr) + " até " + fmtDate(toStr) + "</strong></div></div><div class='kpi-box'><div class='kpi'><div class='kpi-lbl'>Peças Totais</div><div class='kpi-val' style='color:#8b5cf6;'>" + fmt(totalPecas) + "</div></div><div class='kpi'><div class='kpi-lbl'>Mão de Obra</div><div class='kpi-val' style='color:#10b981;'>" + fmt(totalMO) + "</div></div><div class='kpi'><div class='kpi-lbl'>Entradas Líquidas</div><div class='kpi-val' style='color:#3b82f6;'>" + fmt(faturamentoLiquido) + "</div></div><div class='kpi'><div class='kpi-lbl'>Resultado Real</div><div class='kpi-val' style='color:" + (resultadoReal >= 0 ? '#10b981' : '#ef4444') + ";'>" + fmt(resultadoReal) + "</div></div></div><h3>📋 Serviços Entregues (" + relServices.length + ")</h3><table><thead><tr><th>Veículo</th><th>Descrição / Obs.</th><th>Forma Pagto</th><th>Peças</th><th>M.O.</th><th>Saída</th></tr></thead><tbody>" + relServices.map(s => "<tr><td><strong>" + s.vehiclePlate + "</strong><br/>" + s.vehicleBrand + " " + s.vehicleModel + "</td><td>" + s.description.replace(/\|\|/g, '<br/>') + "</td><td>" + s.paymentMethod + "</td><td>" + fmt(s.partsValue) + "</td><td>" + fmt(s.laborValue) + "</td><td>" + fmtDate(s.exitDate) + "</td></tr>").join('') + "</tbody></table><h3>💸 Despesas do Período (" + relExpenses.length + ")</h3><table><thead><tr><th>Descrição</th><th>Categoria</th><th>Data</th><th>Valor</th></tr></thead><tbody>" + relExpenses.map(e => "<tr><td>" + e.description + "</td><td>" + e.category + "</td><td>" + fmtDate(e.expense_date) + "</td><td style='color:#ef4444;font-weight:bold;'>-" + fmt(e.value) + "</td></tr>").join('') + "</tbody></table></body></html>";
 
       const w = window.open("", "_blank");
 
