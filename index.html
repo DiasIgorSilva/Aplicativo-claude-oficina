@@ -24,6 +24,10 @@
 
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
 
+<script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7/babel.min.js" crossorigin="anonymous"></script>
 </head>
 
 <body style="background: #0b0d14; color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; margin: 0; padding: 0;">
@@ -798,7 +802,7 @@
 
     function Dashboard({ services, viewMode, setViewMãode, onEditService }) {
 
-      const [selMãonth, setSelMãonth] = useState(new Date().getMãonth());
+      const [selMonth, setSelMonth] = useState(new Date().getMonth());
 
       const [selYear, setSelYear] = useState(new Date().getFullYear());
 
@@ -816,7 +820,7 @@
 
         const d = new Date(dateStr + "T12:00:00");
 
-        return d.getMãonth() === selMãonth && d.getFullYear() === selYear;
+        return d.getMonth() === selMonth && d.getFullYear() === selYear;
 
       });
 
@@ -900,7 +904,7 @@
 
                 <label className="label">MÊS DE REFERÊNCIA</label>
 
-                <select className="input" value={selMãonth} onChange={(e) => setSelMãonth(Number(e.target.value))}>
+                <select className="input" value={selMonth} onChange={(e) => setSelMonth(Number(e.target.value))}>
 
                   {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
 
@@ -962,7 +966,7 @@
 
               <div className="kpi-number">{fmt(tP)}</div>
 
-              <div className="kpi-label">PEÇAS ({MONTHS[selMãonth].slice(0,3).toUpperCase()})</div>
+              <div className="kpi-label">PEÇAS ({MONTHS[selMonth].slice(0,3).toUpperCase()})</div>
 
             </div>
 
@@ -974,7 +978,7 @@
 
               <div className="kpi-number">{fmt(tL)}</div>
 
-              <div className="kpi-label">M.O. ({MONTHS[selMãonth].slice(0,3).toUpperCase()})</div>
+              <div className="kpi-label">M.O. ({MONTHS[selMonth].slice(0,3).toUpperCase()})</div>
 
             </div>
 
@@ -1070,7 +1074,7 @@
 
                           <div style={{ fontSize: 14, fontWeight: 700, color: "#f8fafc" }}>{s.vehicleBrand} {s.vehicleModel}</div>
 
-                          <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{s.description.split("||")[0]}</div>
+                          <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{(s.description || "").split("||")[0]}</div>
 
                         </div>
 
@@ -1116,7 +1120,7 @@
 
             {filteredDelivered.length === 0 ? (
 
-              <p style={{ fontSize: 12, color: "#64748b" }}>Nenhum veículo entregue em {MONTHS[selMãonth]} de {selYear}.</p>
+              <p style={{ fontSize: 12, color: "#64748b" }}>Nenhum veículo entregue em {MONTHS[selMonth]} de {selYear}.</p>
 
             ) : (
 
@@ -1152,7 +1156,7 @@
 
                         <div style={{ fontSize: 14, fontWeight: 700, color: "#f8fafc" }}>{s.vehicleBrand} {s.vehicleModel}</div>
 
-                        <div style={{ fontSize: 11, color: "#10b981", marginTop: 2 }}>Entregue em: {fmtDate(s.exitDate || s.entryDate)} · {s.description.split("||")[0]}</div>
+                        <div style={{ fontSize: 11, color: "#10b981", marginTop: 2 }}>Entregue em: {fmtDate(s.exitDate || s.entryDate)} · {(s.description || "").split("||")[0]}</div>
 
                       </div>
 
@@ -1248,7 +1252,7 @@
 
             initialOwner = "mista";
 
-            const partes = s.description.split("||");
+            const partes = (s.description || "").split("||");
 
             ofiText = partes[1]?.replace("Peças Oficina:", "")?.trim() || "";
 
@@ -1668,7 +1672,7 @@
 
                     <div>
 
-                      <div style={{ color: "#f8fafc", fontWeight: 700, fontSize: 13 }}>{s.description.split("||")[0]}</div>
+                      <div style={{ color: "#f8fafc", fontWeight: 700, fontSize: 13 }}>{(s.description || "").split("||")[0]}</div>
 
                       <div style={{ fontSize: 11, color: "#64748b", marginTop: 3 }}>KM: {fmtKm(s.mileage)} · Entrada: {fmtDate(s.entryDate)}</div>
 
@@ -2052,7 +2056,7 @@
 
     function MonthlyHistoryTab({ services, vehicles, onOpenOS, onZoomPhoto, onEditService }) {
 
-      const [selMãonth, setSelMãonth] = useState(new Date().getMãonth());
+      const [selMonth, setSelMonth] = useState(new Date().getMonth());
 
       const [selYear, setSelYear] = useState(new Date().getFullYear());
 
@@ -2064,11 +2068,11 @@
 
         const d = s.exitDate ? new Date(s.exitDate + "T12:00:00") : new Date(s.entryDate + "T12:00:00");
 
-        const matchesMãonth = d.getMãonth() === selMãonth && d.getFullYear() === selYear;
+        const matchesMonth = d.getMonth() === selMonth && d.getFullYear() === selYear;
 
         
 
-        if (!matchesMãonth) return false;
+        if (!matchesMonth) return false;
 
         if (!query) return true;
 
@@ -2110,7 +2114,7 @@
 
                 <label className="label">MÊS DE REFERÊNCIA</label>
 
-                <select className="input" value={selMãonth} onChange={e => setSelMãonth(Number(e.target.value))}>
+                <select className="input" value={selMonth} onChange={e => setSelMonth(Number(e.target.value))}>
 
                   {MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}
 
@@ -2226,7 +2230,7 @@
 
                 <div style={{ padding: 40, textAlign: "center", color: "#64748b", fontSize: 13 }}>
 
-                  Nenhum veículo registrado em {MONTHS[selMãonth]} de {selYear}.
+                  Nenhum veículo registrado em {MONTHS[selMonth]} de {selYear}.
 
                 </div>
 
@@ -2274,7 +2278,7 @@
 
                       <div>
 
-                        <div style={{ fontSize: 12, color: "#f8fafc", fontWeight: 600 }}>{s.description.split("||")[0]}</div>
+                        <div style={{ fontSize: 12, color: "#f8fafc", fontWeight: 600 }}>{(s.description || "").split("||")[0]}</div>
 
                         {photosList.length > 0 && (
 
@@ -2350,13 +2354,13 @@
 
       const [form, setForm] = useState({ expense_date: today() });
 
-      const [selMãonth, setSelMãonth] = useState(new Date().getMãonth());
+      const [selMonth, setSelMonth] = useState(new Date().getMonth());
 
       const [selYear, setSelYear] = useState(new Date().getFullYear());
 
 
 
-      const totalIn = services.filter(s => s.status === "Entregue" && s.exitDate && new Date(s.exitDate + "T12:00:00").getMãonth() === selMãonth && new Date(s.exitDate + "T12:00:00").getFullYear() === selYear)
+      const totalIn = services.filter(s => s.status === "Entregue" && s.exitDate && new Date(s.exitDate + "T12:00:00").getMonth() === selMonth && new Date(s.exitDate + "T12:00:00").getFullYear() === selYear)
 
         .reduce((acc, s) => {
 
@@ -2392,7 +2396,7 @@
 
 
 
-      const filteredExp = expenses.filter(e => e.expense_date && new Date(e.expense_date + "T12:00:00").getMãonth() === selMãonth && new Date(e.expense_date + "T12:00:00").getFullYear() === selYear);
+      const filteredExp = expenses.filter(e => e.expense_date && new Date(e.expense_date + "T12:00:00").getMonth() === selMonth && new Date(e.expense_date + "T12:00:00").getFullYear() === selYear);
 
       const totalOut = filteredExp.reduce((acc, e) => acc + Number(e.value || 0), 0);
 
@@ -2422,7 +2426,7 @@
 
               <label className="label">Mês Financeiro</label>
 
-              <select className="input" value={selMãonth} onChange={(e) => setSelMãonth(Number(e.target.value))}>{MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}</select>
+              <select className="input" value={selMonth} onChange={(e) => setSelMonth(Number(e.target.value))}>{MONTHS.map((m, i) => <option key={i} value={i}>{m}</option>)}</select>
 
             </div>
 
@@ -2515,1675 +2519,131 @@
     // ── ABA BASE DE VEÍCULOS ──────────────────────────────────────────────────
 
     function VehiclesTab({ vehicles, services, loadAll, onZoomPhoto }) {
-
       const [modal, setModal] = useState(false);
-
       const [historyModal, setHistoryModal] = useState(false);
-
       const [selectedV, setSelectedV] = useState(null);
-
       const [editing, setEditing] = useState(null);
-
       const [search, setSearch] = useState("");
-
       const [form, setForm] = useState({});
-
       
-
       const open = (v = null) => { setEditing(v); setForm(v || {}); setModal(true); };
-
       const close = () => { setModal(false); setEditing(null); setForm({}); };
 
-
-
       const save = async () => {
-
         if (!form.plate || !form.brand || !form.model) return alert("Dados obrigatórios faltando.");
-
         const row = { 
-
           id: editing?.id || uid(), plate: form.plate.toUpperCase(), brand: form.brand, model: form.model, 
-
-          year: form.year, color: form.color, owner: form.owner, phone: form.phone, notes: form.notes, mileage: Number(form.mileage) || 0 
-
+          year: form.year, engine: form.engine || "", color: form.color, owner: form.owner, phone: form.phone, notes: form.notes, mileage: Number(form.mileage) || 0 
         };
-
         const { error } = await supabaseClient.from("vehicles").upsert(row);
-
         if (!error) { await loadAll(false); close(); } else { alert("Erro ao salvar: " + error.message); }
-
       };
 
-
-
-      const filtered = vehicles.filter(v => !search || (v.plate||"").toLowerCase().includes(search.toLowerCase()) || (v.owner||"").toLowerCase().includes(search.toLowerCase()));
-
-
+      const filtered = vehicles.filter(v => !search || (v.plate||"").toLowerCase().includes(search.toLowerCase()) || (v.owner||"").toLowerCase().includes(search.toLowerCase()) || (v.model||"").toLowerCase().includes(search.toLowerCase()));
 
       return (
-
-        <Section title="Base de Veículos" action={<button className="btn-primary" onClick={() => open()}>+ Novo</button>}>
-
-          <input className="input" placeholder="Buscar por placa ou cliente..." value={search} onChange={e => setSearch(e.target.value)} style={{ marginBottom: 10 }} />
-
-          <div className="card" style={{ padding: 0 }}>
-
-            <div className="table-wrap">
-
-              <div className="table-header" style={{ gridTemplateColumns: "1.8fr 1.5fr 1fr 90px" }}>
-
-                <span>Veículo</span><span>Cliente</span><span>Telefone</span><span></span>
-
-              </div>
-
-              {filtered.map(v => (
-
-                <div key={v.id} className="table-row" style={{ gridTemplateColumns: "1.8fr 1.5fr 1fr 90px" }}>
-
-                  <div>
-
-                    <button onClick={() => { setSelectedV(v); setHistoryModal(true); }} className="btn-history">📜 Histórico</button>
-
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{v.brand} {v.model}</div>
-
-                    <div style={{ fontSize: 10, color: "#f97316" }}>{v.plate} · {v.year || "—"} {v.engine ? `· Motor: ${v.engine}` : ""} · {fmtKm(v.mileage)}</div>
-
-                  </div>
-
-                  <div style={{ fontSize: 12 }}>{v.owner || "—"}</div>
-
-                  <div style={{ fontSize: 12 }}>{v.phone || "—"}</div>
-
-                  <button onClick={() => open(v)} className="btn-ghost" style={{ padding: 6 }}>✏️</button>
-
-                </div>
-
-              ))}
-
-            </div>
-
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+            <input className="input" style={{ maxWidth: 300 }} placeholder="🔍 Buscar por placa, dono ou modelo..." value={search} onChange={e => setSearch(e.target.value)} />
+            <button className="btn-primary" onClick={() => open()}>+ Novo Veículo</button>
           </div>
 
-          
+          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: "#141824", color: "#94a3b8", textAlign: "left" }}>
+                    <th style={{ padding: "12px 16px" }}>Veículo</th>
+                    <th style={{ padding: "12px 16px" }}>Placa</th>
+                    <th style={{ padding: "12px 16px" }}>Cliente / Contato</th>
+                    <th style={{ padding: "12px 16px" }}>KM Registrado</th>
+                    <th style={{ padding: "12px 16px", textAlign: "right" }}>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.length === 0 ? (
+                    <tr><td colSpan={5} style={{ padding: 30, textAlign: "center", color: "#64748b" }}>Nenhum veículo encontrado.</td></tr>
+                  ) : (
+                    filtered.map(v => (
+                      <tr key={v.id} style={{ borderBottom: "1px solid #1c2234" }}>
+                        <td style={{ padding: "12px 16px" }}>
+                          <strong style={{ color: "#f8fafc" }}>{v.brand} {v.model}</strong>
+                          {v.engine ? <span style={{ fontSize: 11, color: "#94a3b8", marginLeft: 6 }}>({v.engine})</span> : null}
+                          <div style={{ fontSize: 11, color: "#64748b" }}>Ano: {v.year || "—"}</div>
+                        </td>
+                        <td style={{ padding: "12px 16px" }}>
+                          <span className="plate-badge">{v.plate}</span>
+                        </td>
+                        <td style={{ padding: "12px 16px" }}>
+                          <div style={{ color: "#f8fafc", fontWeight: 600 }}>{v.owner || "—"}</div>
+                          <div style={{ fontSize: 11, color: "#64748b" }}>{v.phone || "—"}</div>
+                        </td>
+                        <td style={{ padding: "12px 16px", color: "#38bdf8", fontWeight: 700 }}>
+                          {fmtKm(v.mileage)}
+                        </td>
+                        <td style={{ padding: "12px 16px", textAlign: "right" }}>
+                          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+                            <button className="btn-ghost" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => { setSelectedV(v); setHistoryModal(true); }}>📜 Histórico</button>
+                            <button className="btn-ghost" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => open(v)}>✏️ Editar</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
 
           {modal && (
-
-            <div className="modal-bg" onClick={close}><div className="modal" onClick={e => e.stopPropagation()}>
-
-              <h3>Cadastro Master</h3>
-
-              <Field label="Placa *" value={form.plate} onChange={v => setForm({ ...form, plate: v.toUpperCase() })} />
-
-              <BrandSelector value={form.brand || ""} onChange={v => setForm({ ...form, brand: v })} />
-
-              <Field label="Modelo *" value={form.model} onChange={v => setForm({ ...form, model: v })} />
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-
-                <Field label="Ano" value={form.year} onChange={v => setForm({ ...form, year: v })} />
-
-                <Field label="Motorização" placeholder="Ex: 1.0, 1.6, 2.0" value={form.engine} onChange={v => setForm({ ...form, engine: v })} />
-
-                <Field label="KM Inicial" type="number" value={form.mileage} onChange={v => setForm({ ...form, mileage: v })} />
-
+            <div className="modal-bg" onClick={close}>
+              <div className="modal" onClick={e => e.stopPropagation()}>
+                <h3>{editing ? "Editar Veículo" : "Novo Cadastro Master"}</h3>
+                <Field label="Placa *" value={form.plate || ""} onChange={v => setForm({ ...form, plate: v.toUpperCase() })} />
+                <BrandSelector value={form.brand || ""} onChange={v => setForm({ ...form, brand: v })} />
+                <Field label="Modelo *" value={form.model || ""} onChange={v => setForm({ ...form, model: v })} />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                  <Field label="Ano" value={form.year || ""} onChange={v => setForm({ ...form, year: v })} />
+                  <Field label="Motorização" placeholder="Ex: 1.0, 1.6, 2.0" value={form.engine || ""} onChange={v => setForm({ ...form, engine: v })} />
+                  <Field label="KM Inicial" type="number" value={form.mileage || ""} onChange={v => setForm({ ...form, mileage: v })} />
+                </div>
+                <Field label="Dono / Cliente" value={form.owner || ""} onChange={v => setForm({ ...form, owner: v })} />
+                <Field label="Telefone" value={form.phone || ""} onChange={v => setForm({ ...form, phone: v })} />
+                <button className="btn-primary" style={{ width: "100%", marginTop: 15 }} onClick={save}>Salvar</button>
               </div>
-
-              <Field label="Dono / Cliente" value={form.owner} onChange={v => setForm({ ...form, owner: v })} />
-
-              <Field label="Telefone" value={form.phone} onChange={v => setForm({ ...form, phone: v })} />
-
-              <button className="btn-primary" style={{ width: "100%", marginTop: 15 }} onClick={save}>Salvar</button>
-
-            </div></div>
-
+            </div>
           )}
-
-          
 
           {historyModal && (
-
-            <div className="modal-bg" onClick={() => setHistoryModal(false)}><div className="modal" onClick={e => e.stopPropagation()}>
-
-              <h3>Histórico: {selectedV?.plate}</h3>
-
-              <div style={{ maxHeight: 320, overflowY: "auto", marginTop: 15 }}>
-
-                {services.filter(s => s.vehicleId === selectedV?.id).map(s => (
-
-                  <div key={s.id} style={{ padding: 12, background: "#0d0f14", borderRadius: 8, marginBottom: 10, borderLeft: "3px solid #10b981" }}>
-
-                    <div style={{ fontSize: 12, fontWeight: 700 }}>{s.description.replace(/\|\|/g, " · ")}</div>
-
-                    <div style={{ fontSize: 10, color: "#64748b", marginTop: 4 }}>KM: {fmtKm(s.mileage)} | Finalizado: {fmtDate(s.exitDate)}</div>
-
-                    <div style={{ fontSize: 12, fontWeight: 800, color: "#f97316", marginTop: 5 }}>Total Bruto: {fmt((Number(s.partsValue) || 0) + (Number(s.laborValue) || 0))}</div>
-
-                  </div>
-
-                ))}
-
+            <div className="modal-bg" onClick={() => setHistoryModal(false)}>
+              <div className="modal" onClick={e => e.stopPropagation()}>
+                <h3>📜 Histórico do Veículo: {selectedV?.plate}</h3>
+                <div style={{ maxHeight: 350, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
+                  {services.filter(s => (s.vehiclePlate || "").toUpperCase() === (selectedV?.plate || "").toUpperCase()).length === 0 ? (
+                    <p style={{ color: "#64748b", textAlign: "center", padding: 20 }}>Nenhum serviço registrado para este veículo.</p>
+                  ) : (
+                    services.filter(s => (s.vehiclePlate || "").toUpperCase() === (selectedV?.plate || "").toUpperCase()).map(s => (
+                      <div key={s.id} style={{ background: "#0b0d14", border: "1px solid #1c2234", padding: 12, borderRadius: 8 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                          <span style={{ fontSize: 11, color: "#64748b" }}>Data: {fmtDate(s.entryDate)}</span>
+                          <StatusBadge status={s.status} />
+                        </div>
+                        <div style={{ fontSize: 13, color: "#f8fafc", fontWeight: 600 }}>{s.description}</div>
+                        <div style={{ fontSize: 12, color: "#10b981", marginTop: 6, fontWeight: 700 }}>Total: {fmt((Number(s.partsValue)||0) + (Number(s.laborValue)||0))}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <button className="btn-ghost" style={{ width: "100%", marginTop: 15 }} onClick={() => setHistoryModal(false)}>Fechar</button>
               </div>
-
-              <button className="btn-ghost" style={{ width: "100%", marginTop: 15 }} onClick={() => setHistoryModal(false)}>Fechar</button>
-
-            </div></div>
-
+            </div>
           )}
-
-        </Section>
-
-      );
-
-    }
-
-
-
-    // ── MÓDULO DE RETENÇÃO DE CLIENTES (RÉGUA LTV & IA WHATSAPP) ───────────────
-
-
-
-    // Função de Inteligência Artificial ASDCAR
-
-    async function generateAiMessage(payload, apiKey, customPrompt) {
-
-      const defaultSystemPrompt = `Você é um assistente virtual e consultor técnico de uma oficina mecânica de alta qualidade chamada ASDCAR AutoGestão. Sua tarefa é escrever uma mensagem amigável, profissional e direta para o WhatsApp de um cliente, convidando-o para uma revisão preventiva. A mensagem deve mencionar o veículo dele, citar brevemente o último serviço que ele fez conosco para gerar autoridade e lembrança de contexto, e sugerir a verificação dos itens que exigem atenção preventiva no momento. Mantenha o tom cordial, sem pressionar a venda, focando na segurança da família dele. Não use linguagem corporativa demais; seja um mecânico parceiro e atencioso.`;
-
-
-
-      const finalSystemPrompt = customPrompt || defaultSystemPrompt;
-
-
-
-      // Se houver chave API do Gemini configurada, tentar chamada direta via API Gemini
-
-      if (apiKey && apiKey.trim() !== '') {
-
-        try {
-
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey.trim()}`;
-
-          const response = await fetch(url, {
-
-            method: 'POST',
-
-            headers: { 'Content-Type': 'application/json' },
-
-            body: JSON.stringify({
-
-              contents: [{
-
-                parts: [{
-
-                  text: `${finalSystemPrompt}\n\nDados do Cliente (JSON):\n${JSON.stringify(payload, null, 2)}\n\nEscreva a mensagem personalizada para o WhatsApp do cliente agora:`
-
-                }]
-
-              }]
-
-            })
-
-          });
-
-
-
-          if (response.ok) {
-
-            const data = await response.json();
-
-            const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-            if (text && text.trim()) return text.trim();
-
-          }
-
-        } catch (e) {
-
-          console.warn("Erro ao chamar API do Gemini direct, fallback para motor nativo ASDCAR:", e);
-
-        }
-
-      }
-
-
-
-      // Motor Inteligente Nativo ASDCAR (Sintetizador com Engenharia de Prompt Exata)
-
-      // Simula latência realista de ~1.5s de processamento por IA
-
-      await new Promise(r => setTimeout(r, 1500));
-
-
-
-      const nome = payload.cliente || "Cliente";
-
-      const veiculo = payload.veiculo || "veículo";
-
-      const dias = payload.dias_decorridos || 90;
-
-      const servico = payload.servico_anterior || "revisão geral";
-
-      const km = payload.km_anterior ? ` (${payload.km_anterior.toLocaleString('pt-BR')} km)` : "";
-
-      const dataServico = payload.data_ultimo_servico || "alguns meses";
-
-
-
-      let sugestaoPreventiva = "";
-
-      if (dias >= 180) {
-
-        sugestaoPreventiva = "Como já faz um tempinho e seu carro roda bastante, é um ótimo momento para fazermos a troca de óleo, substituir os filtros (combustível e ar), e dar aquela checada rápida no alinhamento e rodízio de pneus.";
-
-      } else if (dias >= 120) {
-
-        sugestaoPreventiva = "Como já se passaram mais de 4 meses e o período de viagens se aproxima, é ideal fazermos aquele check-up de pré-férias nos freios, suspensão e fluidos para você viajar com a família em total segurança.";
-
-      } else {
-
-        sugestaoPreventiva = "Queríamos sugerir uma checagem preventiva rápida dos itens de desgaste natural (freios, fluidos e suspensão) para garantir que você continue rodando sem surpresas.";
-
-      }
-
-
-
-      return `Olá, ${nome}! Tudo bem? Aqui é a equipe da ASDCAR AutoGestão. 🚗
-
-
-
-Já se passaram alguns meses desde que trocamos/realizamos o serviço de ${servico} no seu ${veiculo}${km} em ${dataServico}!
-
-
-
-${sugestaoPreventiva}
-
-
-
-Se quiser, me avisa por aqui que já reservo um horário exclusivo para você nesta semana! Um abraço!`;
-
-    }
-
-
-
-    // ── COMPONENTE ABA RETENÇÃO & LTV ──────────────────────────────────────────
-
-
-      const [search, setSearch] = useState("");
-
-      const [filterCategory, setFilterCategory] = useState("all");
-
-      const [selectedItemForAi, setSelectedItemForAi] = useState(null);
-
-      const [contactsMap, setContactsMap] = useState({});
-
-
-
-      useEffect(() => {
-
-        if (typeof window !== "undefined" && window.localStorage) {
-
-          try {
-
-            const stored = localStorage.getItem("asdcar_retention_contacts");
-
-            if (stored) setContactsMap(JSON.parse(stored));
-
-          } catch (e) {}
-
-        }
-
-      }, []);
-
-
-
-      const saveContact = (key, notes = "") => {
-
-        const todayStr = new Date().toLocaleDateString('pt-BR');
-
-        const updated = {
-
-          ...contactsMap,
-
-          [key]: { date: todayStr, timestamp: Date.now(), notes }
-
-        };
-
-        setContactsMap(updated);
-
-        if (typeof window !== "undefined" && window.localStorage) {
-
-          localStorage.setItem("asdcar_retention_contacts", JSON.stringify(updated));
-
-        }
-
-      };
-
-
-
-      const removeContact = (key) => {
-
-        const updated = { ...contactsMap };
-
-        delete updated[key];
-
-        setContactsMap(updated);
-
-        if (typeof window !== "undefined" && window.localStorage) {
-
-          localStorage.setItem("asdcar_retention_contacts", JSON.stringify(updated));
-
-        }
-
-      };
-
-
-
-      const retentionList = React.useMemo(() => {
-
-        const now = new Date();
-
-        const itemsMap = new Map();
-
-
-
-        services.forEach(s => {
-
-          const plate = (s.vehiclePlate || "").toUpperCase().trim();
-
-          const v = vehicles.find(veh => (veh.plate || "").toUpperCase().trim() === plate || veh.id === s.vehicleId);
-
-          
-
-          const dateStr = s.exitDate || s.entryDate || (s.createdAt ? s.createdAt.slice(0, 10) : null);
-
-          if (!dateStr) return;
-
-
-
-          const osDate = new Date(dateStr + "T12:00:00");
-
-          const diffDays = Math.floor(Math.abs(now - osDate) / (1000 * 60 * 60 * 24));
-
-
-
-          if (diffDays < 60) return;
-
-
-
-          const ownerName = v?.owner || "Cliente sem Nome";
-
-          const ownerPhone = v?.phone || "";
-
-          const vehicleModelStr = v ? `${v.brand} ${v.model} ${v.year ? '(' + v.year + ')' : ''}` : `${s.vehicleBrand || ''} ${s.vehicleModel || ''}`.trim();
-
-          const key = `os_${s.id}_${plate}`;
-
-
-
-          if (!itemsMap.has(plate) || itemsMap.get(plate).diasDecorridos > diffDays) {
-
-            let category = "atencao";
-
-            let categoryLabel = "Atenção (3 a 5 meses)";
-
-            let categoryColor = "#f59e0b";
-
-            let categoryBg = "rgba(245, 158, 11, 0.15)";
-
-
-
-            if (diffDays >= 180) {
-
-              category = "critico";
-
-              categoryLabel = "Crítico (6+ meses sem retorno)";
-
-              categoryColor = "#ef4444";
-
-              categoryBg = "rgba(239, 68, 68, 0.15)";
-
-            } else if (diffDays >= 120) {
-
-              categoryLabel = "Q4 / Pré-Férias (4+ meses)";
-
-              categoryColor = "#8b5cf6";
-
-              categoryBg = "rgba(139, 92, 246, 0.15)";
-
-            }
-
-
-
-            const isQ4Eligible = diffDays >= 120;
-
-
-
-            itemsMap.set(plate, {
-
-              key,
-
-              serviceId: s.id,
-
-              vehicleId: s.vehicleId || v?.id,
-
-              cliente: ownerName,
-
-              telefone: ownerPhone,
-
-              veiculo: vehicleModelStr || "Veículo ASDCAR",
-
-              placa: plate || "SEM-PLACA",
-
-              dataUltimaOs: dateStr,
-
-              dataFormatted: new Date(dateStr + "T12:00:00").toLocaleDateString('pt-BR'),
-
-              diasDecorridos: diffDays,
-
-              servicoAnterior: s.description ? s.description.split("||")[0] : "Manutenção preventiva geral",
-
-              kmAnterior: s.mileage || v?.mileage || 0,
-
-              valorOs: (Number(s.partsValue) || 0) + (Number(s.laborValue) || 0),
-
-              category,
-
-              categoryLabel,
-
-              categoryColor,
-
-              categoryBg,
-
-              isQ4Eligible
-
-            });
-
-          }
-
-        });
-
-
-
-        let result = Array.from(itemsMap.values());
-
-        if (result.length === 0) {
-
-          result = [
-
-            {
-
-              key: "demo_1",
-
-              serviceId: "demo_os_1",
-
-              vehicleId: "demo_v_1",
-
-              cliente: "Marcos",
-
-              telefone: "(11) 98765-4321",
-
-              veiculo: "Ford Ecosport 2.0",
-
-              placa: "ABC-1234",
-
-              dataUltimaOs: "2026-03-18",
-
-              dataFormatted: "18/03/2026",
-
-              diasDecorridos: 160,
-
-              servicoAnterior: "Troca do kit de embreagem e fluido de freio",
-
-              kmAnterior: 120500,
-
-              valorOs: 1850.00,
-
-              category: "atencao",
-
-              categoryLabel: "Atenção (3 a 5 meses)",
-
-              categoryColor: "#f59e0b",
-
-              categoryBg: "rgba(245, 158, 11, 0.15)",
-
-              isQ4Eligible: true
-
-            },
-
-            {
-
-              key: "demo_2",
-
-              serviceId: "demo_os_2",
-
-              vehicleId: "demo_v_2",
-
-              cliente: "Ana Paula Silva",
-
-              telefone: "(11) 99123-8877",
-
-              veiculo: "Honda Civic 2.0 LXS",
-
-              placa: "DEF-5678",
-
-              dataUltimaOs: "2026-02-10",
-
-              dataFormatted: "10/02/2026",
-
-              diasDecorridos: 196,
-
-              servicoAnterior: "Troca da correia dentada, tensor, bomba d'água e aditivo",
-
-              kmAnterior: 98400,
-
-              valorOs: 2400.00,
-
-              category: "critico",
-
-              categoryLabel: "Crítico (6+ meses sem retorno)",
-
-              categoryColor: "#ef4444",
-
-              categoryBg: "rgba(239, 68, 68, 0.15)",
-
-              isQ4Eligible: true
-
-            },
-
-            {
-
-              key: "demo_3",
-
-              serviceId: "demo_os_3",
-
-              vehicleId: "demo_v_3",
-
-              cliente: "Roberto Mendes",
-
-              telefone: "(11) 97788-9900",
-
-              veiculo: "Toyota Corolla 2.0 XEi",
-
-              placa: "GHI-9012",
-
-              dataUltimaOs: "2026-05-20",
-
-              dataFormatted: "20/05/2026",
-
-              diasDecorridos: 97,
-
-              servicoAnterior: "Troca de disco e pastilhas de freio dianteiras",
-
-              kmAnterior: 65200,
-
-              valorOs: 1120.00,
-
-              category: "atencao",
-
-              categoryLabel: "Atenção (3 a 5 meses)",
-
-              categoryColor: "#f59e0b",
-
-              categoryBg: "rgba(245, 158, 11, 0.15)",
-
-              isQ4Eligible: false
-
-            },
-
-            {
-
-              key: "demo_4",
-
-              serviceId: "demo_os_4",
-
-              vehicleId: "demo_v_4",
-
-              cliente: "Carlos Eduardo Santos",
-
-              telefone: "(11) 96543-2109",
-
-              veiculo: "Chevrolet S10 2.8 Turbo Diesel",
-
-              placa: "JKL-3456",
-
-              dataUltimaOs: "2025-11-15",
-
-              dataFormatted: "15/11/2025",
-
-              diasDecorridos: 283,
-
-              servicoAnterior: "Revisão de suspensão e amortecedores traseiros",
-
-              kmAnterior: 145000,
-
-              valorOs: 3800.00,
-
-              category: "critico",
-
-              categoryLabel: "Crítico (6+ meses sem retorno)",
-
-              categoryColor: "#ef4444",
-
-              categoryBg: "rgba(239, 68, 68, 0.15)",
-
-              isQ4Eligible: true
-
-            }
-
-          ];
-
-        }
-
-
-
-        return result.sort((a, b) => b.diasDecorridos - a.diasDecorridos);
-
-      }, [services, vehicles]);
-
-
-
-      const totalFila = retentionList.length;
-
-      const countAtencao = retentionList.filter(i => i.category === "atencao" && !i.isQ4Eligible).length;
-
-      const countCritico = retentionList.filter(i => i.category === "critico").length;
-
-      const countQ4 = retentionList.filter(i => i.isQ4Eligible).length;
-
-      const countContatados = retentionList.filter(i => !!contactsMap[i.key]).length;
-
-
-
-      const ltvPotencial = retentionList
-
-        .filter(i => !contactsMap[i.key])
-
-        .reduce((acc, i) => acc + (i.valorOs || 800), 0);
-
-
-
-      const filteredList = retentionList.filter(item => {
-
-        const isContacted = !!contactsMap[item.key];
-
-        const q = search.toLowerCase().trim();
-
-
-
-        if (q) {
-
-          const matchName = item.cliente.toLowerCase().includes(q);
-
-          const matchPlate = item.placa.toLowerCase().includes(q);
-
-          const matchVehicle = item.veiculo.toLowerCase().includes(q);
-
-          if (!matchName && !matchPlate && !matchVehicle) return false;
-
-        }
-
-
-
-        if (filterCategory === "atencao") return item.category === "atencao";
-
-        if (filterCategory === "critico") return item.category === "critico";
-
-        if (filterCategory === "q4") return item.isQ4Eligible;
-
-        if (filterCategory === "pendente") return !isContacted;
-
-        if (filterCategory === "contatado") return isContacted;
-
-
-
-        return true;
-
-      });
-
-
-
-      return (
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
-          {/* HEADER DA ABA */}
-
-          <div className="card" style={{ background: "linear-gradient(135deg, #141824, #0d101a)", border: "1px solid #1c2234", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-
-            <div>
-
-              <h2 style={{ fontSize: 20, fontWeight: 800, fontFamily: "'Syne', sans-serif", color: "#ffffff", display: "flex", alignItems: "center", gap: 10 }}>
-
-                🎯 Retenção & Régua LTV
-
-                <span style={{ fontSize: 11, background: "rgba(249,115,22,0.15)", color: "#f97316", border: "1px solid rgba(249,115,22,0.3)", padding: "2px 8px", borderRadius: 12, fontWeight: 700 }}>
-
-                  IA WhatsApp AutoGestão
-
-                </span>
-
-              </h2>
-
-              <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
-
-                Mãonitore a última visita dos clientes, previna o churn e gere mensagens com IA em 2 segundos para ativá-los via WhatsApp.
-
-              </p>
-
-            </div>
-
-            <div style={{ display: "flex", gap: 8 }}>
-
-              <button className="pill-badge purple-btn" onClick={onOpenAiConfig} style={{ padding: "8px 14px", fontSize: 12 }}>
-
-                ⚙️ Configurar IA / Gemini API
-
-              </button>
-
-            </div>
-
-          </div>
-
-
-
-          {/* PAINEL DE KPIS */}
-
-          <div className="kpi-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-
-            <div className="kpi-card" style={{ borderColor: "rgba(249, 115, 22, 0.3)" }}>
-
-              <div className="kpi-icon-badge" style={{ background: "rgba(249, 115, 22, 0.15)", color: "#f97316" }}>🎯</div>
-
-              <div className="kpi-number">{totalFila}</div>
-
-              <div className="kpi-label">TOTAL EM FILA DE RETENÇÃO</div>
-
-            </div>
-
-
-
-            <div className="kpi-card" style={{ borderColor: "rgba(245, 158, 11, 0.3)" }}>
-
-              <div className="kpi-icon-badge" style={{ background: "rgba(245, 158, 11, 0.15)", color: "#f59e0b" }}>⚠️</div>
-
-              <div className="kpi-number" style={{ color: "#f59e0b" }}>{countAtencao}</div>
-
-              <div className="kpi-label">ATENÇÃO (3 A 5 MESES)</div>
-
-            </div>
-
-
-
-            <div className="kpi-card" style={{ borderColor: "rgba(239, 68, 68, 0.3)" }}>
-
-              <div className="kpi-icon-badge" style={{ background: "rgba(239, 68, 68, 0.15)", color: "#ef4444" }}>🚨</div>
-
-              <div className="kpi-number" style={{ color: "#ef4444" }}>{countCritico}</div>
-
-              <div className="kpi-label">CRÍTICO (6+ MESES SEM RETORNO)</div>
-
-            </div>
-
-
-
-            <div className="kpi-card" style={{ borderColor: "rgba(139, 92, 246, 0.3)" }}>
-
-              <div className="kpi-icon-badge" style={{ background: "rgba(139, 92, 246, 0.15)", color: "#8b5cf6" }}>🌴</div>
-
-              <div className="kpi-number" style={{ color: "#8b5cf6" }}>{countQ4}</div>
-
-              <div className="kpi-label">Q4 / PRÉ-FÉRIAS (4+ MESES)</div>
-
-            </div>
-
-
-
-            <div className="kpi-card" style={{ borderColor: "rgba(16, 185, 129, 0.3)" }}>
-
-              <div className="kpi-icon-badge" style={{ background: "rgba(16, 185, 129, 0.15)", color: "#10b981" }}>✅</div>
-
-              <div className="kpi-number" style={{ color: "#10b981" }}>{countContatados}</div>
-
-              <div className="kpi-label">CONTATADOS / RECUPERÁVEL: {fmt(ltvPotencial)}</div>
-
-            </div>
-
-          </div>
-
-
-
-          {/* BARRA DE FILTROS E BUSCA */}
-
-          <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
-
-              <input 
-
-                className="input" 
-
-                placeholder="🔍 Buscar por cliente, placa ou modelo do veículo..." 
-
-                value={search} 
-
-                onChange={(e) => setSearch(e.target.value)} 
-
-                style={{ maxWidth: 380 }}
-
-              />
-
-
-
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-
-                <button 
-
-                  className={`pill-badge ${filterCategory === "all" ? "active-green" : ""}`} 
-
-                  onClick={() => setFilterCategory("all")}
-
-                >
-
-                  Todos ({retentionList.length})
-
-                </button>
-
-                <button 
-
-                  className={`pill-badge ${filterCategory === "atencao" ? "active-green" : ""}`} 
-
-                  onClick={() => setFilterCategory("atencao")}
-
-                  style={filterCategory === "atencao" ? { borderColor: "#f59e0b", color: "#f59e0b", background: "rgba(245,158,11,0.1)" } : {}}
-
-                >
-
-                  ⚠️ Atenção (3-5m)
-
-                </button>
-
-                <button 
-
-                  className={`pill-badge ${filterCategory === "critico" ? "active-green" : ""}`} 
-
-                  onClick={() => setFilterCategory("critico")}
-
-                  style={filterCategory === "critico" ? { borderColor: "#ef4444", color: "#ef4444", background: "rgba(239,68,68,0.1)" } : {}}
-
-                >
-
-                  🚨 Crítico (6m+)
-
-                </button>
-
-                <button 
-
-                  className={`pill-badge ${filterCategory === "q4" ? "active-green" : ""}`} 
-
-                  onClick={() => setFilterCategory("q4")}
-
-                  style={filterCategory === "q4" ? { borderColor: "#8b5cf6", color: "#8b5cf6", background: "rgba(139,92,246,0.1)" } : {}}
-
-                >
-
-                  🌴 Q4 Pré-Férias
-
-                </button>
-
-                <button 
-
-                  className={`pill-badge ${filterCategory === "pendente" ? "active-green" : ""}`} 
-
-                  onClick={() => setFilterCategory("pendente")}
-
-                >
-
-                  ⏳ Pendentes ({retentionList.length - countContatados})
-
-                </button>
-
-                <button 
-
-                  className={`pill-badge ${filterCategory === "contatado" ? "active-green" : ""}`} 
-
-                  onClick={() => setFilterCategory("contatado")}
-
-                  style={filterCategory === "contatado" ? { borderColor: "#10b981", color: "#10b981", background: "rgba(16,185,129,0.1)" } : {}}
-
-                >
-
-                  ✅ Contatados ({countContatados})
-
-                </button>
-
-              </div>
-
-            </div>
-
-          </div>
-
-
-
-          {/* LISTA DE CLIENTES E CARROS */}
-
-          <div className="card">
-
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-
-              <h3 style={{ fontSize: 16, fontWeight: 800, fontFamily: "'Syne', sans-serif", display: "flex", alignItems: "center", gap: 8 }}>
-
-                📋 Lista de Clientes em Alerta ({filteredList.length})
-
-              </h3>
-
-              <span style={{ fontSize: 11, color: "#94a3b8" }}>
-
-                💡 Clique em <b>"Gerar Mensagem IA"</b> para criar a mensagem personalizada
-
-              </span>
-
-            </div>
-
-
-
-            {filteredList.length === 0 ? (
-
-              <p style={{ fontSize: 13, color: "#64748b", padding: "20px 0", textAlign: "center" }}>
-
-                Nenhum cliente encontrado com os filtros selecionados.
-
-              </p>
-
-            ) : (
-
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(440px, 1fr))", gap: 14 }}>
-
-                {filteredList.map((item) => {
-
-                  const contactInfo = contactsMap[item.key];
-
-                  const isContacted = !!contactInfo;
-
-
-
-                  return (
-
-                    <div 
-
-                      key={item.key} 
-
-                      style={{
-
-                        background: "#0b0d14",
-
-                        border: `1px solid ${isContacted ? "#10b981" : "#1c2234"}`,
-
-                        borderRadius: 14,
-
-                        padding: 16,
-
-                        display: "flex",
-
-                        flexDirection: "column",
-
-                        gap: 12,
-
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.2)"
-
-                      }}
-
-                    >
-
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-
-                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-
-                          <div className="plate-badge">
-
-                            <div className="plate-top">BRASIL</div>
-
-                            <div className="plate-number">{item.placa}</div>
-
-                          </div>
-
-                          <div>
-
-                            <div style={{ fontSize: 15, fontWeight: 800, color: "#f8fafc" }}>
-
-                              {item.veiculo}
-
-                            </div>
-
-                            <div style={{ fontSize: 13, fontWeight: 700, color: "#f97316", marginTop: 2 }}>
-
-                              👤 {item.cliente} {item.telefone && `· 📞 ${item.telefone}`}
-
-                            </div>
-
-                          </div>
-
-                        </div>
-
-
-
-                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-
-                          <span 
-
-                            style={{
-
-                              fontSize: 11,
-
-                              fontWeight: 800,
-
-                              padding: "3px 10px",
-
-                              borderRadius: 20,
-
-                              background: item.categoryBg,
-
-                              color: item.categoryColor,
-
-                              border: `1px solid ${item.categoryColor}40`
-
-                            }}
-
-                          >
-
-                            {item.categoryLabel}
-
-                          </span>
-
-                          <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>
-
-                            ⏳ <b>{item.diasDecorridos} dias</b> pós-serviço
-
-                          </span>
-
-                        </div>
-
-                      </div>
-
-
-
-                      <div style={{ background: "#141824", border: "1px solid #1c2234", borderRadius: 10, padding: "10px 12px" }}>
-
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#64748b", fontWeight: 700, marginBottom: 4 }}>
-
-                          <span>ÚLTIMA OS: {item.dataFormatted}</span>
-
-                          <span>KM: {item.kmAnterior ? item.kmAnterior.toLocaleString('pt-BR') : "N/D"}</span>
-
-                        </div>
-
-                        <div style={{ fontSize: 12, color: "#e2e8f0", fontWeight: 600, lineHeight: 1.4 }}>
-
-                          🛠️ {item.servicoAnterior}
-
-                        </div>
-
-                      </div>
-
-
-
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, paddingTop: 4 }}>
-
-                        {isContacted ? (
-
-                          <span style={{ fontSize: 11, color: "#10b981", fontWeight: 700, display: "flex", alignItems: "center", gap: 4 }}>
-
-                            ✅ Contato Realizado em {contactInfo.date}
-
-                          </span>
-
-                        ) : (
-
-                          <span style={{ fontSize: 11, color: "#f59e0b", fontWeight: 700, display: "flex", alignItems: "center", gap: 4 }}>
-
-                            ⏳ Pendente de Reengajamento
-
-                          </span>
-
-                        )}
-
-
-
-                        <div style={{ display: "flex", gap: 6 }}>
-
-                          {isContacted ? (
-
-                            <button 
-
-                              className="btn-ghost" 
-
-                              style={{ padding: "6px 10px", fontSize: 11 }}
-
-                              onClick={() => removeContact(item.key)}
-
-                              title="Desfazer e voltar para pendente"
-
-                            >
-
-                              🔄 Desfazer
-
-                            </button>
-
-                          ) : (
-
-                            <button 
-
-                              className="btn-ghost" 
-
-                              style={{ padding: "6px 10px", fontSize: 11, color: "#10b981", borderColor: "rgba(16,185,129,0.3)" }}
-
-                              onClick={() => saveContact(item.key)}
-
-                            >
-
-                              ✅ Marcar Contatado
-
-                            </button>
-
-                          )}
-
-
-
-                          <button 
-
-                            className="btn-primary" 
-
-                            style={{ padding: "7px 14px", fontSize: 12, background: "linear-gradient(135deg, #7c3aed, #6d28d9)", color: "#ffffff" }}
-
-                            onClick={() => setSelectedItemForAi(item)}
-
-                          >
-
-                            🤖 Gerar Mensagem IA
-
-                          </button>
-
-                        </div>
-
-                      </div>
-
-                    </div>
-
-                  );
-
-                })}
-
-              </div>
-
-            )}
-
-          </div>
-
-
-
-          {/* MODAL DE IA E WHATSAPP */}
-
-          {selectedItemForAi && (
-
-
-              item={selectedItemForAi}
-
-              onClose={() => setSelectedItemForAi(null)}
-
-              onContacted={() => {
-
-                saveContact(selectedItemForAi.key);
-
-                setSelectedItemForAi(null);
-
-              }}
-
-            />
-
-          )}
-
         </div>
-
       );
+}
 
 
-
-
-    // ── MODAL INTERATIVO DE GERAÇÃO DE MENSAGEM IA WHATSAPP ───────────────────
-
-
-      const [apiKey, setApiKey] = useState(() => (typeof window !== "undefined" ? localStorage.getItem("asdcar_gemini_api_key") || "" : ""));
-
-      const [promptGoal, setPromptGoal] = useState(() => {
-
-        if (item.diasDecorridos >= 180) return "Lembrete de troca de óleo, filtros e revisão preventiva";
-
-        if (item.diasDecorridos >= 120) return "Revisão de viagem e check-up pré-férias de fim de ano";
-
-        return "Lembrete preventivo de checagem geral e manutenção";
-
-      });
-
-
-
-      const [loading, setLoading] = useState(true);
-
-      const [stepIndex, setStepIndex] = useState(1);
-
-      const [generatedText, setGeneratedText] = useState("");
-
-      const [copied, setCopied] = useState(false);
-
-
-
-      const payload = React.useMemo(() => ({
-
-        cliente: item.cliente,
-
-        veiculo: item.veiculo,
-
-        data_ultimo_servico: item.dataFormatted,
-
-        dias_decorridos: item.diasDecorridos,
-
-        servico_anterior: item.servicoAnterior,
-
-        km_anterior: item.kmAnterior,
-
-        objetivo_mensagem: promptGoal
-
-      }), [item, promptGoal]);
-
-
-
-      const handleGenerate = async () => {
-
-        setLoading(true);
-
-        setStepIndex(1);
-
-        
-
-        const timer1 = setTimeout(() => setStepIndex(2), 600);
-
-        const timer2 = setTimeout(() => setStepIndex(3), 1200);
-
-
-
-        try {
-
-          const result = await generateAiMessage(payload, apiKey);
-
-          setGeneratedText(result);
-
-        } catch (e) {
-
-          setGeneratedText(`Olá, ${item.cliente}! Tudo bem? Aqui é a equipe da ASDCAR AutoGestão. Passando para lembrar do check-up preventivo do seu ${item.veiculo}! Se quiser agendar um horário esta semana, me avisa por aqui!`);
-
-        } finally {
-
-          clearTimeout(timer1);
-
-          clearTimeout(timer2);
-
-          setLoading(false);
-
-        }
-
-      };
-
-
-
-      useEffect(() => {
-
-        handleGenerate();
-
-      }, [promptGoal]);
-
-
-
-      const rawPhone = (item.telefone || "").replace(/\D/g, "");
-
-      const formattedPhone = rawPhone.length === 10 || rawPhone.length === 11 ? `55${rawPhone}` : rawPhone;
-
-      const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(generatedText)}`;
-
-
-
-      const handleCopy = () => {
-
-        navigator.clipboard.writeText(generatedText);
-
-        setCopied(true);
-
-        setTimeout(() => setCopied(false), 2000);
-
-      };
-
-
-
-      const handleSendWhatsapp = () => {
-
-        window.open(whatsappUrl, "_blank");
-
-        onContacted();
-
-      };
-
-
-
-      return (
-
-        <div className="modal-bg" onClick={onClose}>
-
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 640 }}>
-
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, borderBottom: "1px solid #1c2234", paddingBottom: 12 }}>
-
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-
-                <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #7c3aed, #6d28d9)", display: "flex", alignItems: "center", justify: "center", fontSize: 18 }}>
-
-                  🤖
-
-                </div>
-
-                <div>
-
-                  <h3 style={{ fontSize: 16, fontWeight: 800, fontFamily: "'Syne', sans-serif" }}>
-
-                    Gerador de Mensagem com IA ASDCAR
-
-                  </h3>
-
-                  <p style={{ fontSize: 11, color: "#94a3b8" }}>
-
-                    WhatsApp Reengajamento LTV · {item.cliente} ({item.veiculo})
-
-                  </p>
-
-                </div>
-
-              </div>
-
-              <button className="btn-ghost" onClick={onClose} style={{ padding: "4px 10px", fontSize: 16 }}>✕</button>
-
-            </div>
-
-
-
-            <details style={{ background: "#0b0d14", border: "1px solid #1c2234", borderRadius: 10, padding: "8px 12px", marginBottom: 14, fontSize: 11, color: "#94a3b8" }}>
-
-              <summary style={{ cursor: "pointer", fontWeight: 700, color: "#7c3aed" }}>
-
-                🔍 Ver Payload Estruturado enviado para a API da IA (JSON)
-
-              </summary>
-
-              <pre style={{ marginTop: 8, background: "#06070a", padding: 10, borderRadius: 6, color: "#38bdf8", overflowX: "auto", fontSize: 11 }}>
-
-                {JSON.stringify(payload, null, 2)}
-
-              </pre>
-
-            </details>
-
-
-
-            <div style={{ marginBottom: 14 }}>
-
-              <label className="label">OBJETIVO DA MENSAGEM PREVENTIVA</label>
-
-              <select 
-
-                className="input" 
-
-                value={promptGoal} 
-
-                onChange={e => setPromptGoal(e.target.value)}
-
-              >
-
-                <option value="Lembrete preventivo de checagem geral e manutenção">
-
-                  90 dias: Lembrete preventivo de checagem geral
-
-                </option>
-
-                <option value="Lembrete de troca de óleo, filtros e revisão preventiva">
-
-                  180 dias (6 meses): Troca de óleo, filtros e alinhamento
-
-                </option>
-
-                <option value="Revisão de viagem e check-up pré-férias de fim de ano">
-
-                  Q4 / Pré-Férias: Revisão de viagem de fim de ano
-
-                </option>
-
-              </select>
-
-            </div>
-
-
-
-            {loading ? (
-
-              <div style={{ background: "#0b0d14", border: "1px dashed #7c3aed", borderRadius: 14, padding: 30, textAlign: "center" }}>
-
-                <div style={{ fontSize: 28, marginBottom: 10 }}>✨</div>
-
-                <div style={{ fontSize: 14, fontWeight: 800, color: "#a78bfa" }}>
-
-                  {stepIndex === 1 && "📥 Lendo histórico da OS e dados do veículo..."}
-
-                  {stepIndex === 2 && "⚙️ Aplicando Prompt do Consultor Técnico ASDCAR..."}
-
-                  {stepIndex === 3 && "💬 Sintetizando mensagem humanizada..."}
-
-                </div>
-
-                <div style={{ fontSize: 11, color: "#64748b", marginTop: 6 }}>
-
-                  A IA está gerando o texto em aproximadamente 2 segundos...
-
-                </div>
-
-              </div>
-
-            ) : (
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-
-                <label className="label" style={{ color: "#10b981", display: "flex", justifyContent: "space-between" }}>
-
-                  <span>💬 MENSAGEM GERADA PELA IA (EDITÁVEL)</span>
-
-                  <span>{generatedText.length} caracteres</span>
-
-                </label>
-
-                <textarea 
-
-                  className="textarea" 
-
-                  style={{ minHeight: 150, borderColor: "#10b981", background: "#0b1318", color: "#f8fafc", fontSize: 13, lineHeight: 1.5 }}
-
-                  value={generatedText}
-
-                  onChange={e => setGeneratedText(e.target.value)}
-
-                />
-
-              </div>
-
-            )}
-
-
-
-            <div style={{ display: "flex", gap: 10, marginTop: 18, justifyContent: "space-between", flexWrap: "wrap" }}>
-
-              <button 
-
-                className="btn-ghost" 
-
-                onClick={handleGenerate}
-
-                disabled={loading}
-
-              >
-
-                ✨ Regerar
-
-              </button>
-
-
-
-              <div style={{ display: "flex", gap: 8 }}>
-
-                <button 
-
-                  className="btn-ghost" 
-
-                  onClick={handleCopy}
-
-                  disabled={loading}
-
-                >
-
-                  {copied ? "✅ Copiado!" : "📋 Copiar"}
-
-                </button>
-
-
-
-                <button 
-
-                  className="btn-primary" 
-
-                  style={{ background: "#25D366", color: "#000000", fontWeight: 800 }}
-
-                  onClick={handleSendWhatsapp}
-
-                  disabled={loading}
-
-                >
-
-                  💬 Enviar via WhatsApp Web
-
-                </button>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      );
-
-
-
-
-    // ── MODAL DE CONFIGURAÇÃO DE IA (GEMINI API KEY) ─────────────────────────
-
-
-      const [apiKey, setApiKey] = useState(() => (typeof window !== "undefined" ? localStorage.getItem("asdcar_gemini_api_key") || "" : ""));
-
-      const [saved, setSaved] = useState(false);
-
-
-
-      const handleSave = () => {
-
-        if (typeof window !== "undefined") {
-
-          localStorage.setItem("asdcar_gemini_api_key", apiKey.trim());
-
-        }
-
-        setSaved(true);
-
-        setTimeout(() => {
-
-          setSaved(false);
-
-          onClose();
-
-        }, 1200);
-
-      };
-
-
-
-      return (
-
-        <div className="modal-bg" onClick={onClose}>
-
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 480 }}>
-
-            <h3 style={{ fontSize: 16, fontWeight: 800, fontFamily: "'Syne', sans-serif", marginBottom: 8 }}>
-
-              ⚙️ Configurações da IA (Google Gemini)
-
-            </h3>
-
-            <p style={{ fontSize: 12, color: "#94a3b8", marginBottom: 14, lineHeight: 1.4 }}>
-
-              Insira sua API Key do <b>Google Gemini</b> caso deseje chamadas diretas via API cloud. Se o campo ficar em branco, a ASDCAR utilizará automaticamente seu <b>Motor Inteligente Nativo de IA</b> com a persona do consultor técnico.
-
-            </p>
-
-
-
-            <div style={{ marginBottom: 14 }}>
-
-              <label className="label">GEMINI API KEY (OPCIONAL)</label>
-
-              <input 
-
-                className="input" 
-
-                type="password" 
-
-                placeholder="AIzaSy..." 
-
-                value={apiKey} 
-
-                onChange={e => setApiKey(e.target.value)} 
-
-              />
-
-            </div>
-
-
-
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
-
-              <button className="btn-ghost" onClick={onClose}>Cancelar</button>
-
-              <button className="btn-primary" onClick={handleSave}>
-
-                {saved ? "✅ Salvo!" : "Salvar Configurações"}
-
-              </button>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      );
-
-
-
-
-
-
-    // ── MODAL GERADOR DE PDF ──────────────────────────────────────────────────
-
-    function ReportModal({ onClose, onGenerate }) {
+function ReportModal({ onClose, onGenerate }) {
 
       const [from, setFrom] = useState(today().slice(0, 8) + "01");
 
@@ -4259,7 +2719,7 @@ Se quiser, me avisa por aqui que já reservo um horário exclusivo para você ne
 
       if (s.description?.includes("|| Peças Oficina:")) {
 
-        const blocos = s.description.split("||");
+        const blocos = (s.description || "").split("||");
 
         escopoPrincipal = blocos[0].trim();
 
@@ -4267,7 +2727,7 @@ Se quiser, me avisa por aqui que já reservo um horário exclusivo para você ne
 
       } else if (s.description?.includes("(Cliente forneceu as peças)")) {
 
-        escopoPrincipal = s.description.replace("(Cliente forneceu as peças)", "").trim();
+        escopoPrincipal = (s.description || "").replace("(Cliente forneceu as peças)", "").trim();
 
         blocoPecasMistas = "<div style='margin-top:10px; color:#64748b; font-style:italic;'>⚠️ Nota: Todas as peças para este serviço foram fornecidas pelo próprio cliente.</div>";
 
@@ -4345,7 +2805,7 @@ Se quiser, me avisa por aqui que já reservo um horário exclusivo para você ne
 
 
 
-      const html = "<!DOCTYPE html><html lang='pt-BR'><head><meta charset='UTF-8'/><title>Fechamento Comercial ASDCAR</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:11px;color:#0f172a;padding:30px;}.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #f97316;padding-bottom:12px;margin-bottom:20px;}.kpi-box{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}.kpi{background:#f8fafc;border:1px solid #e2e8f0;padding:10px;border-radius:6px;}.kpi-lbl{font-size:9px;color:#64748b;text-transform:uppercase;}.kpi-val{font-size:14px;font-weight:bold;margin-top:2px;}table{width:100%;border-collapse:collapse;margin-bottom:20px;}th,td{padding:8px;border:1px solid #e2e8f0;text-align:left;}th{background:#f1f5f9;font-size:9px;text-transform:uppercase;}.no-print{background:#f97316;color:white;padding:12px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:6px;border:none;width:100%;font-size:14px;}@media print{.no-print{display:none;}body{padding:0;}}</style></head><body><button class='no-print' onclick='window.print()'>CLIQUE AQUI PARA IMPRIMIR OU SALVAR EM PDF</button><div class='hdr'><div><strong style='font-size:22px;color:#f97316;'>ASDCAR</strong><br/><span>Fechamento Comercial</span></div><div style='text-align:right;'>Período: <strong>" + fmtDate(fromStr) + " até " + fmtDate(toStr) + "</strong></div></div><div class='kpi-box'><div class='kpi'><div class='kpi-lbl'>Peças Totais</div><div class='kpi-val' style='color:#8b5cf6;'>" + fmt(totalPecas) + "</div></div><div class='kpi'><div class='kpi-lbl'>Mão de Obra</div><div class='kpi-val' style='color:#10b981;'>" + fmt(totalMO) + "</div></div><div class='kpi'><div class='kpi-lbl'>Entradas Líquidas</div><div class='kpi-val' style='color:#3b82f6;'>" + fmt(faturamentoLiquido) + "</div></div><div class='kpi'><div class='kpi-lbl'>Resultado Real</div><div class='kpi-val' style='color:" + (resultadoReal >= 0 ? '#10b981' : '#ef4444') + ";'>" + fmt(resultadoReal) + "</div></div></div><h3>📋 Serviços Entregues (" + relServices.length + ")</h3><table><thead><tr><th>Veículo</th><th>Descrição / Obs.</th><th>Forma Pagto</th><th>Peças</th><th>M.O.</th><th>Saída</th></tr></thead><tbody>" + relServices.map(s => "<tr><td><strong>" + s.vehiclePlate + "</strong><br/>" + s.vehicleBrand + " " + s.vehicleModel + "</td><td>" + s.description.replace(/\|\|/g, '<br/>') + "</td><td>" + s.paymentMethod + "</td><td>" + fmt(s.partsValue) + "</td><td>" + fmt(s.laborValue) + "</td><td>" + fmtDate(s.exitDate) + "</td></tr>").join('') + "</tbody></table><h3>💸 Despesas do Período (" + relExpenses.length + ")</h3><table><thead><tr><th>Descrição</th><th>Categoria</th><th>Data</th><th>Valor</th></tr></thead><tbody>" + relExpenses.map(e => "<tr><td>" + e.description + "</td><td>" + e.category + "</td><td>" + fmtDate(e.expense_date) + "</td><td style='color:#ef4444;font-weight:bold;'>-" + fmt(e.value) + "</td></tr>").join('') + "</tbody></table></body></html>";
+      const html = "<!DOCTYPE html><html lang='pt-BR'><head><meta charset='UTF-8'/><title>Fechamento Comercial ASDCAR</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Arial,sans-serif;font-size:11px;color:#0f172a;padding:30px;}.hdr{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #f97316;padding-bottom:12px;margin-bottom:20px;}.kpi-box{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}.kpi{background:#f8fafc;border:1px solid #e2e8f0;padding:10px;border-radius:6px;}.kpi-lbl{font-size:9px;color:#64748b;text-transform:uppercase;}.kpi-val{font-size:14px;font-weight:bold;margin-top:2px;}table{width:100%;border-collapse:collapse;margin-bottom:20px;}th,td{padding:8px;border:1px solid #e2e8f0;text-align:left;}th{background:#f1f5f9;font-size:9px;text-transform:uppercase;}.no-print{background:#f97316;color:white;padding:12px;text-align:center;font-weight:bold;cursor:pointer;margin-bottom:20px;border-radius:6px;border:none;width:100%;font-size:14px;}@media print{.no-print{display:none;}body{padding:0;}}</style></head><body><button class='no-print' onclick='window.print()'>CLIQUE AQUI PARA IMPRIMIR OU SALVAR EM PDF</button><div class='hdr'><div><strong style='font-size:22px;color:#f97316;'>ASDCAR</strong><br/><span>Fechamento Comercial</span></div><div style='text-align:right;'>Período: <strong>" + fmtDate(fromStr) + " até " + fmtDate(toStr) + "</strong></div></div><div class='kpi-box'><div class='kpi'><div class='kpi-lbl'>Peças Totais</div><div class='kpi-val' style='color:#8b5cf6;'>" + fmt(totalPecas) + "</div></div><div class='kpi'><div class='kpi-lbl'>Mão de Obra</div><div class='kpi-val' style='color:#10b981;'>" + fmt(totalMO) + "</div></div><div class='kpi'><div class='kpi-lbl'>Entradas Líquidas</div><div class='kpi-val' style='color:#3b82f6;'>" + fmt(faturamentoLiquido) + "</div></div><div class='kpi'><div class='kpi-lbl'>Resultado Real</div><div class='kpi-val' style='color:" + (resultadoReal >= 0 ? '#10b981' : '#ef4444') + ";'>" + fmt(resultadoReal) + "</div></div></div><h3>📋 Serviços Entregues (" + relServices.length + ")</h3><table><thead><tr><th>Veículo</th><th>Descrição / Obs.</th><th>Forma Pagto</th><th>Peças</th><th>M.O.</th><th>Saída</th></tr></thead><tbody>" + relServices.map(s => "<tr><td><strong>" + s.vehiclePlate + "</strong><br/>" + s.vehicleBrand + " " + s.vehicleModel + "</td><td>" + (s.description || "").replace(/\|\|/g, '<br/>') + "</td><td>" + s.paymentMethod + "</td><td>" + fmt(s.partsValue) + "</td><td>" + fmt(s.laborValue) + "</td><td>" + fmtDate(s.exitDate) + "</td></tr>").join('') + "</tbody></table><h3>💸 Despesas do Período (" + relExpenses.length + ")</h3><table><thead><tr><th>Descrição</th><th>Categoria</th><th>Data</th><th>Valor</th></tr></thead><tbody>" + relExpenses.map(e => "<tr><td>" + e.description + "</td><td>" + e.category + "</td><td>" + fmtDate(e.expense_date) + "</td><td style='color:#ef4444;font-weight:bold;'>-" + fmt(e.value) + "</td></tr>").join('') + "</tbody></table></body></html>";
 
       const w = window.open("", "_blank");
 
