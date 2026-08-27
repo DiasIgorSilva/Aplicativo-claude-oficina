@@ -34,7 +34,7 @@
 
   <script type="text/babel">
 
-    const { useState, useEffect, useRef } = React;
+    const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
     const { createClient } = supabase;
 
@@ -77,6 +77,17 @@
     const fmtDate = (d) => d ? new Date(d + "T12:00:00").toLocaleDateString("pt-BR") : "—";
 
 
+
+    
+    function statusClass(status) {
+      if (!status) return "aguardando";
+      const s = String(status).toLowerCase();
+      if (s.includes("aguardando")) return "aguardando";
+      if (s.includes("andamento")) return "andamento";
+      if (s.includes("pronto")) return "pronto";
+      if (s.includes("entregue")) return "entregue";
+      return "aguardando";
+    }
 
     const STATUS_COLORS = { "Aguardando": "#f59e0b", "Em andamento": "#3b82f6", "Pronto": "#10b981", "Entregue": "#6b7280" };
 
@@ -585,7 +596,26 @@
 
             .card { background: #141824; border: 1px solid #1c2234; border-radius: 16px; padding: 18px; width: 100%; box-shadow: 0 4px 20px rgba(0,0,0,0.25); }
 
-            .workshop-car-card { cursor: pointer; transition: all 0.2s ease; }
+            
+    .vehicle-row-card {
+      display: grid;
+      grid-template-columns: 110px 1.8fr 1.4fr auto;
+      align-items: center;
+      gap: 16px;
+      background: var(--surface-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 18px;
+    }
+
+    @media (max-width: 768px) {
+      .vehicle-row-card {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+      }
+    }
+
+    .workshop-car-card { cursor: pointer; transition: all 0.2s ease; }
 
             .workshop-car-card:hover { border-color: #f97316 !important; background: #1a2030 !important; transform: translateY(-2px); }
 
@@ -2535,132 +2565,336 @@
 
     // ── ABA BASE DE VEÍCULOS ──────────────────────────────────────────────────
 
-    function VehiclesTab({ vehicles, services, loadAll, onZoomPhoto }) {
+    function VehiclesTab({ vehicles = [], services = [], loadAll, onZoomPhoto }) {
       const [modal, setModal] = useState(false);
       const [historyModal, setHistoryModal] = useState(false);
       const [selectedV, setSelectedV] = useState(null);
       const [editing, setEditing] = useState(null);
       const [search, setSearch] = useState("");
       const [form, setForm] = useState({});
+      const [showBrandRanking, setShowBrandRanking] = useState(false);
+
+      const safeVehicles = Array.isArray(vehicles) ? vehicles : [];
+      const safeServices = Array.isArray(services) ? services : [];
+
+      const brandRanking = useMemo(() => {
+        const counts = {};
+        safeVehicles.forEach(v => {
+          if (v && v.brand && v.brand.trim()) {
+            const b = v.brand.trim();
+            counts[b] = (counts[b] || 0) + 1;
+          }
+        });
+        return Object.entries(counts)
+          .map(([brand, count]) => ({ brand, count }))
+          .sort((a, b) => b.count - a.count);
+      }, [safeVehicles]);
       
       const open = (v = null) => { setEditing(v); setForm(v || {}); setModal(true); };
       const close = () => { setModal(false); setEditing(null); setForm({}); };
 
       const save = async () => {
-        if (!form.plate || !form.brand || !form.model) return alert("Dados obrigatórios faltando.");
+        if (!form.plate || !form.brand || !form.model) return alert("Dados obrigatórios faltando (Placa, Marca e Modelo).");
         const row = { 
-          id: editing?.id || uid(), plate: form.plate.toUpperCase(), brand: form.brand, model: form.model, 
-          year: form.year, engine: form.engine || "", color: form.color, owner: form.owner, phone: form.phone, notes: form.notes, mileage: Number(form.mileage) || 0 
+          id: editing?.id || uid(), 
+          plate: (form.plate || "").toUpperCase().trim(), 
+          brand: form.brand || "", 
+          model: form.model || "", 
+          year: form.year || "", 
+          engine: form.engine || "", 
+          color: form.color || "", 
+          owner: form.owner || "", 
+          phone: form.phone || "", 
+          notes: form.notes || "", 
+          mileage: Number(form.mileage) || 0 
         };
         const { error } = await supabaseClient.from("vehicles").upsert(row);
         if (!error) { await loadAll(false); close(); } else { alert("Erro ao salvar: " + error.message); }
       };
 
-      const filtered = vehicles.filter(v => !search || (v.plate||"").toLowerCase().includes(search.toLowerCase()) || (v.owner||"").toLowerCase().includes(search.toLowerCase()) || (v.model||"").toLowerCase().includes(search.toLowerCase()));
+      const filtered = safeVehicles.filter(v => 
+        !search || 
+        (v?.plate || "").toLowerCase().includes(search.toLowerCase()) || 
+        (v?.owner || "").toLowerCase().includes(search.toLowerCase()) || 
+        (v?.brand || "").toLowerCase().includes(search.toLowerCase()) || 
+        (v?.model || "").toLowerCase().includes(search.toLowerCase())
+      );
 
       return (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-            <input className="input" style={{ maxWidth: 300 }} placeholder="🔍 Buscar por placa, dono ou modelo..." value={search} onChange={e => setSearch(e.target.value)} />
-            <button className="btn-primary" onClick={() => open()}>+ Novo Veículo</button>
-          </div>
-
-          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                <thead>
-                  <tr style={{ background: "#141824", color: "#94a3b8", textAlign: "left" }}>
-                    <th style={{ padding: "12px 16px" }}>Veículo</th>
-                    <th style={{ padding: "12px 16px" }}>Placa</th>
-                    <th style={{ padding: "12px 16px" }}>Cliente / Contato</th>
-                    <th style={{ padding: "12px 16px" }}>KM Registrado</th>
-                    <th style={{ padding: "12px 16px", textAlign: "right" }}>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.length === 0 ? (
-                    <tr><td colSpan={5} style={{ padding: 30, textAlign: "center", color: "#64748b" }}>Nenhum veículo encontrado.</td></tr>
-                  ) : (
-                    filtered.map(v => (
-                      <tr key={v.id} style={{ borderBottom: "1px solid #1c2234" }}>
-                        <td style={{ padding: "12px 16px" }}>
-                          <strong style={{ color: "#f8fafc" }}>{v.brand} {v.model}</strong>
-                          {v.engine ? <span style={{ fontSize: 11, color: "#94a3b8", marginLeft: 6 }}>({v.engine})</span> : null}
-                          <div style={{ fontSize: 11, color: "#64748b" }}>Ano: {v.year || "—"}</div>
-                        </td>
-                        <td style={{ padding: "12px 16px" }}>
-                          <span className="plate-badge">{v.plate}</span>
-                        </td>
-                        <td style={{ padding: "12px 16px" }}>
-                          <div style={{ color: "#f8fafc", fontWeight: 600 }}>{v.owner || "—"}</div>
-                          <div style={{ fontSize: 11, color: "#64748b" }}>{v.phone || "—"}</div>
-                        </td>
-                        <td style={{ padding: "12px 16px", color: "#38bdf8", fontWeight: 700 }}>
-                          {fmtKm(v.mileage)}
-                        </td>
-                        <td style={{ padding: "12px 16px", textAlign: "right" }}>
-                          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-                            <button className="btn-ghost" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => { setSelectedV(v); setHistoryModal(true); }}>📜 Histórico</button>
-                            <button className="btn-ghost" style={{ padding: "6px 10px", fontSize: 12 }} onClick={() => open(v)}>✏️ Editar</button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {modal && (
-            <div className="modal-bg" onClick={close}>
-              <div className="modal" onClick={e => e.stopPropagation()}>
-                <h3>{editing ? "Editar Veículo" : "Novo Cadastro Master"}</h3>
-                <Field label="Placa *" value={form.plate || ""} onChange={v => setForm({ ...form, plate: v.toUpperCase() })} />
-                <BrandSelector value={form.brand || ""} onChange={v => setForm({ ...form, brand: v })} />
-                <Field label="Modelo *" value={form.model || ""} onChange={v => setForm({ ...form, model: v })} />
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-                  <Field label="Ano" value={form.year || ""} onChange={v => setForm({ ...form, year: v })} />
-                  <Field label="Motorização" placeholder="Ex: 1.0, 1.6, 2.0" value={form.engine || ""} onChange={v => setForm({ ...form, engine: v })} />
-                  <Field label="KM Inicial" type="number" value={form.mileage || ""} onChange={v => setForm({ ...form, mileage: v })} />
+          {/* BANNER DE ESTATÍSTICAS E RANKING */}
+          <div className="card" style={{ background: "var(--surface-card)", border: "1px solid var(--border)", padding: "18px 20px", borderRadius: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+              <div style={{ background: "rgba(56, 189, 248, 0.12)", border: "1px solid rgba(56, 189, 248, 0.3)", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ fontSize: 24 }}>🚗</span>
+                <div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>Veículos Cadastrados</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "var(--text)" }}>{safeVehicles.length} <span style={{ fontSize: 13, fontWeight: 500, color: "#38bdf8" }}>carros</span></div>
                 </div>
-                <Field label="Dono / Cliente" value={form.owner || ""} onChange={v => setForm({ ...form, owner: v })} />
-                <Field label="Telefone" value={form.phone || ""} onChange={v => setForm({ ...form, phone: v })} />
-                <button className="btn-primary" style={{ width: "100%", marginTop: 15 }} onClick={save}>Salvar</button>
               </div>
+
+              <div style={{ background: "rgba(249, 115, 22, 0.12)", border: "1px solid rgba(249, 115, 22, 0.3)", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ fontSize: 24 }}>🏷️</span>
+                <div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>Marcas no Banco</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "var(--text)" }}>{brandRanking.length} <span style={{ fontSize: 13, fontWeight: 500, color: "#f97316" }}>marcas ativas</span></div>
+                </div>
+              </div>
+            </div>
+
+            <button 
+              className="btn btn-secondary" 
+              onClick={() => setShowBrandRanking(!showBrandRanking)}
+              style={{ padding: "10px 16px", fontSize: 12, display: "flex", alignItems: "center", gap: 8, background: showBrandRanking ? "var(--surface-overlay)" : "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, cursor: "pointer", color: "var(--text)", fontWeight: 600 }}
+            >
+              📊 {showBrandRanking ? "Ocultar Ranking de Marcas" : "Ver Ranking de Marcas"}
+              <span style={{ fontSize: 10, background: "#f97316", color: "#fff", padding: "2px 8px", borderRadius: 10, fontWeight: 800 }}>{brandRanking.length}</span>
+            </button>
+          </div>
+
+          {/* PAINEL EXPANSÍVEL DE RANKING DE MARCAS */}
+          {showBrandRanking && (
+            <div className="card" style={{ background: "var(--surface)", border: "1px solid var(--border)", padding: 18, borderRadius: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, borderBottom: "1px solid var(--border)", paddingBottom: 10 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", display: "flex", alignItems: "center", gap: 8 }}>
+                  🏆 Ranking de Marcas Cadastradas (Mais para Menos)
+                </div>
+                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Clique em uma marca para filtrar a lista</span>
+              </div>
+
+              {brandRanking.length === 0 ? (
+                <div style={{ fontSize: 12, color: "var(--text-muted)", textAlign: "center", padding: 14 }}>Nenhuma marca registrada em carros cadastrados.</div>
+              ) : (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {brandRanking.map((item, idx) => (
+                    <button
+                      key={item.brand}
+                      onClick={() => setSearch(search === item.brand ? "" : item.brand)}
+                      style={{
+                        background: search === item.brand ? "rgba(249, 115, 22, 0.25)" : "var(--surface-card)",
+                        border: `1px solid ${search === item.brand ? "#f97316" : "var(--border)"}`,
+                        color: "var(--text)",
+                        borderRadius: 10,
+                        padding: "8px 14px",
+                        fontSize: 12,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        transition: "all 0.15s ease"
+                      }}
+                      title={`Filtrar por ${item.brand}`}
+                    >
+                      <span style={{ color: idx === 0 ? "#f59e0b" : idx === 1 ? "#94a3b8" : idx === 2 ? "#b45309" : "var(--text-muted)", fontWeight: 800, fontSize: 11 }}>
+                        #{idx + 1}
+                      </span>
+                      <span style={{ fontWeight: 700 }}>{item.brand}</span>
+                      <span style={{ background: "var(--surface)", color: "#38bdf8", padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, border: "1px solid var(--border)" }}>
+                        {item.count} carro{item.count > 1 ? "s" : ""}
+                      </span>
+                    </button>
+                  ))}
+                  {search && (
+                    <button 
+                      onClick={() => setSearch("")} 
+                      style={{ background: "rgba(239, 68, 68, 0.15)", border: "1px solid rgba(239, 68, 68, 0.4)", color: "#ef4444", borderRadius: 10, padding: "8px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                    >
+                      ✕ Limpar Filtros
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
+          {/* BARRA DE BUSCA E BOTÃO NOVO VEÍCULO */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+            <div style={{ position: "relative", flex: "1 1 280px" }}>
+              <input 
+                className="input" 
+                placeholder="🔍 Buscar por placa, cliente, marca ou modelo..." 
+                value={search} 
+                onChange={e => setSearch(e.target.value)} 
+                style={{ width: "100%", paddingLeft: "14px" }}
+              />
+            </div>
+            <button className="btn btn-primary" onClick={() => open()} style={{ padding: "10px 18px", fontSize: 13 }}>
+              + Novo Cadastro de Veículo
+            </button>
+          </div>
+
+          {/* LISTA DE CARROS EM CARDS ELEGANTES */}
+          <div className="list-container" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {filtered.length === 0 ? (
+              <div className="card empty-state" style={{ background: "var(--surface-card)", color: "var(--text-muted)", padding: 40, textAlign: "center" }}>
+                🚗 Nenhum veículo cadastrado ou encontrado com essa busca.
+              </div>
+            ) : (
+              filtered.map(v => {
+                const vehicleServices = safeServices.filter(s => s && s.vehicleId === v.id);
+                return (
+                  <div key={v.id} className="item-card vehicle-row-card">
+                    {/* COLUNA 1: PLACA (LARGURA FIXA ALINHADA) */}
+                    <div style={{ display: "flex", alignItems: "center" }}>
+                      <span className="plate-badge" style={{ width: 90, textAlign: "center" }}>
+                        <span className="plate-top">BRASIL</span>
+                        <span className="plate-number">{v.plate}</span>
+                      </span>
+                    </div>
+
+                    {/* COLUNA 2: MARCA, MODELO, MOTORIZAÇÃO, ANO, KM */}
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <span>{v.brand} {v.model}</span>
+                        {v.engine ? (
+                          <span style={{ background: "rgba(56, 189, 248, 0.15)", color: "#38bdf8", border: "1px solid rgba(56, 189, 248, 0.3)", padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700 }}>
+                            ⚡ {v.engine}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+                        Ano: <strong style={{ color: "var(--text)" }}>{v.year || "—"}</strong> · KM: <strong style={{ color: "#38bdf8" }}>{fmtKm(v.mileage)}</strong>
+                      </div>
+                    </div>
+
+                    {/* COLUNA 3: PROPRIETÁRIO & CONTATO (COLUNA ALINHADA) */}
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5 }}>PROPRIETÁRIO</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {v.owner || "Sem cliente vinculado"}
+                      </div>
+                      <div style={{ fontSize: 12, color: "#4ade80", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+                        📱 {v.phone || "Sem telefone"}
+                      </div>
+                    </div>
+
+                    {/* COLUNA 4: AÇÕES (HISTÓRICO E EDITAR ALINHADOD À DIREITA) */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
+                      <button 
+                        onClick={() => { setSelectedV(v); setHistoryModal(true); }} 
+                        className="btn btn-secondary" 
+                        style={{ padding: "8px 12px", fontSize: 12, display: "flex", alignItems: "center", gap: 6, borderRadius: 8 }}
+                      >
+                        📜 Histórico ({vehicleServices.length})
+                      </button>
+                      <button 
+                        onClick={() => open(v)} 
+                        className="icon-btn" 
+                        title="Editar Veículo"
+                        style={{ width: 36, height: 36, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}
+                      >
+                        <span style={{ fontSize: 14 }}>✏️</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+          
+          {/* MODAL DE CADASTRO / EDIÇÃO (POPUP CENTRALIZADO) */}
+          {modal && (
+            <div className="modal-bg" onClick={close}>
+              <div className="modal" onClick={e => e.stopPropagation()}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, borderBottom: "1px solid #1c2234", paddingBottom: 12 }}>
+                  <h3 style={{ fontSize: 18, fontWeight: 800, color: "#ffffff", margin: 0 }}>{editing ? "Editar Registro do Veículo" : "Novo Cadastro Automotivo"}</h3>
+                  <button onClick={close} className="btn-ghost" style={{ padding: "4px 10px", fontSize: 14 }}>✕</button>
+                </div>
+
+                <div className="form-group">
+                  <label className="label">Placa do Veículo (Mercosul / Tradicional) *</label>
+                  <input 
+                    className="input" 
+                    placeholder="Ex: ABC1D23 ou ABC-1234" 
+                    value={form.plate || ""} 
+                    onChange={e => setForm({ ...form, plate: e.target.value.toUpperCase() })} 
+                  />
+                </div>
+
+                <BrandSelector value={form.brand || ""} onChange={(val) => setForm({ ...form, brand: val })} />
+
+                <div className="form-group">
+                  <label className="label">Modelo *</label>
+                  <input className="input" placeholder="Ex: Corolla XEI, Gol G5" value={form.model || ""} onChange={e => setForm({ ...form, model: e.target.value })} />
+                </div>
+
+                <div className="form-grid-3" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                  <div className="form-group">
+                    <label className="label">Ano</label>
+                    <input className="input" placeholder="Ex: 2018" value={form.year || ""} onChange={e => setForm({ ...form, year: e.target.value })} />
+                  </div>
+                  <div className="form-group">
+                    <label className="label">Motorização</label>
+                    <input className="input" placeholder="Ex: 1.0, 1.6, 2.0" value={form.engine || ""} onChange={e => setForm({ ...form, engine: e.target.value })} />
+                  </div>
+                  <div className="form-group">
+                    <label className="label">KM Inicial</label>
+                    <input className="input" type="number" placeholder="0" value={form.mileage || ""} onChange={e => setForm({ ...form, mileage: e.target.value })} />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="label">Cliente / Proprietário</label>
+                  <input className="input" placeholder="Nome do Dono do Veículo" value={form.owner || ""} onChange={e => setForm({ ...form, owner: e.target.value })} />
+                </div>
+
+                <div className="form-group">
+                  <label className="label">Telefone / WhatsApp</label>
+                  <input className="input" placeholder="Ex: (11) 99999-9999" value={form.phone || ""} onChange={e => setForm({ ...form, phone: e.target.value })} />
+                </div>
+
+                <button className="btn btn-primary" style={{ width: "100%", marginTop: "20px" }} onClick={save}>
+                  Confirmar Cadastro / Alterações
+                </button>
+              </div>
+            </div>
+          )}
+          
+          {/* MODAL DE HISTÓRICO DE SERVIÇOS (POPUP CENTRALIZADO) */}
           {historyModal && (
             <div className="modal-bg" onClick={() => setHistoryModal(false)}>
-              <div className="modal" onClick={e => e.stopPropagation()}>
-                <h3>📜 Histórico do Veículo: {selectedV?.plate}</h3>
-                <div style={{ maxHeight: 350, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
-                  {services.filter(s => (s.vehiclePlate || "").toUpperCase() === (selectedV?.plate || "").toUpperCase()).length === 0 ? (
-                    <p style={{ color: "#64748b", textAlign: "center", padding: 20 }}>Nenhum serviço registrado para este veículo.</p>
+              <div className="modal" style={{ maxWidth: 600 }} onClick={e => e.stopPropagation()}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, borderBottom: "1px solid #1c2234", paddingBottom: 10 }}>
+                  <h3 style={{ fontSize: 18, fontWeight: 800, color: "#ffffff", margin: 0 }}>Histórico de Serviços: {selectedV?.plate}</h3>
+                  <button onClick={() => setHistoryModal(false)} className="btn-ghost" style={{ padding: "4px 10px", fontSize: 14 }}>✕</button>
+                </div>
+
+                <div style={{ background: "var(--surface)", padding: 14, borderRadius: 10, marginBottom: 16, fontSize: 13, border: "1px solid var(--border)" }}>
+                  <strong>Proprietário:</strong> {selectedV?.owner || "Sem nome registrado"} <br/>
+                  <strong>Veículo:</strong> {selectedV?.brand} {selectedV?.model} {selectedV?.year ? `(${selectedV.year})` : ""} {selectedV?.engine ? `· Motor: ${selectedV.engine}` : ""}
+                </div>
+
+                <div style={{ maxHeight: 350, overflowY: "auto" }}>
+                  {safeServices.filter(s => s && s.vehicleId === selectedV?.id).length === 0 ? (
+                    <div className="empty-state" style={{ padding: 20, textAlign: "center", color: "var(--text-muted)" }}>Este veículo ainda não possui serviços registrados no banco.</div>
                   ) : (
-                    services.filter(s => (s.vehiclePlate || "").toUpperCase() === (selectedV?.plate || "").toUpperCase()).map(s => (
-                      <div key={s.id} style={{ background: "#0b0d14", border: "1px solid #1c2234", padding: 12, borderRadius: 8 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                          <span style={{ fontSize: 11, color: "#64748b" }}>Data: {fmtDate(s.entryDate)}</span>
-                          <StatusBadge status={s.status} />
+                    safeServices.filter(s => s && s.vehicleId === selectedV?.id).map(s => (
+                      <div key={s.id} style={{ padding: 14, background: "var(--surface-card)", borderRadius: 10, marginBottom: 10, border: "1px solid var(--border)", borderLeft: `4px solid ${STATUS_COLORS[s?.status] || "var(--border)"}` }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{(s?.description || "").replace(/\|\|/g, " · ")}</span>
+                          <span className={`badge badge-${statusClass(s?.status)}`}>{s?.status || "Aguardando"}</span>
                         </div>
-                        <div style={{ fontSize: 13, color: "#f8fafc", fontWeight: 600 }}>{s.description}</div>
-                        <div style={{ fontSize: 12, color: "#10b981", marginTop: 6, fontWeight: 700 }}>Total: {fmt((Number(s.partsValue)||0) + (Number(s.laborValue)||0))}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, display: "flex", gap: 12 }}>
+                          <span>KM: {fmtKm(s?.mileage)}</span>
+                          <span>Data: {fmtDate(s?.exitDate || s?.entryDate)}</span>
+                        </div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--success)", marginTop: 6 }}>
+                          Total: {fmt((Number(s?.partsValue) || 0) + (Number(s?.laborValue) || 0))}
+                        </div>
                       </div>
                     ))
                   )}
                 </div>
-                <button className="btn-ghost" style={{ width: "100%", marginTop: 15 }} onClick={() => setHistoryModal(false)}>Fechar</button>
+
+                <button className="btn btn-secondary" style={{ width: "100%", marginTop: 16 }} onClick={() => setHistoryModal(false)}>Fechar Histórico</button>
               </div>
             </div>
           )}
         </div>
       );
-}
+    }
 
-
-function ReportModal({ onClose, onGenerate }) {
+    function ReportModal({ onClose, onGenerate }) {
 
       const [from, setFrom] = useState(today().slice(0, 8) + "01");
 
