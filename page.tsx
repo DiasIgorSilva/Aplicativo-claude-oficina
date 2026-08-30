@@ -1604,7 +1604,7 @@ const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
           payment_method: form.paymentMethod || "Dinheiro", 
 
-          mileage: Number(form.mileage) || 0, is_test: true,
+          mileage: Number(form.mileage) || 0,
 
           mixed_cash: form.paymentMethod === "Múltiplo / Misto" ? Number(form.mixedCash) : 0,
 
@@ -2921,7 +2921,7 @@ const { useState, useEffect, useRef, useMemo, useCallback } = React;
           owner: form.owner || "", 
           phone: form.phone || "", 
           notes: form.notes || "", 
-          mileage: Number(form.mileage) || 0, is_test: true 
+          mileage: Number(form.mileage) || 0 
         };
         const { error } = await supabaseClient.from("vehicles").upsert(row);
         if (!error) { await loadAll(false); close(); } else { alert("Erro ao salvar: " + error.message); }
