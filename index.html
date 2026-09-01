@@ -35,33 +35,112 @@
   <script type="text/babel">
 
     const { useState, useEffect, useRef, useMemo, useCallback } = React;
-
     const { createClient } = supabase;
 
-
-
-    const supabaseClient = createClient(
-
+    // Cliente Real Supabase (Apenas leitura/sync de dados para o Sandbox)
+    const realSupabase = createClient(
       "https://bofhihxpqmqimkanwkyw.supabase.co",
-
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJvZmhpaHhwcW1xaW1rYW53a3l3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUwODQ3OTMsImV4cCI6MjA5MDY2MDc5M30.fOOD-FweGID1x2mlJ3LWImtw7B6m6Pc-8auXLIuCqbw"
-
     );
 
+    // SANDBOX ISOLADO PARA AMBIENTE DE TESTE (localStorage)
+    const SANDBOX_PREFIX = "asdcar_sandbox_";
 
+    async function syncFromProduction() {
+      try {
+        const [vRes, sRes, eRes] = await Promise.all([
+          realSupabase.from("vehicles").select("*"),
+          realSupabase.from("services").select("*"),
+          realSupabase.from("expenses").select("*")
+        ]);
+        if (vRes.data) localStorage.setItem(SANDBOX_PREFIX + "vehicles", JSON.stringify(vRes.data));
+        if (sRes.data) localStorage.setItem(SANDBOX_PREFIX + "services", JSON.stringify(sRes.data));
+        if (eRes.data) localStorage.setItem(SANDBOX_PREFIX + "expenses", JSON.stringify(eRes.data));
+        localStorage.setItem(SANDBOX_PREFIX + "initialized", "true");
+        return true;
+      } catch (err) {
+        console.error("Erro ao sincronizar do Supabase para Sandbox:", err);
+        return false;
+      }
+    }
 
-    // ── CONSTANTES E TAXAS ────────────────────────────────────────────────────
+    const supabaseClient = {
+      from: (table) => {
+        const storageKey = SANDBOX_PREFIX + table;
+        const getLocalData = () => {
+          try {
+            const raw = localStorage.getItem(storageKey);
+            return raw ? JSON.parse(raw) : [];
+          } catch (e) {
+            return [];
+          }
+        };
+        const setLocalData = (data) => {
+          try {
+            localStorage.setItem(storageKey, JSON.stringify(data));
+          } catch (e) {
+            console.error("Erro ao salvar no Sandbox LocalStorage:", e);
+          }
+        };
 
+        return {
+          select: (cols = "*") => {
+            return {
+              order: async (field, { ascending = true } = {}) => {
+                // Se ainda não inicializou o sandbox local, puxa uma cópia inicial da produção
+                if (!localStorage.getItem(SANDBOX_PREFIX + "initialized")) {
+                  await syncFromProduction();
+                }
+                let items = getLocalData();
+                if (field) {
+                  items.sort((a, b) => {
+                    const valA = a[field] || "";
+                    const valB = b[field] || "";
+                    if (valA < valB) return ascending ? -1 : 1;
+                    if (valA > valB) return ascending ? 1 : -1;
+                    return 0;
+                  });
+                }
+                return { data: items, error: null };
+              }
+            };
+          },
+          upsert: async (rowOrRows) => {
+            const items = getLocalData();
+            const rows = Array.isArray(rowOrRows) ? rowOrRows : [rowOrRows];
+            rows.forEach(r => {
+              const idx = items.findIndex(item => item.id === r.id);
+              if (idx >= 0) {
+                items[idx] = { ...items[idx], ...r };
+              } else {
+                items.unshift({ ...r, created_at: r.created_at || new Date().toISOString() });
+              }
+            });
+            setLocalData(items);
+            return { data: rows, error: null };
+          },
+          delete: () => {
+            return {
+              eq: async (col, val) => {
+                let items = getLocalData();
+                items = items.filter(item => item[col] !== val);
+                setLocalData(items);
+                return { data: null, error: null };
+              }
+            };
+          }
+        };
+      }
+    };
+
+    // ── CONSTANTES E TAXAS (1x até 18x) ───────────────────────────────────────
     const PAYMENT_METHODS = {
-
       "Dinheiro": 0, "Pix": 0, "Débito": 1.9,
-
-      "Crédito 1x": 0.79, "Crédito 2x": 1.58, "Crédito 3x": 2.37, "Crédito 4x": 3.16,
-
-      "Crédito 5x": 3.95, "Crédito 6x": 4.74, "Crédito 7x": 5.53, "Crédito 8x": 6.32,
-
-      "Crédito 9x": 7.11, "Crédito 10x": 7.90, "Crédito 11x": 8.69, "Crédito 12x": 9.48
-
+      "Crédito 1x": 0.79, "Crédito 2x": 2.13, "Crédito 3x": 2.83, "Crédito 4x": 3.52,
+      "Crédito 5x": 4.21, "Crédito 6x": 4.89, "Crédito 7x": 5.55, "Crédito 8x": 6.22,
+      "Crédito 9x": 6.88, "Crédito 10x": 7.54, "Crédito 11x": 8.18, "Crédito 12x": 8.82,
+      "Crédito 13x": 9.45, "Crédito 14x": 10.08, "Crédito 15x": 10.71, "Crédito 16x": 11.32,
+      "Crédito 17x": 11.93, "Crédito 18x": 12.54
     };
 
 
@@ -709,10 +788,54 @@
 
 
 
+          {/* BANNER SANDBOX DE TESTES ISOLADO */}
+          <div style={{
+            background: "linear-gradient(90deg, #1e1b4b 0%, #312e81 100%)",
+            borderBottom: "1px solid #6366f1",
+            padding: "8px 16px",
+            fontSize: "12px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "8px",
+            color: "#e0e7ff"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ fontSize: "14px" }}>🧪</span>
+              <span>
+                <strong>AMBIENTE DE TESTES (SANDBOX ISOLADO):</strong> Suas alterações aqui são salvas localmente e <strong>NÃO afetam o banco de dados oficial de produção</strong>.
+              </span>
+            </div>
+            <button
+              onClick={async () => {
+                if (confirm("Deseja recarregar uma cópia limpa dos dados reais da produção para este ambiente de teste? Suas alterações locais de teste serão substituídas pela cópia atual do banco.")) {
+                  setLoading(true);
+                  await syncFromProduction();
+                  await loadAll(false);
+                  setLoading(false);
+                }
+              }}
+              style={{
+                background: "rgba(99, 102, 241, 0.2)",
+                border: "1px solid #818cf8",
+                color: "#fff",
+                padding: "4px 10px",
+                borderRadius: "6px",
+                fontSize: "11px",
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px"
+              }}
+            >
+              🔄 Recarregar Dados da Produção
+            </button>
+          </div>
+
           {/* HEADER NAVEGAÇÃO */}
-
           <header className="header-bar">
-
             <div className="logo-box">
 
               <div className="logo-icon">🚘</div>
@@ -2745,42 +2868,63 @@
               displayedExp.map(e => {
                 const paid = isExpensePaid(e);
                 return (
-                  <div key={e.id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid #1e2736", alignItems: "center", gap: 10 }}>
-                    <div style={{ fontSize: 11, flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-                        <strong>{e.category}</strong>
-                        {/* Botão de Toggle de Status Rápido */}
-                        <button
-                          onClick={() => toggleExpenseStatus(e)}
-                          title="Clique para alternar entre Pago e Pendente"
-                          style={{
-                            fontSize: 10,
-                            padding: "2px 6px",
-                            borderRadius: 4,
-                            border: paid ? "1px solid #10b981" : "1px solid #f59e0b",
-                            background: paid ? "rgba(16, 185, 129, 0.15)" : "rgba(245, 158, 11, 0.15)",
-                            color: paid ? "#10b981" : "#f59e0b",
-                            cursor: "pointer",
-                            fontWeight: 700,
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 4
-                          }}
-                        >
-                          {paid ? "✓ PAGO" : "⏳ A PAGAR"}
-                        </button>
+                  <div 
+                    key={e.id} 
+                    style={{ 
+                      display: "flex", 
+                      justifyContent: "space-between", 
+                      padding: "12px 10px", 
+                      borderBottom: "1px solid #1e2736", 
+                      alignItems: "center", 
+                      gap: 12,
+                      background: paid ? "transparent" : "rgba(245, 158, 11, 0.03)",
+                      borderRadius: 6,
+                      transition: "all 0.2s"
+                    }}
+                  >
+                    <div style={{ fontSize: 12, flex: 1, minWidth: 150 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 3, color: "#fff" }}>
+                        {e.category}
                       </div>
-                      <span style={{ color: "#64748b" }}>
-                        {e.supplier || "Geral"} · Venc: {fmtDate(e.expense_date)}
-                      </span>
+                      <div style={{ color: "#64748b", fontSize: 11, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                        <span>🏢 {e.supplier || "Geral"}</span>
+                        <span>•</span>
+                        <span>📅 Venc: {fmtDate(e.expense_date)}</span>
+                      </div>
                     </div>
 
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: paid ? "#ef4444" : "#f59e0b" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: paid ? "#ef4444" : "#f59e0b", minWidth: 80, textAlign: "right" }}>
                         -{fmt(e.value)}
                       </div>
-                      <button onClick={() => openEdit(e)} className="btn-ghost" style={{ padding: "4px 6px", fontSize: 11 }} title="Editar">✏️</button>
-                      <button onClick={() => deleteExp(e.id)} className="btn-ghost" style={{ padding: "4px 6px", fontSize: 11, color: "#ef4444" }} title="Excluir">🗑️</button>
+
+                      {/* Botão de Status Pago / Pendente Destacado */}
+                      <button
+                        onClick={() => toggleExpenseStatus(e)}
+                        title={paid ? "Clique para reabrir como Pendente" : "Clique para marcar como Pago"}
+                        style={{
+                          fontSize: 11,
+                          padding: "6px 12px",
+                          borderRadius: 6,
+                          border: paid ? "1px solid #10b981" : "1px solid #f59e0b",
+                          background: paid ? "rgba(16, 185, 129, 0.15)" : "rgba(245, 158, 11, 0.15)",
+                          color: paid ? "#10b981" : "#f59e0b",
+                          cursor: "pointer",
+                          fontWeight: 700,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 5,
+                          transition: "all 0.2s",
+                          whiteSpace: "nowrap"
+                        }}
+                      >
+                        {paid ? "✓ Pago" : "⏳ Marcar Pago"}
+                      </button>
+
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <button onClick={() => openEdit(e)} className="btn-ghost" style={{ padding: "4px 6px", fontSize: 12 }} title="Editar">✏️</button>
+                        <button onClick={() => deleteExp(e.id)} className="btn-ghost" style={{ padding: "4px 6px", fontSize: 12, color: "#ef4444" }} title="Excluir">🗑️</button>
+                      </div>
                     </div>
                   </div>
                 );
