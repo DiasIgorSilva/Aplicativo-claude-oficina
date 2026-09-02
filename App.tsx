@@ -764,9 +764,21 @@ const { useState, useEffect, useRef, useMemo, useCallback } = React;
               <div className="logo-title">ASDCAR</div>
             </div>
 
-          </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button className={`pill-badge ${driveUrl ? "active-green" : ""}`} onClick={() => setShowDriveModal(true)}>
+                ☁️ {driveUrl ? "Drive Ok" : "Conectar Drive"}
+              </button>
+              <button className="pill-badge purple-btn" onClick={() => setShowReport(true)}>📄 Fechamento</button>
+            </div>
 
-
+            <div className="nav-desktop-tabs">
+              {tabs.map(t => (
+                <button key={t.id} className={`tab-btn ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>
+                  <span>{t.icon}</span> {t.label}
+                </button>
+              ))}
+            </div>
+          </header>
 
           {/* KPI GRID COM BADGES COLORIDOS */}
 
