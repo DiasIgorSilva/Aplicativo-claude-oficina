@@ -513,24 +513,7 @@ const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
       const [services, setServices] = useState([]);
 
-      const activeServices = useMemo(() => services.filter((s) => s.status !== "Entregue"), [services]);
-
-      const filteredDelivered = useMemo(() => services.filter((s) => {
-        const dt = s.created_at || s.createdAt;
-        if (!dt) return false;
-        const d = new Date(dt);
-        return d.getMonth() === selMonth && d.getFullYear() === selYear;
-      }), [services, selMonth, selYear]);
-
-      const tP = useMemo(() => filteredDelivered.reduce((acc, s) => acc + (Number(s.partsValue) || 0), 0), [filteredDelivered]);
-      const tL = useMemo(() => filteredDelivered.reduce((acc, s) => acc + (Number(s.laborValue) || 0), 0), [filteredDelivered]);
-
-      const receitaCalculada = useMemo(() => filteredDelivered.reduce((acc, s) => {
-        const parts = Number(s.partsValue) || 0;
-        const labor = Number(s.laborValue) || 0;
-        return acc + parts + labor;
-      }, 0), [filteredDelivered]);
-
+      
 
       const [expenses, setExpenses] = useState([]);
 
@@ -1930,6 +1913,25 @@ const { useState, useEffect, useRef, useMemo, useCallback } = React;
       const [selMonth, setSelMonth] = useState(new Date().getMonth());
 
       const [selYear, setSelYear] = useState(new Date().getFullYear());
+
+      const activeServices = useMemo(() => (services || []).filter((s) => s.status !== "Entregue"), [services]);
+
+      const filteredDelivered = useMemo(() => (services || []).filter((s) => {
+        const dt = s.created_at || s.createdAt;
+        if (!dt) return false;
+        const d = new Date(dt);
+        return d.getMonth() === selMonth && d.getFullYear() === selYear;
+      }), [services, selMonth, selYear]);
+
+      const tP = useMemo(() => filteredDelivered.reduce((acc, s) => acc + (Number(s.partsValue) || 0), 0), [filteredDelivered]);
+      const tL = useMemo(() => filteredDelivered.reduce((acc, s) => acc + (Number(s.laborValue) || 0), 0), [filteredDelivered]);
+
+      const receitaCalculada = useMemo(() => filteredDelivered.reduce((acc, s) => {
+        const parts = Number(s.partsValue) || 0;
+        const labor = Number(s.laborValue) || 0;
+        return acc + parts + labor;
+      }, 0), [filteredDelivered]);
+
 
       const [query, setQuery] = useState("");
 
