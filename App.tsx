@@ -1,8 +1,8 @@
 'use client';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 
 const { useState, useEffect, useRef, useMemo, useCallback } = React;
-    const { createClient } = supabase;
+    const createClient = (typeof window !== "undefined" && window.supabase) ? window.supabase.createClient : null;
 
     // Cliente Real Supabase (Apenas leitura/sync de dados para o Sandbox)
     const realSupabase = createClient(
@@ -3212,6 +3212,6 @@ const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
 
 
-    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    
 
 export default App;
