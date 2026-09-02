@@ -639,7 +639,7 @@
 
           <style>{`
 
-            @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@1,800;1,900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap');
+            @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Russo+One&family=Syne:wght@700;800&display=swap');
 
             *{box-sizing:border-box;margin:0;padding:0;}
 
@@ -794,17 +794,19 @@
           <header className="header-bar">
             <div className="logo-box" style={{ display: 'flex', alignItems: 'center' }}>
               <svg height="40" viewBox="0 0 350 72" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block', height: '40px', width: 'auto' }}>
-                <defs>
-                  <linearGradient id="asdRedGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#FF1E27" />
-                    <stop offset="100%" stopColor="#D9000B" />
-                  </linearGradient>
-                </defs>
-                <text x="4" y="46" fontFamily="'Chakra Petch', 'Orbitron', 'Syne', sans-serif" fontWeight="900" fontStyle="italic" fontSize="48" letterSpacing="-1.5" fill="none" stroke="#FFFFFF" strokeWidth="8" strokeLinejoin="miter">ASDCAR</text>
-                <text x="4" y="46" fontFamily="'Chakra Petch', 'Orbitron', 'Syne', sans-serif" fontWeight="900" fontStyle="italic" fontSize="48" letterSpacing="-1.5" fill="none" stroke="#000000" strokeWidth="4" strokeLinejoin="miter">ASDCAR</text>
-                <text x="4" y="46" fontFamily="'Chakra Petch', 'Orbitron', 'Syne', sans-serif" fontWeight="900" fontStyle="italic" fontSize="48" letterSpacing="-1.5" fill="#FF1E27">ASD</text>
-                <text x="145" y="46" fontFamily="'Chakra Petch', 'Orbitron', 'Syne', sans-serif" fontWeight="900" fontStyle="italic" fontSize="48" letterSpacing="-1.5" fill="#FFFFFF">CAR</text>
+                {/* Outermost White Contour */}
+                <text x="4" y="46" fontFamily="'Chakra Petch', 'Russo One', sans-serif" fontWeight="900" fontSize="48" letterSpacing="-1.5" fill="none" stroke="#FFFFFF" strokeWidth="8" strokeLinejoin="miter">ASDCAR</text>
+                {/* Inner Black Contour */}
+                <text x="4" y="46" fontFamily="'Chakra Petch', 'Russo One', sans-serif" fontWeight="900" fontSize="48" letterSpacing="-1.5" fill="none" stroke="#000000" strokeWidth="3" strokeLinejoin="miter">ASDCAR</text>
+                
+                {/* ASD Red Fill */}
+                <text x="4" y="46" fontFamily="'Chakra Petch', 'Russo One', sans-serif" fontWeight="900" fontSize="48" letterSpacing="-1.5" fill="#FF1E27">ASD</text>
+                {/* CAR White Fill */}
+                <text x="146" y="46" fontFamily="'Chakra Petch', 'Russo One', sans-serif" fontWeight="900" fontSize="48" letterSpacing="-1.5" fill="#FFFFFF">CAR</text>
+                
+                {/* Red Underline Bar */}
                 <path d="M 4 54 L 345 54 L 340 68 L 4 68 Z" fill="#FF1E27"/>
+                {/* Subtitle MECÂNICA AUTOMOTIVA */}
                 <text x="336" y="65" fontFamily="'Plus Jakarta Sans', sans-serif" fontWeight="800" fontSize="10.5" fill="#FFFFFF" textAnchor="end" letterSpacing="1.2">MECÂNICA AUTOMOTIVA</text>
               </svg>
             </div>
